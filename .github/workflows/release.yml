@@ -117,7 +117,7 @@ jobs:
       # the exact commit and workflow run that produced it, verifiable with
       #   gh attestation verify Nostos.exe --repo rA9-001/Nostos
       - name: Attest the build
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: 'out/Nostos.exe, out/*.zip'
 
