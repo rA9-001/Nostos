@@ -3,7 +3,9 @@
 Notable changes per release. Versions follow [semantic versioning](https://semver.org): while
 the major version is `0`, a minor bump may change behaviour.
 
-## Unreleased
+## 0.1.0 - 2026-08-26
+
+First public release.
 
 ### Added
 - **84 tweaks**, in two groups and six categories.
