@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RootNamespace>Nostos.Win32</RootNamespace>
+    <!-- Required by the LibraryImport source generator; no unsafe code is hand-written in this project. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The service host needs the raw SCM callbacks and status struct. Keeping the P/Invoke
+         surface internal means it stays out of the public API of a library the app also uses. -->
+    <InternalsVisibleTo Include="Nostos.Service" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nostos.Core\Nostos.Core.csproj" />
+  </ItemGroup>
+</Project>

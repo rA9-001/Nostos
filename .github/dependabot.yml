@@ -1,0 +1,16 @@
+version: 2
+
+# The product has exactly one third-party dependency (Avalonia) on purpose, so most of what this
+# watches is the CI workflows themselves. Pinned action versions rot silently and a stale action
+# is a supply-chain problem in a repository that publishes signed binaries.
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5

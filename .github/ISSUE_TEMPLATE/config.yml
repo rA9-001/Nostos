@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Did a tweak break something?
+    url: https://github.com/rA9-001/Nostos/blob/main/docs/tweaks
+    about: >
+      Every tweak has a page listing exactly what it changes and what it costs. `nos journal`
+      shows what was done to your machine and `nos revert --all` undoes all of it, without
+      waiting for anyone to answer an issue.
+
+  - name: Security problem
+    url: https://github.com/rA9-001/Nostos/security/advisories/new
+    about: >
+      Report privately instead. This program runs a LocalSystem service; anything that lets one
+      account gain privilege over another should not be a public issue first.

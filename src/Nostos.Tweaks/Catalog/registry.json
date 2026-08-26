@@ -1,0 +1,1663 @@
+[
+  {
+    "id": "mmcss.system-responsiveness",
+    "title": "Reduce MMCSS background CPU reservation",
+    "summary": "Sets the share of CPU the Multimedia Class Scheduler reserves for non-multimedia work. Windows ships 20%; you choose how much to give back.",
+    "category": "performance",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "mmcss",
+      "scheduler"
+    ],
+    "values": [],
+    "choices": [
+      {
+        "id": "reserve",
+        "title": "Background CPU reservation",
+        "description": "The share of CPU time the Multimedia Class Scheduler guarantees to work that is NOT registered as multimedia. Lowering it leaves more headroom for a game's MMCSS threads, at the cost of everything else on the machine.",
+        "default": "balanced",
+        "options": [
+          {
+            "id": "windows-default",
+            "title": "Windows default - 20%",
+            "description": "Writes the value Windows client ships with. Use this to pin the setting explicitly, so a future Windows update that changes the default is caught by drift reconciliation.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile",
+                "name": "SystemResponsiveness",
+                "kind": "DWord",
+                "value": "20"
+              }
+            ]
+          },
+          {
+            "id": "balanced",
+            "title": "Balanced - 10%",
+            "description": "Halves the reservation. Leaves enough for the audio engine and background work while giving MMCSS-registered game threads more room. This is the one to pick if you are not sure.",
+            "recommended": true,
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile",
+                "name": "SystemResponsiveness",
+                "kind": "DWord",
+                "value": "10"
+              }
+            ]
+          },
+          {
+            "id": "none",
+            "title": "No reservation - 0%",
+            "description": "Reserves nothing for non-multimedia work. Widely recommended and widely regretted: it starves the audio engine, which shows up as crackling or dropouts under load. Offered because people set it anyway, and doing it here means it is journaled and revertible.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile",
+                "name": "SystemResponsiveness",
+                "kind": "DWord",
+                "value": "0"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mmcss.network-throttling-off",
+    "title": "Disable multimedia network throttling",
+    "summary": "Stops Windows capping the machine at ~10 packets/ms while a multimedia task is running. Matters on high-tickrate shooters and high-refresh streaming.",
+    "category": "ping",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "mmcss",
+      "latency"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile",
+        "name": "NetworkThrottlingIndex",
+        "kind": "DWord",
+        "value": "0xFFFFFFFF"
+      }
+    ]
+  },
+  {
+    "id": "mmcss.games-task-priority",
+    "title": "Raise the MMCSS \"Games\" task priority",
+    "summary": "Raises scheduling priority for threads that register with MMCSS under the Games task. Most games never register, so on most systems this changes nothing at all.",
+    "category": "performance",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "mmcss",
+      "scheduler",
+      "widely-shared"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games",
+        "name": "Priority",
+        "kind": "DWord",
+        "value": "6"
+      },
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games",
+        "name": "Scheduling Category",
+        "kind": "String",
+        "value": "High"
+      },
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games",
+        "name": "SFIO Priority",
+        "kind": "String",
+        "value": "High"
+      }
+    ]
+  },
+  {
+    "id": "gamedvr.policy-off",
+    "title": "Disable Game DVR background recording (machine policy)",
+    "summary": "Turns off the always-on background recorder that captures the last 30 seconds of gameplay. Costs CPU, GPU encoder time and disk bandwidth continuously while a game runs.",
+    "category": "performance",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Measured",
+    "tags": [
+      "gamedvr",
+      "capture"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\GameDVR",
+        "name": "AllowGameDVR",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "gamedvr.user-capture-off",
+    "title": "Disable Game DVR capture for the current user",
+    "summary": "The per-user half of the Game DVR switch. Applies to the signed-in user only and needs no elevation.",
+    "category": "performance",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Measured",
+    "requiresElevation": false,
+    "tags": [
+      "gamedvr",
+      "capture"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "System\\GameConfigStore",
+        "name": "GameDVR_Enabled",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "graphics.hags",
+    "title": "Enable hardware-accelerated GPU scheduling",
+    "summary": "Moves GPU work submission scheduling onto the GPU itself. Reduces submission latency on supported drivers; on unsupported or buggy drivers it can cost stability, so it takes a reboot and a restore point is captured first.",
+    "category": "input-lag",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "minBuild": 19041,
+    "tags": [
+      "hags",
+      "wddm"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers",
+        "name": "HwSchMode",
+        "kind": "DWord",
+        "value": "2"
+      }
+    ]
+  },
+  {
+    "id": "gpu.tdr-delay",
+    "title": "Extend the GPU timeout detection delay",
+    "summary": "Sets how long Windows waits before resetting an unresponsive GPU driver. Changes nothing about speed; changes how a driver hang behaves.",
+    "category": "stability",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "tags": [
+      "tdr",
+      "widely-shared"
+    ],
+    "values": [],
+    "choices": [
+      {
+        "id": "delay",
+        "title": "Driver hang timeout",
+        "description": "How long Windows waits for an unresponsive GPU driver before resetting it. This does not make anything faster; it changes how long the screen stays frozen when a hang happens, and how tolerant the machine is of a legitimately slow GPU task.",
+        "default": "extended",
+        "options": [
+          {
+            "id": "windows-default",
+            "title": "Windows default - 2 seconds",
+            "description": "The shipped timeout. A hung driver is reset quickly, so a genuine fault shows up as a brief flicker rather than a long freeze.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers",
+                "name": "TdrDelay",
+                "kind": "DWord",
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "id": "extended",
+            "title": "Extended - 8 seconds",
+            "description": "Tolerates long shader compilation and heavy GPU work without a spurious reset. The cost is that a real driver hang leaves you looking at a frozen screen for eight seconds instead of two.",
+            "recommended": true,
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers",
+                "name": "TdrDelay",
+                "kind": "DWord",
+                "value": "8"
+              }
+            ]
+          },
+          {
+            "id": "compute",
+            "title": "Compute workloads - 60 seconds",
+            "description": "For machines running GPU compute kernels that legitimately take a minute. Wrong for gaming: a hang becomes a minute-long freeze, and if you are hitting the timeout while playing, the fault is the overclock, the card or the driver, and hiding it does not fix it.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers",
+                "name": "TdrDelay",
+                "kind": "DWord",
+                "value": "60"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "input.mouse-acceleration-off",
+    "title": "Turn off mouse acceleration",
+    "summary": "Makes pointer movement a fixed multiple of mouse movement, so the same physical flick always turns you the same amount. This is the 'Enhance pointer precision' checkbox.",
+    "category": "input-lag",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "requiresReboot": false,
+    "tags": [
+      "mouse",
+      "input",
+      "aim"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "Control Panel\\Mouse",
+        "name": "MouseSpeed",
+        "kind": "String",
+        "value": "0"
+      },
+      {
+        "hive": "HKCU",
+        "key": "Control Panel\\Mouse",
+        "name": "MouseThreshold1",
+        "kind": "String",
+        "value": "0"
+      },
+      {
+        "hive": "HKCU",
+        "key": "Control Panel\\Mouse",
+        "name": "MouseThreshold2",
+        "kind": "String",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "power.throttling-off",
+    "title": "Stop Windows power-throttling background processes",
+    "summary": "Disables Power Throttling (EcoQoS) machine-wide, so Windows stops parking processes it judges to be background work onto efficiency cores at reduced clocks.",
+    "category": "performance",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "requiresReboot": false,
+    "desktopOnly": true,
+    "tags": [
+      "ecoqos",
+      "throttling",
+      "cpu"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SYSTEM\\CurrentControlSet\\Control\\Power\\PowerThrottling",
+        "name": "PowerThrottlingOff",
+        "kind": "DWord",
+        "value": "1"
+      }
+    ]
+  },
+  {
+    "id": "gpu.mpo-off",
+    "title": "Disable Multi-Plane Overlay",
+    "summary": "Turns off the DWM's hardware overlay path. A documented workaround for the flickering, black-screen and stutter bugs MPO causes on some driver and monitor combinations. Does nothing at all if you do not have that problem.",
+    "category": "stability",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "tags": [
+      "dwm",
+      "overlay",
+      "flicker"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Microsoft\\Windows\\Dwm",
+        "name": "OverlayTestMode",
+        "kind": "DWord",
+        "value": "5"
+      }
+    ]
+  },
+  {
+    "id": "shell.background-apps-off",
+    "title": "Stop Store apps running in the background",
+    "summary": "Blocks packaged (Store/UWP) apps from running background tasks for this user. Same switch as Settings, Privacy, Background apps.",
+    "category": "performance",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "requiresReboot": false,
+    "tags": [
+      "uwp",
+      "background"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications",
+        "name": "GlobalUserDisabled",
+        "kind": "DWord",
+        "value": "1"
+      }
+    ]
+  },
+  {
+    "id": "shell.notifications-off",
+    "title": "Turn off notification toasts",
+    "summary": "Stops toast notifications appearing. A toast arriving over an exclusive-fullscreen game can cost a mode switch, and at best it is a popup during a match.",
+    "category": "interruptions",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "requiresReboot": false,
+    "tags": [
+      "notifications",
+      "focus"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\PushNotifications",
+        "name": "ToastEnabled",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "shell.game-mode",
+    "title": "Windows Game Mode",
+    "summary": "Windows Game Mode tells the scheduler and Windows Update to stay out of the way while a game is in the foreground. Microsoft ships it on; this makes the setting explicit either way.",
+    "category": "performance",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "requiresReboot": false,
+    "tags": [
+      "gamemode",
+      "scheduler"
+    ],
+    "values": [],
+    "choices": [
+      {
+        "id": "state",
+        "title": "Game Mode",
+        "description": "Whether Windows applies its own game-specific handling: it holds back driver installs and Windows Update restarts, and gives the foreground game more consistent access to CPU and GPU resources.",
+        "default": "on",
+        "options": [
+          {
+            "id": "on",
+            "title": "On",
+            "description": "The Windows default and Microsoft's own recommendation. Keeps Windows Update from restarting the machine mid-match, which is the part nobody argues with.",
+            "recommended": true,
+            "values": [
+              {
+                "hive": "HKCU",
+                "key": "Software\\Microsoft\\GameBar",
+                "name": "AutoGameModeEnabled",
+                "kind": "DWord",
+                "value": "1"
+              }
+            ]
+          },
+          {
+            "id": "off",
+            "title": "Off",
+            "description": "Turns it off. Worth trying only if you are chasing a specific stutter that you have actually traced to Game Mode; a handful of titles have historically behaved worse with it on.",
+            "values": [
+              {
+                "hive": "HKCU",
+                "key": "Software\\Microsoft\\GameBar",
+                "name": "AutoGameModeEnabled",
+                "kind": "DWord",
+                "value": "0"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "input.usb-selective-suspend-off",
+    "title": "Stop Windows suspending idle USB devices",
+    "summary": "USB selective suspend powers down devices Windows judges to be idle. A mouse or controller that gets suspended has to wake before its next report arrives, which is felt as a stutter or a dropped input rather than seen as a setting.",
+    "category": "input-lag",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "tags": [
+      "usb",
+      "mouse",
+      "controller",
+      "power"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SYSTEM\\CurrentControlSet\\Services\\USB",
+        "name": "DisableSelectiveSuspend",
+        "kind": "DWord",
+        "value": "1"
+      }
+    ]
+  },
+  {
+    "id": "graphics.fullscreen-optimizations-off",
+    "title": "Turn off Fullscreen Optimizations",
+    "summary": "Fullscreen Optimizations runs a game that asks for exclusive fullscreen as a borderless window instead, so the desktop compositor stays in the present path. Turning it off returns those games to a real exclusive-fullscreen flip.",
+    "category": "input-lag",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "requiresReboot": false,
+    "tags": [
+      "fse",
+      "fullscreen",
+      "dwm",
+      "present"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "System\\GameConfigStore",
+        "name": "GameDVR_FSEBehaviorMode",
+        "kind": "DWord",
+        "value": "2"
+      },
+      {
+        "hive": "HKCU",
+        "key": "System\\GameConfigStore",
+        "name": "GameDVR_HonorUserFSEBehaviorMode",
+        "kind": "DWord",
+        "value": "1"
+      },
+      {
+        "hive": "HKCU",
+        "key": "System\\GameConfigStore",
+        "name": "GameDVR_DXGIHonorFSEWindowsCompatible",
+        "kind": "DWord",
+        "value": "1"
+      },
+      {
+        "hive": "HKCU",
+        "key": "System\\GameConfigStore",
+        "name": "GameDVR_EFSEFeatureFlags",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "shell.transparency-off",
+    "title": "Turn off window transparency effects",
+    "summary": "The acrylic blur behind the taskbar, Start and window chrome is real per-frame GPU work done by the compositor. Turning it off gives that work back, which matters on integrated graphics and barely registers on a discrete card.",
+    "category": "performance",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "requiresReboot": false,
+    "tags": [
+      "dwm",
+      "acrylic",
+      "compositor"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+        "name": "EnableTransparency",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "shell.visual-effects",
+    "title": "Turn off desktop animations",
+    "summary": "Stops Windows animating windows, the taskbar and menus. Desktop work rather than game work, but it is work the same GPU does the moment you alt-tab.",
+    "category": "performance",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "shell",
+      "dwm",
+      "animation"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects",
+        "name": "VisualFXSetting",
+        "kind": "DWord",
+        "value": "2"
+      },
+      {
+        "hive": "HKCU",
+        "key": "Control Panel\\Desktop\\WindowMetrics",
+        "name": "MinAnimate",
+        "kind": "String",
+        "value": "0"
+      },
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        "name": "TaskbarAnimations",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "shell.menu-show-delay",
+    "title": "Remove the menu open delay",
+    "summary": "Windows waits before opening a menu you have hovered. The wait is 400ms out of the box and is not measuring anything - it is just a pause.",
+    "category": "background",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Measured",
+    "tags": [
+      "shell",
+      "responsiveness"
+    ],
+    "values": [],
+    "choices": [
+      {
+        "id": "delay",
+        "title": "Menu open delay",
+        "description": "How long Windows waits after you hover a menu before it opens. A fixed pause rather than a measurement, so shortening it costs nothing except how the desktop feels.",
+        "default": "instant",
+        "options": [
+          {
+            "id": "instant",
+            "title": "Instant - 0ms",
+            "description": "Menus open on hover with no wait at all. The one downside is that sweeping the pointer across a menu bar now opens every menu it passes over, which some people find busy.",
+            "recommended": true,
+            "values": [
+              {
+                "hive": "HKCU",
+                "key": "Control Panel\\Desktop",
+                "name": "MenuShowDelay",
+                "kind": "String",
+                "value": "0"
+              }
+            ]
+          },
+          {
+            "id": "short",
+            "title": "Short - 100ms",
+            "description": "Fast enough to feel immediate, long enough that dragging the pointer across a menu bar does not open everything on the way. The compromise if instant feels twitchy.",
+            "values": [
+              {
+                "hive": "HKCU",
+                "key": "Control Panel\\Desktop",
+                "name": "MenuShowDelay",
+                "kind": "String",
+                "value": "100"
+              }
+            ]
+          },
+          {
+            "id": "windows-default",
+            "title": "Windows default - 400ms",
+            "description": "Writes the value Windows ships with. Use this to pin the setting explicitly rather than leaving it unset, so drift reconciliation has something to compare against.",
+            "values": [
+              {
+                "hive": "HKCU",
+                "key": "Control Panel\\Desktop",
+                "name": "MenuShowDelay",
+                "kind": "String",
+                "value": "400"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "shell.widgets-off",
+    "title": "Remove the Widgets board from the taskbar",
+    "summary": "Widgets renders news and weather in a background WebView2 browser process. Brushing the taskbar with the mouse wakes it up.",
+    "category": "interruptions",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "minBuild": 22000,
+    "tags": [
+      "shell",
+      "taskbar",
+      "widgets"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+        "name": "TaskbarDa",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "shell.search-highlights-off",
+    "title": "Turn off Search highlights",
+    "summary": "Stops the search box fetching illustrated 'highlights' from the internet and animating them in the taskbar.",
+    "category": "interruptions",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "minBuild": 22000,
+    "tags": [
+      "shell",
+      "taskbar",
+      "search"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\SearchSettings",
+        "name": "IsDynamicSearchBoxEnabled",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "shell.suggestions-off",
+    "title": "Stop Windows suggesting and installing apps",
+    "summary": "Turns off Start menu suggestions, lock screen 'fun facts', settings tips and the silent installation of promoted apps.",
+    "category": "interruptions",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "shell",
+      "advertising",
+      "start-menu"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+        "name": "SystemPaneSuggestionsEnabled",
+        "kind": "DWord",
+        "value": "0"
+      },
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+        "name": "SilentInstalledAppsEnabled",
+        "kind": "DWord",
+        "value": "0"
+      },
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+        "name": "SubscribedContent-338389Enabled",
+        "kind": "DWord",
+        "value": "0"
+      },
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+        "name": "SubscribedContent-338393Enabled",
+        "kind": "DWord",
+        "value": "0"
+      },
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+        "name": "SubscribedContent-353694Enabled",
+        "kind": "DWord",
+        "value": "0"
+      },
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
+        "name": "SubscribedContent-353696Enabled",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "update.no-auto-restart",
+    "title": "Never restart for updates while you are signed in",
+    "summary": "Windows Update can reboot the machine on its own schedule. This is the switch that stops it doing that while somebody is logged in.",
+    "category": "interruptions",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Measured",
+    "tags": [
+      "windows-update",
+      "reboot"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+        "name": "NoAutoRebootWithLoggedOnUsers",
+        "kind": "DWord",
+        "value": "1"
+      }
+    ]
+  },
+  {
+    "id": "update.delivery-optimization-off",
+    "title": "Stop this PC uploading Windows updates to strangers",
+    "summary": "Delivery Optimization seeds update chunks to other machines over your connection. A saturated uplink is what a ping spike is made of.",
+    "category": "ping",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "windows-update",
+      "bandwidth",
+      "p2p"
+    ],
+    "values": [],
+    "choices": [
+      {
+        "id": "mode",
+        "title": "Who this PC shares updates with",
+        "description": "Delivery Optimization downloads update chunks from other machines and hands them out again. The download side is harmless; the upload side competes with your game for the same upstream.",
+        "default": "off",
+        "options": [
+          {
+            "id": "off",
+            "title": "Nobody - download straight from Microsoft",
+            "description": "Updates come over plain HTTP from Microsoft and this PC never uploads to anyone. Downloads can be slower on a slow line, which is a cost paid once per update rather than every evening.",
+            "recommended": true,
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization",
+                "name": "DODownloadMode",
+                "kind": "DWord",
+                "value": "0"
+              }
+            ]
+          },
+          {
+            "id": "lan-only",
+            "title": "PCs on my local network only",
+            "description": "Keeps peer sharing inside your own network, which is genuinely useful with several Windows machines at home, and stops the upload ever leaving your router.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization",
+                "name": "DODownloadMode",
+                "kind": "DWord",
+                "value": "1"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "network.qos-reserved-bandwidth",
+    "title": "Zero the QoS reservable bandwidth",
+    "summary": "The famous '20% of your bandwidth is reserved' setting. It does not do what the forum posts say, and this entry mostly exists to explain why.",
+    "category": "ping",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "network",
+      "qos",
+      "widely-shared"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\Psched",
+        "name": "NonBestEffortLimit",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "memory.paging-executive",
+    "title": "Keep the kernel resident in RAM",
+    "summary": "Stops Windows paging kernel code and drivers out to disk. With plenty of RAM this removes a source of hitches; without it, it creates them.",
+    "category": "performance",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "tags": [
+      "memory",
+      "kernel",
+      "widely-shared"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management",
+        "name": "DisablePagingExecutive",
+        "kind": "DWord",
+        "value": "1"
+      }
+    ]
+  },
+  {
+    "id": "memory.prefetch-tuning",
+    "title": "Change what Windows prefetches",
+    "summary": "The Prefetcher records what each program reads at start-up and pre-reads it next time. This is the switch behind most 'disable prefetch' advice.",
+    "category": "performance",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "tags": [
+      "memory",
+      "prefetch",
+      "disk",
+      "widely-shared"
+    ],
+    "values": [],
+    "choices": [
+      {
+        "id": "mode",
+        "title": "What gets prefetched",
+        "description": "The Prefetcher watches which files are read during boot and during the first seconds of an application, and pre-reads them next time. It spends background disk I/O to save a larger amount later.",
+        "default": "windows-default",
+        "options": [
+          {
+            "id": "windows-default",
+            "title": "Boot and applications - Windows default",
+            "description": "The setting Windows ships with. Pinning it explicitly means drift reconciliation will tell you when something else changes it behind your back, which tweak packs do.",
+            "recommended": true,
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
+                "name": "EnablePrefetcher",
+                "kind": "DWord",
+                "value": "3"
+              }
+            ]
+          },
+          {
+            "id": "boot-only",
+            "title": "Boot only",
+            "description": "Keeps the boot prefetch, which measurably shortens start-up, and drops the per-application one. This is the middle setting people usually mean when they say prefetch off.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
+                "name": "EnablePrefetcher",
+                "kind": "DWord",
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "id": "off",
+            "title": "Nothing",
+            "description": "No prefetching at all. Application launches get slower, the game's included, and on an NVMe drive the background I/O you saved was not costing you much to begin with.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
+                "name": "EnablePrefetcher",
+                "kind": "DWord",
+                "value": "0"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "input.device-queue-size",
+    "title": "Shrink the mouse and keyboard input queues",
+    "summary": "The kernel buffers input packets before anything reads them. Making that buffer smaller is a very widely repeated latency tweak with nothing behind it.",
+    "category": "input-lag",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "tags": [
+      "input",
+      "mouse",
+      "keyboard",
+      "widely-shared"
+    ],
+    "values": [],
+    "choices": [
+      {
+        "id": "size",
+        "title": "Input buffer size",
+        "description": "How many input packets the mouse and keyboard class drivers hold before something reads them. Windows uses 100 each. The queue only fills when a program stops reading, so a smaller one drops input rather than delivering it sooner.",
+        "default": "smaller",
+        "options": [
+          {
+            "id": "smaller",
+            "title": "Smaller - 50 packets",
+            "description": "Half the default, the most commonly recommended value, and still far more headroom than a responsive machine ever uses. This is as far as it is worth going.",
+            "recommended": true,
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Services\\mouclass\\Parameters",
+                "name": "MouseDataQueueSize",
+                "kind": "DWord",
+                "value": "50"
+              },
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Services\\kbdclass\\Parameters",
+                "name": "KeyboardDataQueueSize",
+                "kind": "DWord",
+                "value": "50"
+              }
+            ]
+          },
+          {
+            "id": "smallest",
+            "title": "Smallest - 20 packets",
+            "description": "The aggressive value from the tweaking forums. At a 1000Hz polling rate that is 20ms of buffer, so anything that stalls longer loses mouse movement outright instead of receiving it late.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Services\\mouclass\\Parameters",
+                "name": "MouseDataQueueSize",
+                "kind": "DWord",
+                "value": "20"
+              },
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Services\\kbdclass\\Parameters",
+                "name": "KeyboardDataQueueSize",
+                "kind": "DWord",
+                "value": "20"
+              }
+            ]
+          },
+          {
+            "id": "windows-default",
+            "title": "Windows default - 100 packets",
+            "description": "Writes the shipping value explicitly. Useful for putting a machine back after some other tool has been through it, since these two are a favourite of registry tweak packs.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Services\\mouclass\\Parameters",
+                "name": "MouseDataQueueSize",
+                "kind": "DWord",
+                "value": "100"
+              },
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Services\\kbdclass\\Parameters",
+                "name": "KeyboardDataQueueSize",
+                "kind": "DWord",
+                "value": "100"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "stability.no-restart-on-bluescreen",
+    "title": "Stay on the bluescreen instead of rebooting instantly",
+    "summary": "By default Windows reboots the moment it crashes, so the stop code is gone before you can read it. This keeps it on screen.",
+    "category": "background",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "tags": [
+      "crash",
+      "diagnostics",
+      "bluescreen"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SYSTEM\\CurrentControlSet\\Control\\CrashControl",
+        "name": "AutoReboot",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "cpu.priority-separation",
+    "title": "Change how the scheduler favours the foreground window",
+    "summary": "Sets the CPU quantum length and the boost the foreground process gets. This is the setting behind every '26 vs 38' argument on the tweaking forums, and the arguments are mostly about a number nobody in them has decoded.",
+    "category": "performance",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "tags": [
+      "cpu",
+      "scheduler",
+      "quantum",
+      "widely-shared"
+    ],
+    "values": [],
+    "choices": [
+      {
+        "id": "policy",
+        "title": "Quantum length and foreground boost",
+        "description": "Six bits packed into one number. The top two pick a long or short scheduling quantum, the middle two pick whether the quantum varies with focus or stays fixed, and the bottom two set how much extra quantum the foreground process gets. Windows client ships '2', which means 'use the client defaults' rather than any of these.",
+        "default": "short-variable",
+        "options": [
+          {
+            "id": "windows-default",
+            "title": "Windows default - 2",
+            "description": "The value a clean Windows client install carries. It is not a setting so much as an instruction to use the per-SKU defaults, which on client are short quantum, variable, 3:1 foreground boost. Pin it here so drift reconciliation catches a tweak pack that changed it behind your back.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl",
+                "name": "Win32PrioritySeparation",
+                "kind": "DWord",
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "id": "short-variable",
+            "title": "Short, variable, 3:1 boost - 38 (0x26)",
+            "description": "Spells out the client default explicitly instead of relying on the SKU to supply it. Behaviour is the same as '2' on a desktop Windows install, which is why nobody has ever been able to benchmark a difference. Worth setting only because an explicit value cannot be reinterpreted by a future build.",
+            "recommended": true,
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl",
+                "name": "Win32PrioritySeparation",
+                "kind": "DWord",
+                "value": "38"
+              }
+            ]
+          },
+          {
+            "id": "short-fixed",
+            "title": "Short, fixed, no boost - 40 (0x28)",
+            "description": "Every thread gets the same short quantum whether or not its window has focus. Trades peak foreground throughput for a scheduler that behaves the same way all the time, which is the argument people make for it on frametime consistency. It is an argument, not a measurement.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl",
+                "name": "Win32PrioritySeparation",
+                "kind": "DWord",
+                "value": "40"
+              }
+            ]
+          },
+          {
+            "id": "background-services",
+            "title": "Background services - 24 (0x18)",
+            "description": "What the Control Panel writes when you pick 'Adjust for best performance of: Background services'. Long fixed quantum, no foreground boost. This is the one to pick if the machine also streams, encodes or hosts a server while you play, and the wrong one if it only plays.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl",
+                "name": "Win32PrioritySeparation",
+                "kind": "DWord",
+                "value": "24"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "memory.svchost-split-threshold",
+    "title": "Group services back into shared svchost processes",
+    "summary": "Windows splits every service into its own svchost.exe on machines with more than 3.5 GB of RAM. This is the threshold that decides, and raising it above your RAM puts the grouping back.",
+    "category": "background",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "tags": [
+      "memory",
+      "services",
+      "svchost",
+      "widely-shared"
+    ],
+    "values": [],
+    "choices": [
+      {
+        "id": "mode",
+        "title": "Service hosting",
+        "description": "Windows compares this number against the machine's physical RAM in kilobytes. Below the threshold, services share svchost.exe processes; above it, each service gets its own. The default of 0x380000 is exactly 3.5 GB, so every modern desktop is above it.",
+        "default": "grouped",
+        "options": [
+          {
+            "id": "windows-default",
+            "title": "Windows default - 3.5 GB, one process per service",
+            "description": "The threshold Windows ships. On any machine with more than 3.5 GB of RAM this means each service runs isolated, which is why Task Manager shows dozens of svchost.exe entries. Isolation is the point: one service crashing cannot take unrelated ones with it.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control",
+                "name": "SvcHostSplitThresholdInKB",
+                "kind": "DWord",
+                "value": "0x380000"
+              }
+            ]
+          },
+          {
+            "id": "grouped",
+            "title": "Group services - threshold above any real machine",
+            "description": "Sets the threshold higher than any amount of RAM you could have, so Windows treats the machine as low-memory and packs services into shared processes. Saves a few hundred megabytes of per-process overhead and shortens the process list. Costs you the isolation: a crash in one grouped service now takes its neighbours down too.",
+            "recommended": true,
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control",
+                "name": "SvcHostSplitThresholdInKB",
+                "kind": "DWord",
+                "value": "0xFFFFFFFF"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "shell.startup-delay-off",
+    "title": "Remove Explorer's startup-item delay",
+    "summary": "Explorer deliberately waits about ten seconds after the desktop appears before launching your startup programs, so the desktop feels ready sooner. This removes the wait.",
+    "category": "background",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "shell",
+      "startup",
+      "boot"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Serialize",
+        "name": "StartupDelayInMSec",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "storage.ntfs-last-access-off",
+    "title": "Stop NTFS recording when files were last read",
+    "summary": "NTFS writes a timestamp every time a file is opened, including files nothing changed. Turning it off removes a metadata write from every read on the volume.",
+    "category": "background",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "tags": [
+      "storage",
+      "ntfs",
+      "disk"
+    ],
+    "values": [],
+    "choices": [
+      {
+        "id": "mode",
+        "title": "Last access timestamps",
+        "description": "The high bit says whether Windows manages the setting or you do; the low bits say whether the timestamps are written. Windows ships 0x80000002: system-managed, updates on. Windows itself turns them off on some configurations, which is why the value you find on a machine is not always the one you set.",
+        "default": "off",
+        "options": [
+          {
+            "id": "windows-default",
+            "title": "System managed, timestamps on - 0x80000002",
+            "description": "The shipped value. Windows decides, and reserves the right to change its mind on a future build. Pin it here if you want drift reconciliation to notice when something else has been at this key.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\FileSystem",
+                "name": "NtfsDisableLastAccessUpdate",
+                "kind": "DWord",
+                "value": "0x80000002"
+              }
+            ]
+          },
+          {
+            "id": "off",
+            "title": "User managed, timestamps off - 0x80000001",
+            "description": "Stops the write and takes the setting out of Windows' hands so it stays stopped. Backup tools that select files by last-access time, and a handful of forensic and archiving tools, lose information they were relying on. Nothing a game does reads it.",
+            "recommended": true,
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Control\\FileSystem",
+                "name": "NtfsDisableLastAccessUpdate",
+                "kind": "DWord",
+                "value": "0x80000001"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "storage.ntfs-8dot3-off",
+    "title": "Stop NTFS generating MS-DOS short filenames",
+    "summary": "Every file with a long name also gets a hidden PROGRA~1-style alias, which costs a directory lookup and an extra index entry per create. Almost nothing has needed them since 16-bit software stopped shipping.",
+    "category": "background",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "tags": [
+      "storage",
+      "ntfs",
+      "disk",
+      "legacy"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SYSTEM\\CurrentControlSet\\Control\\FileSystem",
+        "name": "NtfsDisable8dot3NameCreation",
+        "kind": "DWord",
+        "value": "1"
+      }
+    ]
+  },
+  {
+    "id": "power.fast-startup-off",
+    "title": "Turn off Fast Startup so shutdown really shuts down",
+    "summary": "Shut Down does not shut Windows down: it hibernates the kernel and drivers to disk and restores them next boot. Drivers therefore keep whatever state they were in, sometimes for weeks.",
+    "category": "stability",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "power",
+      "boot",
+      "drivers",
+      "widely-shared"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power",
+        "name": "HiberbootEnabled",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "power.modern-standby-off",
+    "title": "Force S3 sleep instead of Modern Standby",
+    "summary": "Modern Standby keeps the machine partly awake so it can sync mail while 'asleep'. On a desktop that means fans spinning at 3am and a PC that wakes itself. This asks the firmware for real S3 sleep instead.",
+    "category": "stability",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Experimental",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "tags": [
+      "power",
+      "sleep",
+      "s3",
+      "modern-standby"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SYSTEM\\CurrentControlSet\\Control\\Power",
+        "name": "PlatformAoAcOverride",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "stability.driver-search-off",
+    "title": "Stop Windows Update replacing your drivers",
+    "summary": "Windows Update ships its own GPU, audio and chipset drivers and will install them over the ones you chose. A driver you did not pick arriving overnight is one of the more common causes of 'it worked yesterday'.",
+    "category": "stability",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "tags": [
+      "drivers",
+      "windows-update",
+      "gpu",
+      "widely-shared"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DriverSearching",
+        "name": "SearchOrderConfig",
+        "kind": "DWord",
+        "value": "0"
+      },
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate",
+        "name": "ExcludeWUDriversInQualityUpdate",
+        "kind": "DWord",
+        "value": "1"
+      }
+    ]
+  },
+  {
+    "id": "input.accessibility-shortcuts-off",
+    "title": "Disable the Sticky Keys, Filter Keys and Toggle Keys shortcuts",
+    "summary": "Five taps of Shift, or holding it down, pops a dialog over whatever you are doing and takes focus with it. Crouch-walking in a shooter is exactly the input pattern that triggers it.",
+    "category": "interruptions",
+    "scope": "User",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Measured",
+    "tags": [
+      "input",
+      "keyboard",
+      "focus",
+      "accessibility",
+      "widely-shared"
+    ],
+    "values": [
+      {
+        "hive": "HKCU",
+        "key": "Control Panel\\Accessibility\\StickyKeys",
+        "name": "Flags",
+        "kind": "String",
+        "value": "506"
+      },
+      {
+        "hive": "HKCU",
+        "key": "Control Panel\\Accessibility\\Keyboard Response",
+        "name": "Flags",
+        "kind": "String",
+        "value": "122"
+      },
+      {
+        "hive": "HKCU",
+        "key": "Control Panel\\Accessibility\\ToggleKeys",
+        "name": "Flags",
+        "kind": "String",
+        "value": "58"
+      }
+    ]
+  },
+  {
+    "id": "network.ipv6-components",
+    "title": "Turn IPv6 components off or reorder them",
+    "summary": "One bitmask controls Teredo, 6to4, ISATAP and whether IPv6 or IPv4 is tried first. Every 'disable IPv6 for lower ping' guide is setting a value here, usually the wrong one.",
+    "category": "ping",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Risky",
+    "evidence": "Plausible",
+    "requiresReboot": true,
+    "tags": [
+      "network",
+      "ipv6",
+      "teredo",
+      "widely-shared"
+    ],
+    "values": [],
+    "choices": [
+      {
+        "id": "components",
+        "title": "Which IPv6 components to disable",
+        "description": "A bitmask, not a switch: bit 0 disables the tunnel interfaces, bit 4 makes the resolver prefer IPv4 over IPv6, and 0xFF disables everything except the loopback. Microsoft supports 0x00, 0x20 and 0xFF and warns against the rest.",
+        "default": "prefer-ipv4",
+        "options": [
+          {
+            "id": "windows-default",
+            "title": "Windows default - everything enabled",
+            "description": "IPv6 fully on with its normal precedence, which is what a clean install does by not having this value at all. Writing a 0 is equivalent and makes the state explicit so drift reconciliation can see it.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
+                "name": "DisabledComponents",
+                "kind": "DWord",
+                "value": "0"
+              }
+            ]
+          },
+          {
+            "id": "prefer-ipv4",
+            "title": "Prefer IPv4 over IPv6 - 0x20",
+            "description": "Leaves IPv6 working but tries IPv4 first when a name resolves to both. This is the one worth trying: it removes the connect-timeout stall you get when a host advertises IPv6 that does not actually route, without breaking anything that needs IPv6.",
+            "recommended": true,
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
+                "name": "DisabledComponents",
+                "kind": "DWord",
+                "value": "0x20"
+              }
+            ]
+          },
+          {
+            "id": "tunnels-off",
+            "title": "Disable the tunnel interfaces - 0x01",
+            "description": "Turns off Teredo, 6to4 and ISATAP while leaving native IPv6 alone. Teredo is what Xbox multiplayer and some peer-to-peer matchmaking use to punch through NAT, so turning it off can leave you unable to join parties.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
+                "name": "DisabledComponents",
+                "kind": "DWord",
+                "value": "0x01"
+              }
+            ]
+          },
+          {
+            "id": "ipv6-off",
+            "title": "Disable IPv6 entirely - 0xFF",
+            "description": "What the guides mean by 'disable IPv6'. Microsoft explicitly does not recommend it and tests Windows with IPv6 on. Expect Xbox and Store multiplayer, some VPNs and some ISPs' native connectivity to stop working, and expect the cause to be extremely hard to spot later.",
+            "values": [
+              {
+                "hive": "HKLM",
+                "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
+                "name": "DisabledComponents",
+                "kind": "DWord",
+                "value": "0xFF"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "privacy.activity-history-off",
+    "title": "Stop Windows collecting and uploading activity history",
+    "summary": "The Timeline feed: what you opened, when, and on which device, published to your Microsoft account. The feature's UI was removed years ago; the collection policy was not.",
+    "category": "background",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "privacy",
+      "telemetry",
+      "activity"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+        "name": "EnableActivityFeed",
+        "kind": "DWord",
+        "value": "0"
+      },
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+        "name": "PublishUserActivities",
+        "kind": "DWord",
+        "value": "0"
+      },
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+        "name": "UploadUserActivities",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "privacy.advertising-id-off",
+    "title": "Turn off the per-user advertising ID",
+    "summary": "Windows hands apps a stable identifier so they can profile you across them. Turning it off costs nothing and buys nothing measurable in a game; it is here because it is a one-line policy and people ask for it.",
+    "category": "background",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "privacy",
+      "advertising"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\AdvertisingInfo",
+        "name": "DisabledByGroupPolicy",
+        "kind": "DWord",
+        "value": "1"
+      }
+    ]
+  },
+  {
+    "id": "privacy.telemetry-policy",
+    "title": "Set the diagnostic data policy to its lowest allowed level",
+    "summary": "The policy behind 'AllowTelemetry=0'. On Home and Pro the floor is Required regardless of what you write here, which is the part the tweak guides leave out.",
+    "category": "background",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": [
+      "privacy",
+      "telemetry",
+      "widely-shared"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection",
+        "name": "AllowTelemetry",
+        "kind": "DWord",
+        "value": "0"
+      }
+    ]
+  },
+  {
+    "id": "update.notify-before-download",
+    "title": "Make Windows Update ask before downloading",
+    "summary": "Stops Windows starting a multi-gigabyte download while you are in a match. You get a notification instead, and you choose when it runs.",
+    "category": "interruptions",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Plausible",
+    "tags": [
+      "windows-update",
+      "bandwidth",
+      "interruptions"
+    ],
+    "values": [
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+        "name": "NoAutoUpdate",
+        "kind": "DWord",
+        "value": "0"
+      },
+      {
+        "hive": "HKLM",
+        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+        "name": "AUOptions",
+        "kind": "DWord",
+        "value": "2"
+      }
+    ]
+  }
+]

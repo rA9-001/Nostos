@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Nostos.Core/Nostos.Core.csproj" />
+    <Project Path="src/Nostos.Win32/Nostos.Win32.csproj" />
+    <Project Path="src/Nostos.Tweaks/Nostos.Tweaks.csproj" />
+    <Project Path="src/Nostos.Ipc/Nostos.Ipc.csproj" />
+    <Project Path="src/Nostos.Service/Nostos.Service.csproj" />
+    <Project Path="src/Nostos.Cli/Nostos.Cli.csproj" />
+    <Project Path="src/Nostos.App/Nostos.App.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Nostos.ReleaseTool/Nostos.ReleaseTool.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Nostos.Core.Tests/Nostos.Core.Tests.csproj" />
+    <Project Path="tests/Nostos.Tweaks.Tests/Nostos.Tweaks.Tests.csproj" />
+    <Project Path="tests/Nostos.App.Tests/Nostos.App.Tests.csproj" />
+  </Folder>
+</Solution>

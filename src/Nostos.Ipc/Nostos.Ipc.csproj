@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Portable on purpose: the protocol contract and the client have no Windows
+         dependency, so they can be exercised in tests on any runner. The ACL'd server
+         half lives in the service, which is Windows-only. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Nostos.Ipc</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nostos.Core\Nostos.Core.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,45 @@
+{
+  "name": "streaming",
+  "description": "FPS and ping while you are also encoding. Keeps a real CPU reservation for background work on purpose -- starving the encoder costs the stream more than it gains the player -- but stops Windows deciding the encoder is background work and throttling it, and keeps everything else off the uplink the encoder is already saturating.",
+  "tweaks": [
+    {
+      "tweakId": "mmcss.system-responsiveness",
+      "options": {
+        "reserve": "windows-default"
+      }
+    },
+    {
+      "tweakId": "mmcss.network-throttling-off"
+    },
+    {
+      "tweakId": "gamedvr.policy-off"
+    },
+    {
+      "tweakId": "power.throttling-off"
+    },
+    {
+      "tweakId": "shell.notifications-off"
+    },
+    {
+      "tweakId": "shell.game-mode",
+      "options": {
+        "state": "on"
+      }
+    },
+    {
+      "tweakId": "update.delivery-optimization-off",
+      "options": {
+        "mode": "off"
+      }
+    },
+    {
+      "tweakId": "services.delivery-optimization"
+    },
+    {
+      "tweakId": "update.no-auto-restart"
+    },
+    {
+      "tweakId": "shell.suggestions-off"
+    }
+  ]
+}

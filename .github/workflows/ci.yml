@@ -1,0 +1,106 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Windows-hosted: the catalog and interop projects target net10.0-windows.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Nostos.slnx
+
+      - name: Build
+        # Warnings are errors via Directory.Build.props; nothing lands with a warning.
+        run: dotnet build Nostos.slnx --no-restore --configuration Release
+
+      - name: Test
+        # Includes the catalog integrity rules: every tweak needs a docs page that states its
+        # evidence rating, machine scope implies elevation, reboot implies >= Moderate risk.
+        run: dotnet test Nostos.slnx --no-build --configuration Release --verbosity normal
+
+      - name: Verify the CLI runs
+        run: dotnet run --project src/Nostos.Cli --configuration Release --no-build -- list --all
+
+      - name: Verify the release signing chain round-trips
+        # The update mechanism refuses anything it cannot verify, so a break here would not
+        # produce a bad update -- it would produce releases that silently reach nobody, which is
+        # harder to notice and harder to diagnose. Cheap to check on every push instead.
+        shell: pwsh
+        run: |
+          $tool = 'tools/Nostos.ReleaseTool'
+          "hash  file" | Set-Content sums.txt -NoNewline
+          $out = dotnet run --project $tool --configuration Release --no-build -- keygen --out ci-key.pem
+          $public = ($out | Select-String -Pattern '"([A-Za-z0-9+/=]{80,})"').Matches.Groups[1].Value
+          dotnet run --project $tool --configuration Release --no-build -- sign --checksums sums.txt --key-file ci-key.pem
+          dotnet run --project $tool --configuration Release --no-build -- verify --checksums sums.txt --signature sums.txt.sig --public-key $public
+          if ($LASTEXITCODE -ne 0) { throw 'the signing chain does not round-trip' }
+          Remove-Item ci-key.pem, sums.txt, sums.txt.sig
+
+  single-file:
+    # The one-file build is ahead-of-time compiled, and ahead-of-time compilation is the only
+    # thing that catches reflection-based serialization. Without this job, a contributor can
+    # add a JsonSerializer.Serialize<T> that works perfectly in every other build and breaks
+    # only for the people downloading the portable exe. IL2026/IL3050 are errors here because
+    # Directory.Build.props turns warnings into errors.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Publish the single-file build
+        # The MSVC linker is preinstalled on windows-latest runners.
+        run: >
+          dotnet publish src/Nostos.App/Nostos.App.csproj
+          --configuration Release -r win-x64
+          -p:PublishAot=true -p:EmbedNativeAssets=true
+          -o artifacts/portable
+
+      - name: Check it really is a single file
+        shell: pwsh
+        run: |
+          $files = Get-ChildItem artifacts/portable -Recurse -File | Where-Object Extension -ne '.pdb'
+          $files | Select-Object Name, Length
+          if ($files.Count -ne 1) {
+            throw "Expected exactly one file, found $($files.Count): $($files.Name -join ', ')"
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nostos-portable
+          path: artifacts/portable/Nostos.exe
+
+  core-portability:
+    # Core must stay free of Windows dependencies. Building it alone on Linux is the cheapest
+    # possible enforcement of that, and it fails loudly the moment someone adds a P/Invoke.
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build Core on Linux
+        run: dotnet build src/Nostos.Core/Nostos.Core.csproj --configuration Release
+
+      - name: Test Core on Linux
+        run: dotnet test tests/Nostos.Core.Tests/Nostos.Core.Tests.csproj --configuration Release

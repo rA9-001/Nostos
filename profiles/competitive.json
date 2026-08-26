@@ -1,0 +1,66 @@
+{
+  "name": "competitive",
+  "description": "Input lag, ping and 1% lows, in that order. Removes background capture, stops Windows throttling anything, keeps toasts and restarts off your screen, keeps your upstream free for the game, and makes mouse movement consistent. Nothing here needs a reboot.",
+  "tweaks": [
+    {
+      "tweakId": "mmcss.system-responsiveness",
+      "options": {
+        "reserve": "balanced"
+      }
+    },
+    {
+      "tweakId": "mmcss.network-throttling-off"
+    },
+    {
+      "tweakId": "mmcss.games-task-priority"
+    },
+    {
+      "tweakId": "gamedvr.policy-off"
+    },
+    {
+      "tweakId": "gamedvr.user-capture-off"
+    },
+    {
+      "tweakId": "input.mouse-acceleration-off"
+    },
+    {
+      "tweakId": "shell.notifications-off"
+    },
+    {
+      "tweakId": "shell.game-mode",
+      "options": {
+        "state": "on"
+      }
+    },
+    {
+      "tweakId": "power.throttling-off"
+    },
+    {
+      "tweakId": "power.ultimate-performance"
+    },
+    {
+      "tweakId": "update.no-auto-restart"
+    },
+    {
+      "tweakId": "update.delivery-optimization-off",
+      "options": {
+        "mode": "off"
+      }
+    },
+    {
+      "tweakId": "shell.suggestions-off"
+    },
+    {
+      "tweakId": "shell.widgets-off"
+    },
+    {
+      "tweakId": "shell.search-highlights-off"
+    },
+    {
+      "tweakId": "services.error-reporting"
+    },
+    {
+      "tweakId": "services.delivery-optimization"
+    }
+  ]
+}

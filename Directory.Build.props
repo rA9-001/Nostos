@@ -1,0 +1,30 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Product>Nostos</Product>
+    <Company>Nostos contributors</Company>
+    <Version>0.1.0</Version>
+    <!-- Do NOT enable .NET single-file bundling. It self-extracts native libraries into a
+         hidden folder under %TEMP% and loads them from there, which is the shape of a packed
+         dropper and is what AV heuristics are trained on. The one-file build uses ahead-of-time
+         compilation instead and unpacks into a visible, app-owned folder; see
+         src/Nostos.App/Startup/NativeAssets.cs and docs/distribution.md. -->
+    <PublishSingleFile>false</PublishSingleFile>
+  </PropertyGroup>
+
+  <!-- Third-party native libraries ship debug symbols that are worth ~100 MB and are useless
+       to anyone downstream. Our own .pdb files are kept: they cost kilobytes and are what turns
+       a user's stack trace into a line number. -->
+  <Target Name="TrimNativeSymbols" AfterTargets="Publish">
+    <ItemGroup>
+      <NativeSymbolsToDrop Include="$(PublishDir)lib*.pdb" />
+      <NativeSymbolsToDrop Include="$(PublishDir)av_*.pdb" />
+    </ItemGroup>
+    <Delete Files="@(NativeSymbolsToDrop)" />
+  </Target>
+</Project>

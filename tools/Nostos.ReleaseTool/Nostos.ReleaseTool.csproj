@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <!-- No -windows target: this is maintainer tooling and the release workflow could run it
+         anywhere. It also means it builds in the Linux leg of CI, which keeps it honest. -->
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>Nostos.ReleaseTool</RootNamespace>
+    <AssemblyName>release</AssemblyName>
+    <!-- Never published, never shipped, never referenced by the product. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>

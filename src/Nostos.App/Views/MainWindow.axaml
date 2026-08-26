@@ -1,0 +1,586 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Nostos.App.ViewModels"
+        xmlns:views="using:Nostos.App.Views"
+        xmlns:ipc="using:Nostos.Ipc"
+        xmlns:conv="using:Avalonia.Data.Converters"
+        xmlns:startup="using:Nostos.App.Startup"
+        x:Class="Nostos.App.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Nostos"
+        WindowState="Maximized"
+        Width="1180" Height="780"
+        MinWidth="900" MinHeight="600"
+        Background="#14171d">
+
+  <Window.Resources>
+    <views:ResourceBrushConverter x:Key="BrushFromKey" />
+    <views:CategoryNameConverter x:Key="CategoryName" />
+    <views:CategoryGroupHeaderConverter x:Key="CategoryGroupHeader" />
+    <views:CategoryHasGroupHeaderConverter x:Key="CategoryHasGroupHeader" />
+    <views:BoolOpacityConverter x:Key="OpacityWhenTrue" />
+    <views:InverseBoolOpacityConverter x:Key="OpacityWhenFalse" />
+  </Window.Resources>
+
+  <Window.Styles>
+
+    <!-- A dashed ring on a continuous rotation. Avalonia has no ring-progress control, and a
+         straight indeterminate bar reads as "the whole window is busy", which is exactly the
+         wrong message for one row out of twenty-two. Small enough to sit in a 46px column. -->
+    <Style Selector="Ellipse.spinner">
+      <Setter Property="Width" Value="16" />
+      <Setter Property="Height" Value="16" />
+      <Setter Property="StrokeThickness" Value="2" />
+      <Setter Property="StrokeDashArray" Value="3.2,2.2" />
+      <Setter Property="Stroke" Value="{DynamicResource Accent}" />
+      <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+      <Style.Animations>
+        <Animation Duration="0:0:0.9" IterationCount="INFINITE" Easing="LinearEasing">
+          <KeyFrame Cue="0%">
+            <Setter Property="RotateTransform.Angle" Value="0" />
+          </KeyFrame>
+          <KeyFrame Cue="100%">
+            <Setter Property="RotateTransform.Angle" Value="360" />
+          </KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+
+    <!-- The live indicator: a slow breath rather than a spin, so a healthy idle window is calm
+         and it is the *absence* of the pulse that draws the eye. -->
+    <Style Selector="Ellipse.pulse">
+      <Setter Property="Width" Value="7" />
+      <Setter Property="Height" Value="7" />
+      <Setter Property="Fill" Value="#4ade80" />
+      <Style.Animations>
+        <Animation Duration="0:0:2.4" IterationCount="INFINITE" Easing="SineEaseInOut">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.25" /></KeyFrame>
+          <KeyFrame Cue="50%"><Setter Property="Opacity" Value="1.0" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.25" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+
+    <Style Selector="Border.panel">
+      <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="Border.banner">
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style Selector="TextBlock.badge">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="TextBlock.muted">
+      <Setter Property="Foreground" Value="{DynamicResource Muted}" />
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+  </Window.Styles>
+
+  <Panel>
+  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="16">
+
+    <!-- ============================================================ header -->
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+      <StackPanel Grid.Column="0" Spacing="3">
+        <TextBlock Text="Nostos" FontSize="21" FontWeight="SemiBold" />
+        <StackPanel Orientation="Horizontal" Spacing="10">
+          <TextBlock Classes="muted" Text="{Binding ConnectionText}" />
+          <TextBlock Classes="muted" Text="·" />
+          <TextBlock Classes="muted" Text="{Binding OutstandingText}" />
+        </StackPanel>
+      </StackPanel>
+
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+        <Button Content="Refresh" Command="{Binding RefreshCommand}" />
+        <Button Content="Revert everything"
+                Command="{Binding RevertAllCommand}"
+                Foreground="#fecaca" />
+      </StackPanel>
+    </Grid>
+
+    <!-- =========================================================== banners -->
+    <!-- =========================================================== activity -->
+    <!-- Always here, always the same height. Nothing about this panel appears or disappears;
+         only its contents change, and they cross-fade. A progress indicator that pops in and
+         out shoves every panel below it down and back, and for work that finishes in 40ms that
+         reads as a glitch rather than as progress. So the space is paid for once, up front,
+         and it earns its keep when idle by holding the last result and the freshness clock. -->
+    <Border Grid.Row="1" Classes="panel" Padding="14,11,14,9" Margin="0,0,0,10">
+      <DockPanel>
+
+        <!-- Fixed slot shared by the spinner and the idle dot, so neither moves the text. -->
+        <Panel DockPanel.Dock="Left" Width="20" Height="20" Margin="0,0,13,0"
+               VerticalAlignment="Center">
+          <Ellipse Classes="spinner" Width="20" Height="20"
+                   Opacity="{Binding IsWorking, Converter={StaticResource OpacityWhenTrue}}">
+            <Ellipse.Transitions>
+              <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /></Transitions>
+            </Ellipse.Transitions>
+          </Ellipse>
+          <Ellipse Classes="pulse" Width="9" Height="9"
+                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                   Opacity="{Binding IsWorking, Converter={StaticResource OpacityWhenFalse}}">
+            <Ellipse.Transitions>
+              <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /></Transitions>
+            </Ellipse.Transitions>
+          </Ellipse>
+        </Panel>
+
+        <TextBlock DockPanel.Dock="Right" Text="{Binding LastUpdatedText}" Classes="muted"
+                   FontSize="11" VerticalAlignment="Center" Margin="14,0,0,0"
+                   IsVisible="{Binding IsLive}" />
+
+        <StackPanel Spacing="3">
+          <TextBlock Text="{Binding ActivityTitle}" FontWeight="SemiBold" FontSize="13"
+                     TextTrimming="CharacterEllipsis"
+                     Foreground="{Binding StatusIsError, Converter={x:Static views:BoolBrushes.ErrorNormal}}" />
+          <TextBlock Text="{Binding ActivityDetail}" Classes="muted" FontSize="11"
+                     TextTrimming="CharacterEllipsis" />
+
+          <!-- Always present at a fixed height, so its arrival never resizes anything. It only
+               animates while it is being looked at. -->
+          <ProgressBar Height="3" Margin="0,3,0,0"
+                       IsIndeterminate="{Binding IsWorking}"
+                       Opacity="{Binding IsWorking, Converter={StaticResource OpacityWhenTrue}}">
+            <ProgressBar.Transitions>
+              <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /></Transitions>
+            </ProgressBar.Transitions>
+          </ProgressBar>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <StackPanel Grid.Row="2">
+
+      <!-- Update first: it is the only banner that offers something new, and it is the one a
+           user is most likely to want to act on the moment they see it. -->
+      <Border Classes="banner" Background="#12243a" BorderBrush="#2563eb" BorderThickness="1"
+              IsVisible="{Binding UpdateAvailable}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Spacing="2">
+            <TextBlock Text="{Binding UpdateTitle}" FontWeight="SemiBold" Foreground="#93c5fd" />
+            <TextBlock Text="{Binding UpdateDetail}" TextWrapping="Wrap" FontSize="12" />
+          </StackPanel>
+          <Button Grid.Column="1" Content="Update" VerticalAlignment="Center"
+                  Command="{Binding InstallUpdateCommand}" />
+        </Grid>
+      </Border>
+
+      <Border Classes="banner" Background="#2a2118" BorderBrush="#92400e" BorderThickness="1"
+              IsVisible="{Binding ShowSetupBanner}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Grid.Column="0" Spacing="2">
+            <TextBlock Text="{Binding SetupBannerTitle}" FontWeight="SemiBold" Foreground="#fdba74" />
+            <TextBlock TextWrapping="Wrap" FontSize="12" IsVisible="{Binding ShowServiceExplanation}"
+                       Text="Machine-wide tweaks are unavailable without it. Enabling the service takes one administrator approval, once." />
+            <TextBlock Classes="muted" Text="{Binding SetupNotice}" TextWrapping="Wrap"
+                       IsVisible="{Binding HasSetupNotice}" />
+          </StackPanel>
+          <Button Grid.Column="1" Content="{Binding SetupActionLabel}" VerticalAlignment="Center"
+                  IsVisible="{Binding CanOfferServiceSetup}"
+                  Command="{Binding EnableServiceCommand}" />
+        </Grid>
+      </Border>
+    </StackPanel>
+
+    <!-- =========================================================== content -->
+    <TabControl Grid.Row="3">
+
+      <!-- ======================================================= tweaks -->
+      <TabItem Header="Tweaks">
+        <Grid ColumnDefinitions="220,*,340" Margin="0,8,0,0">
+
+          <!-- filters -->
+          <Border Grid.Column="0" Classes="panel" Padding="12" Margin="0,0,10,0">
+            <StackPanel Spacing="12">
+              <TextBox PlaceholderText="Search…" Text="{Binding SearchText}" />
+
+              <StackPanel Spacing="6">
+                <TextBlock Classes="muted" Text="CATEGORY" />
+                <!-- SelectedIndex seeds the highlight on "all" at startup; the SelectedItem
+                     binding takes over from the first click onwards.
+
+                     MaxHeight fits all seven rows: "All tweaks" plus the six categories. The
+                     set is closed, so the list cannot outgrow it. At 260 the last row was cut
+                     in half, which reads as a rendering fault rather than as a list that
+                     scrolls. -->
+                <ListBox ItemsSource="{Binding Categories}"
+                         SelectedItem="{Binding SelectedCategory}"
+                         SelectedIndex="0"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         MaxHeight="420">
+                  <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                      <StackPanel>
+                        <TextBlock Classes="muted" FontSize="10" FontWeight="Bold"
+                                   Margin="0,10,0,4" Opacity="0.75"
+                                   Text="{Binding Converter={StaticResource CategoryGroupHeader}}"
+                                   IsVisible="{Binding Converter={StaticResource CategoryHasGroupHeader}}" />
+                        <TextBlock Text="{Binding Converter={StaticResource CategoryName}}" />
+                      </StackPanel>
+                    </DataTemplate>
+                  </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- The category is a claim about the tweaks inside it, so it says out loud
+                     what that claim is instead of leaving a two-word heading to imply it. -->
+                <TextBlock Classes="muted" TextWrapping="Wrap"
+                           Text="{Binding SelectedCategoryPromise}"
+                           IsVisible="{Binding SelectedCategoryPromise,
+                                               Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+
+            </StackPanel>
+          </Border>
+
+          <!-- catalog -->
+          <Border Grid.Column="1" Classes="panel" Margin="0,0,10,0">
+            <DockPanel>
+
+            <!-- Batch work gets a bar here as well as in the activity panel: applying a preset
+                 touches rows all over the list, so no single row's spinner represents it.
+
+                 Bound to IsWorking, not IsBusy, so it obeys the same show-delay as everything
+                 else. Bound to the raw flag it flashed for 40ms on every refresh, which is the
+                 exact thing the activity panel was rebuilt to stop doing. Faded rather than
+                 collapsed, so the list below it never shifts. -->
+            <ProgressBar DockPanel.Dock="Top" Height="2" Margin="0,0,0,4"
+                         IsIndeterminate="{Binding IsWorking}"
+                         Opacity="{Binding IsWorking, Converter={StaticResource OpacityWhenTrue}}">
+              <ProgressBar.Transitions>
+                <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /></Transitions>
+              </ProgressBar.Transitions>
+            </ProgressBar>
+
+            <ListBox ItemsSource="{Binding Tweaks}"
+                     SelectedItem="{Binding SelectedTweak}"
+                     Background="Transparent"
+                     BorderThickness="0">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:TweakItemViewModel">
+                 <StackPanel>
+
+                  <!-- Set on the first row of each group by ApplyFilter. Inside the row rather
+                       than as a separate list item, so the ListBox stays a flat list of tweaks
+                       and its selection cannot land on a heading. -->
+                  <StackPanel IsVisible="{Binding HasGroupHeader}" Margin="0,10,0,6" Spacing="1">
+                    <TextBlock Text="{Binding GroupHeader}" FontSize="11" FontWeight="Bold"
+                               Foreground="{DynamicResource Accent}" />
+                    <TextBlock Classes="muted" Text="{Binding GroupDescription}" FontSize="11"
+                               TextWrapping="Wrap" />
+                    <Border Height="1" Background="#2a3140" Margin="0,5,0,0" />
+                  </StackPanel>
+
+                  <Grid ColumnDefinitions="46,*,Auto" Margin="2,6">
+
+                    <!-- The ON/OFF badge and the spinner occupy the same cell: while a row is
+                         working its state is not knowable, and showing a stale ON next to a
+                         spinner invites the reader to believe it. -->
+                    <Panel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
+                      <Border CornerRadius="4" Padding="6,3" Background="#1f2937"
+                              IsVisible="{Binding !IsBusy}">
+                        <TextBlock Text="{Binding StateLabel}" FontSize="10" FontWeight="Bold"
+                                   HorizontalAlignment="Center"
+                                   Foreground="{Binding ShowsAsApplied, Converter={x:Static views:BoolBrushes.OnOff}}" />
+                      </Border>
+                      <Ellipse Classes="spinner" IsVisible="{Binding IsBusy}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Panel>
+
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Classes="muted" Text="{Binding Id}" FontFamily="Consolas,monospace" FontSize="11" />
+                      <TextBlock Classes="muted" Text="{Binding Facets}" FontSize="11" />
+                      <TextBlock Classes="muted" Text="{Binding NotApplicableReason}"
+                                 FontSize="11" Foreground="#fbbf24" TextWrapping="Wrap"
+                                 IsVisible="{Binding !IsApplicable}" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2" Spacing="3" VerticalAlignment="Center"
+                                HorizontalAlignment="Right" Margin="10,0,4,0">
+                      <TextBlock Classes="badge" Text="{Binding RiskText}"
+                                 HorizontalAlignment="Right"
+                                 Foreground="{Binding RiskBrushKey, Converter={StaticResource BrushFromKey}}" />
+                      <TextBlock Classes="badge" Text="{Binding EvidenceText}"
+                                 HorizontalAlignment="Right"
+                                 Foreground="{Binding EvidenceBrushKey, Converter={StaticResource BrushFromKey}}" />
+                      <TextBlock Classes="badge" Text="managed" HorizontalAlignment="Right"
+                                 Foreground="{DynamicResource Accent}"
+                                 IsVisible="{Binding IsManaged}" />
+                    </StackPanel>
+                  </Grid>
+                 </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            </DockPanel>
+          </Border>
+
+          <!-- detail -->
+          <Border Grid.Column="2" Classes="panel" Padding="14">
+            <ScrollViewer>
+              <StackPanel Spacing="12">
+
+                <TextBlock Classes="muted" Text="Select a tweak to see what it changes."
+                           TextWrapping="Wrap" IsVisible="{Binding !HasSelection}" />
+
+                <!-- A ContentControl with its own template, rather than a panel whose
+                     DataContext is rebound in place: setting DataContext and x:DataType on the
+                     same element makes its other bindings resolve against the NEW type, so
+                     IsVisible="{Binding HasSelection}" would look for HasSelection on the
+                     tweak. This shape keeps each scope unambiguous. -->
+                <ContentControl Content="{Binding SelectedTweak}">
+                  <ContentControl.ContentTemplate>
+                    <DataTemplate x:DataType="vm:TweakItemViewModel">
+                      <StackPanel Spacing="12">
+
+                        <StackPanel Spacing="4">
+                          <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
+                          <TextBlock Text="{Binding Id}" FontFamily="Consolas,monospace" FontSize="11"
+                                     Foreground="{DynamicResource Muted}" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Spacing="14">
+                          <StackPanel Spacing="2">
+                            <TextBlock Classes="muted" Text="RISK" FontSize="10" />
+                            <TextBlock Classes="badge" Text="{Binding RiskText}"
+                                       Foreground="{Binding RiskBrushKey, Converter={StaticResource BrushFromKey}}" />
+                          </StackPanel>
+                          <StackPanel Spacing="2">
+                            <TextBlock Classes="muted" Text="EVIDENCE" FontSize="10" />
+                            <TextBlock Classes="badge" Text="{Binding EvidenceText}"
+                                       Foreground="{Binding EvidenceBrushKey, Converter={StaticResource BrushFromKey}}" />
+                          </StackPanel>
+                          <StackPanel Spacing="2">
+                            <TextBlock Classes="muted" Text="SCOPE" FontSize="10" />
+                            <TextBlock Classes="badge" Text="{Binding ScopeText}" />
+                          </StackPanel>
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontSize="13" LineHeight="19" />
+
+                        <StackPanel Spacing="3">
+                          <TextBlock Classes="muted" Text="CURRENT VALUE" FontSize="10" />
+                          <Border Background="#11141a" CornerRadius="5" Padding="9">
+                            <TextBlock Text="{Binding StateDescription}" TextWrapping="Wrap"
+                                       FontFamily="Consolas,monospace" FontSize="11" />
+                          </Border>
+                        </StackPanel>
+
+                        <!-- ============================================ choices -->
+                        <ItemsControl ItemsSource="{Binding Choices}" IsVisible="{Binding HasChoices}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:TweakChoiceViewModel">
+                              <StackPanel Spacing="6" Margin="0,0,0,8">
+                                <TextBlock Classes="muted" FontSize="10"
+                                           Text="{Binding TitleUpper}" />
+                                <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
+                                           FontSize="12" Foreground="{DynamicResource Muted}" />
+
+                                <ItemsControl ItemsSource="{Binding Options}">
+                                  <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:TweakChoiceOptionViewModel">
+                                      <Border Background="#11141a" CornerRadius="5" Padding="9,7"
+                                              Margin="0,0,0,5">
+                                        <StackPanel Spacing="3">
+                                          <RadioButton GroupName="{Binding GroupName}"
+                                                       IsChecked="{Binding IsChecked, Mode=TwoWay}">
+                                            <StackPanel Orientation="Horizontal" Spacing="7">
+                                              <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                                         FontSize="12" TextWrapping="Wrap" />
+                                              <Border Background="#14352a" CornerRadius="3"
+                                                      Padding="5,1" VerticalAlignment="Center"
+                                                      IsVisible="{Binding Recommended}">
+                                                <TextBlock Text="recommended" FontSize="9"
+                                                           Foreground="#4ade80" />
+                                              </Border>
+                                            </StackPanel>
+                                          </RadioButton>
+                                          <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
+                                                     FontSize="11" Margin="24,0,0,0"
+                                                     Foreground="{DynamicResource Muted}" />
+                                        </StackPanel>
+                                      </Border>
+                                    </DataTemplate>
+                                  </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                              </StackPanel>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Spacing="3" IsVisible="{Binding !IsApplicable}">
+                          <TextBlock Classes="muted" Text="NOT APPLICABLE HERE" FontSize="10" />
+                          <TextBlock Text="{Binding NotApplicableReason}" TextWrapping="Wrap"
+                                     FontSize="12" Foreground="#fbbf24" />
+                        </StackPanel>
+
+                        <StackPanel Spacing="3">
+                          <TextBlock Classes="muted" Text="DOCUMENTATION" FontSize="10" />
+                          <TextBlock Text="{Binding DocsPath}" FontFamily="Consolas,monospace" FontSize="11"
+                                     Foreground="{DynamicResource Accent}" TextWrapping="Wrap" />
+                        </StackPanel>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ContentControl.ContentTemplate>
+                </ContentControl>
+
+                <StackPanel Spacing="7" IsVisible="{Binding HasSelection}">
+                  <Button Content="Apply" HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Center"
+                          Command="{Binding ApplyCommand}"
+                          CommandParameter="{Binding SelectedTweak}" />
+                  <Button Content="Dry run" HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Center"
+                          Command="{Binding DryRunCommand}"
+                          CommandParameter="{Binding SelectedTweak}" />
+                  <Button Content="Revert" HorizontalAlignment="Stretch"
+                          HorizontalContentAlignment="Center"
+                          Command="{Binding RevertCommand}"
+                          CommandParameter="{Binding SelectedTweak}" />
+                  <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="11"
+                             Text="Revert restores the exact value captured before this app first changed it." />
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+      </TabItem>
+
+      <!-- ===================================================== profiles -->
+      <TabItem Header="Profiles">
+        <ScrollViewer Margin="0,8,0,0">
+          <ItemsControl ItemsSource="{Binding Profiles}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="ipc:ProfileSummary">
+                <Border Classes="panel" Padding="14" Margin="0,0,0,10">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="4">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15" />
+                      <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Classes="muted" />
+                      <TextBlock Classes="muted" FontSize="11"
+                                 Text="{Binding TweakCount, StringFormat='{}{0} tweak(s)'}" />
+                    </StackPanel>
+                    <Button Grid.Column="1" Content="Apply"
+                            VerticalAlignment="Center"
+                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ApplyProfileCommand}"
+                            CommandParameter="{Binding}" />
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- ====================================================== journal -->
+      <TabItem Header="History">
+        <Border Classes="panel" Margin="0,8,0,0" Padding="6,4">
+          <DockPanel>
+
+            <StackPanel DockPanel.Dock="Top" Spacing="2" Margin="10,8,10,10">
+              <TextBlock Text="Everything this program has changed on this PC"
+                         FontWeight="SemiBold" FontSize="14" />
+              <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="12"
+                         Text="Newest first. Every change saved your previous setting before touching anything, so any of it can be undone with Revert everything." />
+            </StackPanel>
+
+            <!-- An interrupted change is the one entry that asks the reader to do something,
+                 so it gets a banner instead of being a differently coloured row halfway down. -->
+            <Border DockPanel.Dock="Top" Classes="banner" Margin="10,0,10,10"
+                    Background="#2a2118" BorderBrush="#92400e" BorderThickness="1"
+                    IsVisible="{Binding HasUnfinished}">
+              <StackPanel Spacing="2">
+                <TextBlock Text="Some changes were interrupted" FontWeight="SemiBold" Foreground="#fdba74" />
+                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="12"
+                           Text="They were started but never confirmed finished, usually because the PC shut down partway through. Your old settings were saved first, so Revert everything will still put them back." />
+              </StackPanel>
+            </Border>
+
+            <ListBox ItemsSource="{Binding Journal}" Background="Transparent" BorderThickness="0">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:JournalEntryViewModel">
+                  <StackPanel Spacing="6" Margin="2,3">
+
+                    <!-- "Today" / "Yesterday" / "Tuesday 5 August". A bare 21:50 on every row
+                         is what made the old list read like a log file. -->
+                    <TextBlock Text="{Binding DayHeader}" IsVisible="{Binding HasDayHeader}"
+                               FontWeight="SemiBold" FontSize="12" Margin="0,8,0,2"
+                               Foreground="{DynamicResource Accent}" />
+
+                    <Grid ColumnDefinitions="26,52,*">
+                      <TextBlock Grid.Column="0" Text="{Binding Glyph}" FontSize="15"
+                                 VerticalAlignment="Top" HorizontalAlignment="Center"
+                                 Foreground="{Binding GlyphBrushKey, Converter={StaticResource BrushFromKey}}" />
+
+                      <TextBlock Grid.Column="1" Text="{Binding Time}" Classes="muted"
+                                 FontSize="12" VerticalAlignment="Top" />
+
+                      <StackPanel Grid.Column="2" Spacing="2">
+                        <TextBlock Text="{Binding Headline}" FontSize="13" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding Explanation}" Classes="muted" FontSize="12"
+                                   TextWrapping="Wrap" />
+
+                        <!-- The exact values, kept but demoted. A tool whose whole claim is that
+                             it can prove what it changed does not get to hide the proof. -->
+                        <TextBlock Text="{Binding Detail}" FontSize="11" TextWrapping="Wrap"
+                                   FontFamily="Consolas,monospace" Foreground="#64748b"
+                                   IsVisible="{Binding Detail, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                        <TextBlock Text="{Binding Error}" FontSize="12" Foreground="#f87171"
+                                   TextWrapping="Wrap"
+                                   IsVisible="{Binding Error, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                      </StackPanel>
+                    </Grid>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+        </Border>
+      </TabItem>
+    </TabControl>
+
+  </Grid>
+
+  <!-- Setup overlay. Everything the user would otherwise have had to do by hand happens
+       behind this panel: folders, default profiles, service install, connection. -->
+  <Border IsVisible="{Binding IsSettingUp}" Background="#f214171d">
+    <Border Classes="panel" Padding="28" Width="440"
+            HorizontalAlignment="Center" VerticalAlignment="Center">
+      <StackPanel Spacing="16">
+        <StackPanel Spacing="4">
+          <TextBlock Text="Getting ready" FontSize="19" FontWeight="SemiBold" />
+          <TextBlock Classes="muted" TextWrapping="Wrap"
+                     Text="Setting up everything this needs. You may see one administrator prompt." />
+        </StackPanel>
+
+        <ItemsControl ItemsSource="{Binding SetupSteps}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="startup:StartupStep">
+              <Grid ColumnDefinitions="24,*" Margin="0,5">
+                <TextBlock Grid.Column="0" Text="{Binding Glyph}" FontSize="14"
+                           VerticalAlignment="Center"
+                           Foreground="{Binding Status, Converter={x:Static views:StepBrushes.ForStatus}}" />
+                <StackPanel Grid.Column="1" Spacing="1">
+                  <TextBlock Text="{Binding Title}" FontSize="13" />
+                  <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextWrapping="Wrap"
+                             IsVisible="{Binding Detail, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                </StackPanel>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <ProgressBar IsIndeterminate="True" Height="3" />
+      </StackPanel>
+    </Border>
+  </Border>
+  </Panel>
+</Window>

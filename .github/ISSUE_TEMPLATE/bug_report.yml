@@ -1,0 +1,63 @@
+name: Bug report
+description: Something did not work, or did the wrong thing to a machine.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        If a tweak changed something you did not expect, `nos journal` shows exactly what was
+        done and when, and `nos revert --all` undoes all of it. Neither needs this issue to be
+        answered first.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: input
+    id: tweak
+    attributes:
+      label: Which tweak, if it was one
+      placeholder: network.interrupt-moderation-off
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `nos doctor`
+      description: >
+        Reports the Windows build, whether the session is elevated, the timer resolution, the
+        catalog size and how many changes are outstanding. Paste it verbatim; it answers most
+        of the first round of questions.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: status
+    attributes:
+      label: Output of `nos status <tweak-id>`
+      description: Only if a specific tweak is involved. Shows what is actually set on the machine.
+      render: text
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How is it installed
+      options:
+        - Single-file Nostos.exe (portable)
+        - Folder build with the background service
+        - Built from source
+    validations:
+      required: true
+
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware, if it might matter
+      description: >
+        For network tweaks, the adapter name from Device Manager. For graphics tweaks, the GPU
+        and driver version. These entries write per-adapter and per-driver registry keywords,
+        so "which card" is often the whole answer.

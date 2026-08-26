@@ -1,0 +1,95 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <RootNamespace>Nostos.App</RootNamespace>
+    <AssemblyName>Nostos</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nostos.Core\Nostos.Core.csproj" />
+    <ProjectReference Include="..\Nostos.Win32\Nostos.Win32.csproj" />
+    <ProjectReference Include="..\Nostos.Tweaks\Nostos.Tweaks.csproj" />
+    <ProjectReference Include="..\Nostos.Ipc\Nostos.Ipc.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.1" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.1" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Shipped so a fresh install has working profiles without the user creating any. The
+         bootstrapper writes these into the data folder only when it is empty. Embedded rather
+         than copied next to the executable so that a single-file build still has them. -->
+    <EmbeddedResource Include="..\..\profiles\*.json"
+                      LogicalName="Nostos.profiles.%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- ===================================================== single-file packaging ===
+
+       Avalonia renders through Skia, HarfBuzz and ANGLE, which are C++ DLLs. An ahead-of-time
+       build compiles every managed assembly into the executable but cannot absorb those, so a
+       one-file build carries them zipped inside itself and NativeAssets unpacks them on first
+       run. Off by default: an ordinary folder build should just have the DLLs next to the exe,
+       where the loader finds them with no unpacking and no cache directory.
+
+       Turn on with -p:EmbedNativeAssets=true (scripts\publish.ps1 -SingleFile does this).      -->
+
+  <PropertyGroup>
+    <EmbedNativeAssets Condition="'$(EmbedNativeAssets)' == ''">false</EmbedNativeAssets>
+    <NativePackStageDir>$(IntermediateOutputPath)nativepack\</NativePackStageDir>
+    <NativePackFile>$(IntermediateOutputPath)native.zip</NativePackFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(EmbedNativeAssets)' == 'true'">
+    <!-- A one-file build has no service executable beside it to install, so it runs portable.
+         Program.cs reads this. -->
+    <DefineConstants>$(DefineConstants);SINGLE_FILE</DefineConstants>
+
+    <!-- The ahead-of-time compiler emits a 78 MB native .pdb that is of no use downstream. -->
+    <NativeDebugSymbols>false</NativeDebugSymbols>
+  </PropertyGroup>
+
+  <Target Name="PackNativeAssets"
+          Condition="'$(EmbedNativeAssets)' == 'true'"
+          AfterTargets="ResolveReferences"
+          BeforeTargets="PrepareResources">
+    <ItemGroup>
+      <!-- .pdb files come through the same item; they are debug symbols for someone else's
+           C++ and have no business inflating a download. -->
+      <NativeToPack Include="@(NativeCopyLocalItems)" Condition="'%(Extension)' == '.dll'" />
+    </ItemGroup>
+
+    <Error Condition="'@(NativeToPack)' == ''"
+           Text="EmbedNativeAssets is set but no native libraries were resolved. This needs a runtime identifier: publish with -r win-x64." />
+
+    <RemoveDir Directories="$(NativePackStageDir)" />
+    <MakeDir Directories="$(NativePackStageDir)" />
+    <Copy SourceFiles="@(NativeToPack)" DestinationFolder="$(NativePackStageDir)" />
+    <ZipDirectory SourceDirectory="$(NativePackStageDir)"
+                  DestinationFile="$(NativePackFile)"
+                  Overwrite="true" />
+
+    <ItemGroup>
+      <EmbeddedResource Include="$(NativePackFile)" LogicalName="Nostos.native.zip" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The point of the exercise is one file, so the loose copies have to go. Only the ones
+       actually packed are deleted, matched by name against the staging folder. -->
+  <Target Name="DropPackedNativeAssets"
+          Condition="'$(EmbedNativeAssets)' == 'true'"
+          AfterTargets="Publish">
+    <ItemGroup>
+      <PackedNativeInPublishDir Include="$(PublishDir)*.dll"
+                                Condition="Exists('$(NativePackStageDir)%(Filename)%(Extension)')" />
+    </ItemGroup>
+    <Delete Files="@(PackedNativeInPublishDir)" />
+  </Target>
+</Project>

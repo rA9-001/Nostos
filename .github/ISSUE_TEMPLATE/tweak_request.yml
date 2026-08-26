@@ -1,0 +1,71 @@
+name: Suggest a tweak
+description: A setting you think belongs in the catalog.
+labels: [tweak]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Everything in the catalog is listed, including entries documented as probably doing
+        nothing. **Being unproven is not a reason to leave a tweak out.** What each one does
+        need is an honest description of its mechanism and a docs page that does not oversell
+        it, and that is mostly what this form is collecting.
+
+        Read `CONTRIBUTING.md` first if you would rather just open the pull request.
+
+  - type: textarea
+    id: setting
+    attributes:
+      label: What setting
+      description: >
+        The registry key and value, the service name, or the command. Be exact -- "disable
+        fullscreen optimizations" is a description; `HKCU\System\GameConfigStore` is a setting.
+    validations:
+      required: true
+
+  - type: textarea
+    id: mechanism
+    attributes:
+      label: What it actually does
+      description: >
+        Not what it is supposed to achieve -- what it changes, and how that reaches a game. If
+        the honest answer is "I do not know, but people say it helps", write that. It is a
+        usable answer and a much better starting point than a guess dressed up as a mechanism.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Which category would it claim
+      description: >
+        Gaming categories have to have a mechanism that reaches the game. Windows categories do
+        not claim to. `nos categories` prints what each one promises.
+      options:
+        - Performance (Gaming)
+        - Input Lag & Aim (Gaming)
+        - Ping (Gaming)
+        - Crashes & Freezes (Gaming)
+        - Interruptions (Windows)
+        - Background & Cleanup (Windows)
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: cost
+    attributes:
+      label: What does it break
+      description: >
+        Every tweak in this catalog costs something. If the answer is genuinely "nothing", say
+        so and say why -- but the entries with no trade-off listed are the ones that turn out to
+        have one.
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Anything measured
+      description: >
+        Numbers, a source, or a link. Optional. Its absence decides the entry's evidence rating
+        rather than whether it gets in.
