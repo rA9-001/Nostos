@@ -94,7 +94,11 @@ public sealed class UpdateClient : IDisposable
                 return new UpdateStatus { Current = current, Latest = null };
 
             if (!response.IsSuccessStatusCode)
-                return UpdateStatus.Failed(current, $"GitHub answered {(int)response.StatusCode}.");
+            {
+                return UpdateStatus.Failed(current,
+                    RateLimitProblem(response.Headers, DateTimeOffset.UtcNow)
+                    ?? $"GitHub answered {(int)response.StatusCode}.");
+            }
 
             var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
             var latest = ReleaseInfo.Parse(json);
@@ -109,6 +113,45 @@ public sealed class UpdateClient : IDisposable
             // not a problem the user has to act on, so it is reported and not thrown.
             return UpdateStatus.Failed(current, "could not reach GitHub.");
         }
+    }
+
+    /// <summary>
+    /// Turns a rate-limited response into something a person can act on, or null if that is not
+    /// what happened.
+    ///
+    /// The unauthenticated GitHub API allows 60 requests an hour **per IP address**, not per
+    /// user. One check per launch is nowhere near that on its own, but the limit is shared by
+    /// everyone behind the same address -- a household, a student halls, or any of the carrier
+    /// NAT that a large share of consumer connections now sit behind. So this is a state real
+    /// users will reach through no fault of their own.
+    ///
+    /// "GitHub answered 403" is accurate and tells them nothing: they cannot distinguish it from
+    /// a broken network, a proxy, or the repository having been taken down. Saying which it is,
+    /// and when it clears, turns it into something to ignore rather than something to report.
+    /// </summary>
+    internal static string? RateLimitProblem(HttpResponseHeaders headers, DateTimeOffset now)
+    {
+        if (!headers.TryGetValues("X-RateLimit-Remaining", out var remainingValues)
+            || !int.TryParse(remainingValues.FirstOrDefault(), out var remaining)
+            || remaining > 0)
+        {
+            return null;
+        }
+
+        var resets = headers.TryGetValues("X-RateLimit-Reset", out var resetValues)
+                     && long.TryParse(resetValues.FirstOrDefault(), out var epoch)
+            ? DateTimeOffset.FromUnixTimeSeconds(epoch)
+            : (DateTimeOffset?)null;
+
+        // Ceiling, not truncation. The reset timestamp is whole seconds, so a genuine 21-minute
+        // wait arrives here as 20.99 and truncating would send someone back a minute early, to
+        // be refused again. Rounding up is the only direction that cannot do that.
+        var wait = resets is null
+            ? "Try again later."
+            : $"It resets in about {Math.Max(1, (int)Math.Ceiling((resets.Value - now).TotalMinutes))} minutes.";
+
+        return $"GitHub's hourly limit for this network is used up. {wait} "
+               + "This is shared by everyone on your connection and has nothing to do with your PC.";
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using Nostos.Core.Updates;
@@ -112,6 +113,65 @@ public sealed class ReleaseParsingTests
         Assert.True(ReleaseVersion.IsNewer(current, new Version(1, 0, 0, 0)));
         Assert.False(ReleaseVersion.IsNewer(current, new Version(0, 2, 0, 0)));
         Assert.False(ReleaseVersion.IsNewer(current, new Version(0, 1, 9, 0)));
+    }
+}
+
+/// <summary>
+/// How a rate-limited check is explained.
+///
+/// GitHub's unauthenticated limit is 60 requests an hour per IP, shared by everyone behind that
+/// address. Behind carrier NAT that is a state users reach without doing anything wrong, and a
+/// bare "403" leaves them unable to tell it from a broken network or a deleted repository.
+/// </summary>
+public sealed class RateLimitMessageTests
+{
+    private static HttpResponseHeaders Headers(params (string Name, string Value)[] values)
+    {
+        var response = new HttpResponseMessage();
+        foreach (var (name, value) in values)
+            response.Headers.TryAddWithoutValidation(name, value);
+        return response.Headers;
+    }
+
+    [Fact]
+    public void An_exhausted_quota_is_named_and_dated()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var message = UpdateClient.RateLimitProblem(
+            Headers(("X-RateLimit-Remaining", "0"),
+                    ("X-RateLimit-Reset", now.AddMinutes(21).ToUnixTimeSeconds().ToString())),
+            now);
+
+        Assert.NotNull(message);
+        Assert.Contains("21 minutes", message);
+        Assert.Contains("shared by everyone on your connection", message);
+    }
+
+    [Fact]
+    public void A_failure_that_is_not_a_rate_limit_is_left_alone()
+    {
+        // Returning null is what lets the caller fall back to reporting the status code. A
+        // helper that guessed "rate limit" for every failure would be worse than the bare 403.
+        Assert.Null(UpdateClient.RateLimitProblem(Headers(), DateTimeOffset.UtcNow));
+        Assert.Null(UpdateClient.RateLimitProblem(
+            Headers(("X-RateLimit-Remaining", "42")), DateTimeOffset.UtcNow));
+    }
+
+    [Fact]
+    public void A_missing_or_past_reset_time_still_produces_usable_advice()
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        Assert.Contains("Try again later",
+            UpdateClient.RateLimitProblem(Headers(("X-RateLimit-Remaining", "0")), now)!);
+
+        // A reset already in the past would compute a negative wait; it must never read as
+        // "resets in about -3 minutes".
+        Assert.Contains("about 1 minutes",
+            UpdateClient.RateLimitProblem(
+                Headers(("X-RateLimit-Remaining", "0"),
+                        ("X-RateLimit-Reset", now.AddMinutes(-3).ToUnixTimeSeconds().ToString())),
+                now)!);
     }
 }
 

@@ -5,4 +5,11 @@
          unit-testable on any runner, with no machine state involved. -->
     <RootNamespace>Nostos.Core</RootNamespace>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- RateLimitProblem is internal: it is a detail of how one HTTP response is explained, not
+         API. It still needs a test, because the state it describes is one real users reach and
+         cannot diagnose themselves. -->
+    <InternalsVisibleTo Include="Nostos.Core.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -3,6 +3,14 @@
 Notable changes per release. Versions follow [semantic versioning](https://semver.org): while
 the major version is `0`, a minor bump may change behaviour.
 
+## Unreleased
+
+### Fixed
+- An update check refused by GitHub's rate limit now says so, and says when it clears, instead
+  of reporting a bare `403`. The limit is 60 requests an hour **per IP address**, so everyone
+  behind the same connection shares it — a state users behind carrier NAT reach without doing
+  anything wrong, and could not previously tell apart from a broken network.
+
 ## 0.1.0 - 2026-08-26
 
 First public release.
