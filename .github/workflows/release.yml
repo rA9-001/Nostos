@@ -37,7 +37,7 @@ jobs:
           # Release notes are generated from the log since the previous tag.
           fetch-depth: 0
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
 
