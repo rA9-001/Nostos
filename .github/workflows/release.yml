@@ -31,7 +31,7 @@ jobs:
       NOSTOS_SIGNING_KEY: ${{ secrets.NOSTOS_SIGNING_KEY }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
           # Release notes are generated from the log since the previous tag.
