@@ -67,9 +67,14 @@ static int KeyGen(string[] args)
         File.WriteAllText(path, privateKey, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
         Console.WriteLine($"PRIVATE KEY - written to {path}");
         Console.WriteLine();
-        Console.WriteLine("  Store it as the repository secret, then delete the file:");
+        Console.WriteLine("  Back it up somewhere durable first: a GitHub secret is write-only,");
+        Console.WriteLine("  so once it is set this file is the only copy you will ever have.");
+        Console.WriteLine();
+        Console.WriteLine("  Then store it as the repository secret. In PowerShell:");
+        Console.WriteLine($"      gh secret set NOSTOS_SIGNING_KEY --body (Get-Content \"{path}\" -Raw)");
+        Console.WriteLine();
+        Console.WriteLine("  In bash, or cmd:");
         Console.WriteLine($"      gh secret set NOSTOS_SIGNING_KEY < \"{path}\"");
-        Console.WriteLine($"      del \"{path}\"");
     }
     else
     {

@@ -19,9 +19,16 @@ install, which looks like a broken updater rather than a missing secret.
 
 ```powershell
 dotnet run --project tools/Nostos.ReleaseTool -- keygen --out key.pem
-gh secret set NOSTOS_SIGNING_KEY < key.pem
-del key.pem
+gh secret set NOSTOS_SIGNING_KEY --body (Get-Content key.pem -Raw)
 ```
+
+Note the shape of that second line. **Windows PowerShell has no `<` input redirection** — it is a
+reserved operator and the usual `gh secret set NAME < key.pem` fails with a parser error. In bash
+or cmd the redirect is fine.
+
+**Back the key up before you go any further.** A GitHub secret is write-only: once it is set you
+cannot read it back out, so `key.pem` is the only copy that will ever exist. Put it in a password
+manager, then delete the file if you want it off disk.
 
 Then paste the printed public key into
 [`src/Nostos.Core/Updates/ReleaseIntegrity.cs`](../src/Nostos.Core/Updates/ReleaseIntegrity.cs)

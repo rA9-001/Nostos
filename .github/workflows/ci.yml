@@ -44,7 +44,10 @@ jobs:
           $tool = 'tools/Nostos.ReleaseTool'
           "hash  file" | Set-Content sums.txt -NoNewline
           $out = dotnet run --project $tool --configuration Release --no-build -- keygen --out ci-key.pem
-          $public = ($out | Select-String -Pattern '"([A-Za-z0-9+/=]{80,})"').Matches.Groups[1].Value
+          # [regex]::Match over the joined output, not Select-String: a MatchInfo's .Matches is a
+          # collection, so .Groups[1] member-enumerates rather than indexing the capture groups.
+          $public = [regex]::Match(($out -join "`n"), '"([A-Za-z0-9+/=]{80,})"').Groups[1].Value
+          if (-not $public) { throw 'could not read the public key out of the keygen output' }
           dotnet run --project $tool --configuration Release --no-build -- sign --checksums sums.txt --key-file ci-key.pem
           dotnet run --project $tool --configuration Release --no-build -- verify --checksums sums.txt --signature sums.txt.sig --public-key $public
           if ($LASTEXITCODE -ne 0) { throw 'the signing chain does not round-trip' }

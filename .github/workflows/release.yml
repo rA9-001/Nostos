@@ -106,8 +106,7 @@ jobs:
           The NOSTOS_SIGNING_KEY secret is not set, so this release cannot be signed.
 
             dotnet run --project tools/Nostos.ReleaseTool -- keygen --out key.pem
-            gh secret set NOSTOS_SIGNING_KEY < key.pem
-            del key.pem
+            gh secret set NOSTOS_SIGNING_KEY --body (Get-Content key.pem -Raw)
 
           Then paste the printed public key into src/Nostos.Core/Updates/ReleaseIntegrity.cs,
           commit it, and re-tag. See docs/releasing.md.
