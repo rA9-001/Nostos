@@ -1,25 +1,43 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:Nostos.App.Views"
              x:Class="Nostos.App.App"
              RequestedThemeVariant="Dark">
 
   <Application.Styles>
     <FluentTheme />
+
+    <!-- The app's own vocabulary: surfaces, text, chips and the two motions it uses. Loaded
+         after Fluent so a class here can refine what a control theme set. -->
+    <StyleInclude Source="avares://Nostos/Styles/Shared.axaml" />
   </Application.Styles>
 
   <Application.Resources>
-    <!-- Risk and evidence colours are the app's whole visual vocabulary: the user should be
-         able to tell a measured, safe tweak from an unproven one without reading a word. -->
-    <SolidColorBrush x:Key="RiskSafe">#4ade80</SolidColorBrush>
-    <SolidColorBrush x:Key="RiskModerate">#fbbf24</SolidColorBrush>
-    <SolidColorBrush x:Key="RiskHigh">#f87171</SolidColorBrush>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <!-- Colours, shape and icons. -->
+        <ResourceInclude Source="avares://Nostos/Styles/Palette.axaml" />
 
-    <SolidColorBrush x:Key="EvidenceMeasured">#4ade80</SolidColorBrush>
-    <SolidColorBrush x:Key="EvidencePlausible">#94a3b8</SolidColorBrush>
+        <!-- Control templates, which override Fluent's. In Resources rather than in Styles
+             because that is the first place a control theme lookup looks, so these win
+             without depending on the order Application.Styles happens to merge in. -->
+        <ResourceInclude Source="avares://Nostos/Styles/Controls.axaml" />
+      </ResourceDictionary.MergedDictionaries>
 
-    <SolidColorBrush x:Key="Accent">#60a5fa</SolidColorBrush>
-    <SolidColorBrush x:Key="Muted">#94a3b8</SolidColorBrush>
-    <SolidColorBrush x:Key="PanelBackground">#1b1f27</SolidColorBrush>
-    <SolidColorBrush x:Key="PanelBorder">#2c3341</SolidColorBrush>
+      <!-- Value converters, at application scope rather than on the window.
+
+           They live here because a StaticResource is resolved while the file that mentions it
+           is being loaded, against that file's own tree and the application's, not against the
+           window that will host the control later. A converter kept in Window.Resources is
+           therefore invisible to every view split out of that window. -->
+      <views:ResourceBrushConverter x:Key="BrushFromKey" />
+      <views:ResourceGeometryConverter x:Key="GeometryFromKey" />
+      <views:CategoryNameConverter x:Key="CategoryName" />
+      <views:CategoryGroupHeaderConverter x:Key="CategoryGroupHeader" />
+      <views:CategoryHasGroupHeaderConverter x:Key="CategoryHasGroupHeader" />
+      <views:LocalizedCountConverter x:Key="LocalizedCount" />
+      <views:BoolOpacityConverter x:Key="OpacityWhenTrue" />
+      <views:InverseBoolOpacityConverter x:Key="OpacityWhenFalse" />
+    </ResourceDictionary>
   </Application.Resources>
 </Application>

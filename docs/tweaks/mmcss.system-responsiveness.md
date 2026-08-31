@@ -2,7 +2,7 @@
 
 **Group:** Gaming · **Improves:** Performance · **Risk:** Safe · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** no
 
-> Raises the framerate and evens out frametimes, by giving the game CPU, GPU or memory that Windows was spending on something else.
+> Raises the FPS and evens out frametimes, by giving the game CPU, GPU or memory that Windows was spending on something else.
 
 ## What it changes
 

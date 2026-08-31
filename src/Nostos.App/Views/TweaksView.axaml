@@ -1,0 +1,381 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nostos.App.ViewModels"
+             xmlns:views="using:Nostos.App.Views"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             xmlns:loc="using:Nostos.App.Localization"
+             x:Class="Nostos.App.Views.TweaksView"
+             x:DataType="vm:MainWindowViewModel">
+
+  <!-- The catalog: filters, the list, and the detail panel for the selected row. -->
+
+  <Grid ColumnDefinitions="248,*,372">
+
+    <!-- ==================================================================== filters -->
+    <Border Grid.Column="0" Classes="panel" Padding="13" Margin="0,0,12,0">
+      <DockPanel>
+
+        <!-- The search field is a Border with the box inside it rather than a bare TextBox,
+             so the magnifier sits inside the same rounded outline as the text. -->
+        <Border DockPanel.Dock="Top" Classes="field" Margin="0,0,0,16">
+          <Grid ColumnDefinitions="Auto,*">
+            <Path Grid.Column="0" Data="{DynamicResource SearchIcon}" Stretch="Uniform"
+                  Width="14" Height="14" Fill="{DynamicResource TextFaint}"
+                  VerticalAlignment="Center" Margin="0,0,10,0" />
+            <TextBox Grid.Column="1" Classes="bare" PlaceholderText="{loc:Tr tweaks.search}"
+                     Text="{Binding SearchText}" VerticalAlignment="Center" />
+          </Grid>
+        </Border>
+
+        <!-- The category is a claim about the tweaks inside it, so it says out loud what that
+             claim is instead of leaving a two word heading to imply it. Docked to the bottom:
+             it is the answer to a question the list above it asks. -->
+        <Border DockPanel.Dock="Bottom" Classes="inset" Margin="0,14,0,0"
+                IsVisible="{Binding SelectedCategoryPromise,
+                                    Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}">
+          <TextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                     Text="{Binding SelectedCategoryPromise}" />
+        </Border>
+
+        <ScrollViewer>
+          <StackPanel Spacing="4">
+            <TextBlock Classes="section" Text="{loc:Tr tweaks.category}" Margin="12,0,0,4" />
+
+            <!-- SelectedIndex seeds the highlight on "all" at startup; the SelectedItem
+                 binding takes over from the first click onwards.
+
+                 The container draws nothing: the pill is inside the item template, so a row
+                 that carries a group heading does not have the heading swept into the
+                 highlight along with the name. -->
+            <ListBox ItemsSource="{Binding Categories}"
+                     SelectedItem="{Binding SelectedCategory}"
+                         Background="Transparent"
+                     BorderThickness="0"
+                     Padding="0">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <StackPanel>
+                    <TextBlock Classes="section" Margin="12,14,0,6"
+                               Text="{Binding Converter={StaticResource CategoryGroupHeader}}"
+                               IsVisible="{Binding Converter={StaticResource CategoryHasGroupHeader}}" />
+                    <Border Classes="pill">
+                      <Grid ColumnDefinitions="3,*">
+                        <Border Grid.Column="0" Classes="pillbar" />
+                        <TextBlock Grid.Column="1" Margin="11,0,0,0"
+                                   Text="{Binding Converter={StaticResource CategoryName}}" />
+                      </Grid>
+                    </Border>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </StackPanel>
+        </ScrollViewer>
+
+      </DockPanel>
+    </Border>
+
+    <!-- ==================================================================== catalog -->
+    <Border Grid.Column="1" Classes="panel" Padding="8,10" Margin="0,0,12,0">
+      <DockPanel>
+
+        <!-- Batch work gets a bar here as well as in the activity panel: applying a preset
+             touches rows all over the list, so no single row's spinner represents it.
+
+             Bound to IsWorking, not IsBusy, so it obeys the same show delay as everything
+             else. Bound to the raw flag it flashed for 40ms on every refresh, which is the
+             exact thing the activity panel was rebuilt to stop doing. Faded rather than
+             collapsed, so the list below it never shifts. -->
+        <ProgressBar DockPanel.Dock="Top" Height="2" Margin="6,0,6,6"
+                     IsIndeterminate="{Binding IsWorking}"
+                     Opacity="{Binding IsWorking, Converter={StaticResource OpacityWhenTrue}}">
+          <ProgressBar.Transitions>
+            <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /></Transitions>
+          </ProgressBar.Transitions>
+        </ProgressBar>
+
+        <ListBox ItemsSource="{Binding Tweaks}"
+                 SelectedIndex="0"
+                 SelectedItem="{Binding SelectedTweak}"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Padding="0">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:TweakItemViewModel">
+              <StackPanel>
+
+                <!-- Set on the first row of each band by the filter. Inside the row rather
+                     than as a separate list item, so the ListBox stays a flat list of tweaks
+                     and its selection cannot land on a heading.
+
+                     Two levels, because the unfiltered list is ordered by half of the catalog
+                     and then by category, and one heading could only ever name one of them.
+                     The outer one is drawn larger and is absent inside a single category. -->
+                <StackPanel IsVisible="{Binding HasSuperHeader}" Margin="14,22,0,4" Spacing="2">
+                  <!-- A title rather than a section label, so it outranks the category
+                       underneath it. The two were the other way round at first, and a small
+                       grey "Gaming" over an accented "Performance" reads as though the
+                       category were the larger thing. -->
+                  <TextBlock Classes="title" Text="{Binding SuperHeader}" />
+                  <TextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                             Text="{Binding SuperDescription}" />
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding HasGroupHeader}" Margin="14,16,0,8" Spacing="3">
+                  <TextBlock Classes="section" Text="{Binding GroupHeader}"
+                             Foreground="{DynamicResource AccentBright}" />
+                  <TextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                             Text="{Binding GroupDescription}" />
+                </StackPanel>
+
+                <Border Classes="row" Margin="2,1">
+                  <Grid ColumnDefinitions="60,*,Auto">
+
+                    <!-- The state chip and the spinner occupy the same cell: while a row is
+                         working its state is not knowable, and showing a stale ON next to a
+                         spinner invites the reader to believe it. -->
+                    <Panel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                      <Border Classes="chip" IsVisible="{Binding !IsBusy}"
+                              Background="{Binding ShowsAsApplied,
+                                                   Converter={x:Static views:BoolBrushes.OnOffTint}}">
+                        <TextBlock Classes="chiptext" Text="{Binding StateLabel}"
+                                   Foreground="{Binding ShowsAsApplied,
+                                                        Converter={x:Static views:BoolBrushes.OnOff}}" />
+                      </Border>
+                      <Ellipse Classes="spinner" IsVisible="{Binding IsBusy}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Panel>
+
+                    <StackPanel Grid.Column="1" Spacing="3">
+                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                 TextTrimming="CharacterEllipsis" />
+                      <StackPanel Orientation="Horizontal" Spacing="9">
+                        <TextBlock Classes="mono" Text="{Binding Id}" />
+                        <TextBlock Classes="faint" Text="{Binding Facets}" />
+                      </StackPanel>
+                      <TextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource Warning}"
+                                 Text="{Binding NotApplicableReason}"
+                                 IsVisible="{Binding !IsApplicable}" />
+                    </StackPanel>
+
+                    <!-- Across rather than down: three chips stacked make a second column
+                         of text competing with the title, where a single line of them reads
+                         as one annotation on the row. -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Right" Margin="12,0,2,0">
+                      <Border Classes="chip" HorizontalAlignment="Right"
+                              Background="{Binding RiskBrushKey,
+                                                   Converter={StaticResource BrushFromKey},
+                                                   ConverterParameter=Tint}">
+                        <TextBlock Classes="chiptext" Text="{Binding RiskText}"
+                                   Foreground="{Binding RiskBrushKey,
+                                                        Converter={StaticResource BrushFromKey}}" />
+                      </Border>
+                      <Border Classes="chip" HorizontalAlignment="Right"
+                              Background="{Binding EvidenceBrushKey,
+                                                   Converter={StaticResource BrushFromKey},
+                                                   ConverterParameter=Tint}">
+                        <TextBlock Classes="chiptext" Text="{Binding EvidenceText}"
+                                   Foreground="{Binding EvidenceBrushKey,
+                                                        Converter={StaticResource BrushFromKey}}" />
+                      </Border>
+                      <Border Classes="chip" HorizontalAlignment="Right"
+                              Background="{DynamicResource AccentTint}"
+                              IsVisible="{Binding IsManaged}">
+                        <TextBlock Classes="chiptext" Text="{loc:Tr tweaks.managed}"
+                                   Foreground="{DynamicResource AccentBright}" />
+                      </Border>
+                    </StackPanel>
+                  </Grid>
+                </Border>
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </DockPanel>
+    </Border>
+
+    <!-- ===================================================================== detail -->
+    <Border Grid.Column="2" Classes="panel" Padding="18">
+      <ScrollViewer>
+        <StackPanel Spacing="14">
+
+          <!-- Empty state. A panel that is blank until something is clicked reads as broken,
+               so it says what it is waiting for. -->
+          <StackPanel Spacing="12" Margin="0,60,0,0" IsVisible="{Binding !HasSelection}">
+            <Border Width="52" Height="52" CornerRadius="16"
+                    Background="{DynamicResource SurfaceInset}"
+                    BorderBrush="{DynamicResource StrokeSoft}" BorderThickness="1"
+                    HorizontalAlignment="Center">
+              <Path Data="{DynamicResource SearchIcon}" Stretch="Uniform"
+                    Width="20" Height="20" Fill="{DynamicResource TextFaint}"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Border>
+            <TextBlock Classes="muted" TextWrapping="Wrap" TextAlignment="Center"
+                       Text="{loc:Tr tweaks.empty}" />
+          </StackPanel>
+
+          <!-- A ContentControl with its own template, rather than a panel whose DataContext
+               is rebound in place: setting DataContext and x:DataType on the same element
+               makes its other bindings resolve against the NEW type, so
+               IsVisible="{Binding HasSelection}" would look for HasSelection on the tweak.
+               This shape keeps each scope unambiguous. -->
+          <ContentControl Content="{Binding SelectedTweak}">
+            <ContentControl.ContentTemplate>
+              <DataTemplate x:DataType="vm:TweakItemViewModel">
+                <StackPanel Spacing="14">
+
+                  <StackPanel Spacing="6">
+                    <TextBlock Text="{Binding Title}" FontSize="17" FontWeight="Bold"
+                               TextWrapping="Wrap" />
+                    <TextBlock Classes="mono" Text="{Binding Id}" TextWrapping="Wrap" />
+                  </StackPanel>
+
+                  <StackPanel Orientation="Horizontal" Spacing="7">
+                    <Border Classes="chip"
+                            Background="{Binding RiskBrushKey,
+                                                 Converter={StaticResource BrushFromKey},
+                                                 ConverterParameter=Tint}">
+                      <TextBlock Classes="chiptext" Text="{Binding RiskText}"
+                                 Foreground="{Binding RiskBrushKey,
+                                                      Converter={StaticResource BrushFromKey}}" />
+                    </Border>
+                    <Border Classes="chip"
+                            Background="{Binding EvidenceBrushKey,
+                                                 Converter={StaticResource BrushFromKey},
+                                                 ConverterParameter=Tint}">
+                      <TextBlock Classes="chiptext" Text="{Binding EvidenceText}"
+                                 Foreground="{Binding EvidenceBrushKey,
+                                                      Converter={StaticResource BrushFromKey}}" />
+                    </Border>
+                    <Border Classes="chip">
+                      <TextBlock Classes="chiptext" Text="{Binding ScopeText}"
+                                 Foreground="{DynamicResource Muted}" />
+                    </Border>
+                  </StackPanel>
+
+                  <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" LineHeight="20" />
+
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="section" Text="{loc:Tr tweaks.currentvalue}" />
+                    <Border Classes="inset">
+                      <TextBlock Classes="mono" Text="{Binding StateDescription}"
+                                 TextWrapping="Wrap"
+                                 Foreground="{DynamicResource TextPrimary}" />
+                    </Border>
+                  </StackPanel>
+
+                  <!-- =========================================================== choices -->
+                  <ItemsControl ItemsSource="{Binding Choices}" IsVisible="{Binding HasChoices}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="vm:TweakChoiceViewModel">
+                        <StackPanel Spacing="8" Margin="0,0,0,10">
+                          <TextBlock Classes="section" Text="{Binding TitleUpper}" />
+                          <TextBlock Classes="muted" Text="{Binding Description}"
+                                     TextWrapping="Wrap" />
+
+                          <ItemsControl ItemsSource="{Binding Options}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:TweakChoiceOptionViewModel">
+                                <Border Classes="card" Padding="12,10" Margin="0,0,0,6">
+                                  <StackPanel Spacing="4">
+                                    <RadioButton GroupName="{Binding GroupName}"
+                                                 IsChecked="{Binding IsChecked, Mode=TwoWay}">
+                                      <!-- Wraps rather than sitting in a row. The title and the
+                                           chip beside it are both translated, and German is
+                                           reliably longer than English: a fixed row clipped
+                                           "EMPFOHLEN" off the right edge of the panel. -->
+                                      <WrapPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                                                   FontSize="12" TextWrapping="Wrap"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,8,0" />
+                                        <Border Classes="chip" VerticalAlignment="Center"
+                                                Margin="0,2,0,0"
+                                                Background="{DynamicResource RiskSafeTint}"
+                                                IsVisible="{Binding Recommended}">
+                                          <TextBlock Classes="chiptext" Text="{loc:Tr tweaks.recommended}"
+                                                     Foreground="{DynamicResource Success}" />
+                                        </Border>
+                                      </WrapPanel>
+                                    </RadioButton>
+                                    <TextBlock Classes="muted" FontSize="11" Margin="31,0,0,0"
+                                               Text="{Binding Description}" TextWrapping="Wrap" />
+                                  </StackPanel>
+                                </Border>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </StackPanel>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+
+                  <Border Classes="banner warn" Margin="0" IsVisible="{Binding !IsApplicable}">
+                    <StackPanel Spacing="4">
+                      <TextBlock Classes="section" Text="{loc:Tr tweaks.na.heading}"
+                                 Foreground="{DynamicResource WarningText}" />
+                      <TextBlock Classes="muted" Text="{Binding NotApplicableReason}"
+                                 TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Border>
+
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="section" Text="{loc:Tr tweaks.documentation}" />
+                    <TextBlock Classes="mono" Text="{Binding DocsPath}" TextWrapping="Wrap"
+                               Foreground="{DynamicResource AccentBright}" />
+                  </StackPanel>
+                </StackPanel>
+              </DataTemplate>
+            </ContentControl.ContentTemplate>
+          </ContentControl>
+
+          <StackPanel Spacing="8" IsVisible="{Binding HasSelection}">
+
+            <!-- Shown only for a tweak that acts on one running process, which is one tweak in
+                 the catalog. Above the buttons rather than in the detail panel with the other
+                 settings, because it is not a setting: it is the argument without which Apply
+                 cannot do anything, and it belongs next to the button it unblocks. -->
+            <StackPanel Spacing="6" IsVisible="{Binding NeedsTargetProcess}">
+              <TextBlock Classes="section" Text="{loc:Tr tweaks.target}" />
+              <Grid ColumnDefinitions="*,6,Auto">
+                <ComboBox Grid.Column="0" HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding Processes}"
+                          SelectedItem="{Binding SelectedProcess}"
+                          PlaceholderText="{loc:Tr tweaks.target.pick}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:RunningProcess">
+                      <TextBlock Text="{Binding Display}" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Grid.Column="2" Classes="ghost" Command="{Binding RefreshProcessesCommand}"
+                        ToolTip.Tip="{loc:Tr tweaks.target.refresh}">
+                  <TextBlock Text="{loc:Tr tweaks.target.refresh}" />
+                </Button>
+              </Grid>
+              <TextBlock Classes="faint" TextWrapping="Wrap" Text="{Binding TargetNote}" />
+            </StackPanel>
+
+            <Button Classes="accent" Content="{loc:Tr tweaks.apply}" HorizontalAlignment="Stretch"
+                    Command="{Binding ApplyCommand}"
+                    CommandParameter="{Binding SelectedTweak}" />
+            <Grid ColumnDefinitions="*,8,*">
+              <Button Grid.Column="0" Content="{loc:Tr tweaks.dryrun}" HorizontalAlignment="Stretch"
+                      Command="{Binding DryRunCommand}"
+                      CommandParameter="{Binding SelectedTweak}" />
+              <Button Grid.Column="2" Classes="danger" Content="{loc:Tr tweaks.revert}"
+                      HorizontalAlignment="Stretch"
+                      Command="{Binding RevertCommand}"
+                      CommandParameter="{Binding SelectedTweak}" />
+            </Grid>
+            <TextBlock Classes="faint" TextWrapping="Wrap"
+                       Text="{loc:Tr tweaks.revertnote}" />
+          </StackPanel>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+  </Grid>
+</UserControl>

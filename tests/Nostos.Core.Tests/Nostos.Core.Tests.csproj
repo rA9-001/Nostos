@@ -20,7 +20,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Nostos.Core\Nostos.Core.csproj" />
-    <ProjectReference Include="..\..\src\Nostos.Ipc\Nostos.Ipc.csproj" />
   </ItemGroup>
 
 </Project>

@@ -79,7 +79,11 @@ public static class TweakCategories
 
     // Windows.
     public const string Interruptions = "interruptions";
-    public const string Background = "background";
+    public const string Telemetry = "telemetry";
+    public const string Startup = "startup";
+    public const string Unused = "unused";
+    public const string Services = "services";
+    public const string Storage = "storage";
 
     public static IReadOnlyList<TweakCategory> All { get; } =
     [
@@ -98,7 +102,9 @@ public static class TweakCategories
             // choosing between them: a tweak that frees CPU raises the average *and* fills in
             // the dips, and splitting it forced a coin-flip at filing time that the reader
             // then had to guess at.
-            Promise = "Raises the framerate and evens out frametimes, by giving the game CPU, "
+            // "FPS", not "framerate": it is what this audience says in both languages, and the
+            // German table is held to the same glossary. See StringTableTests.
+            Promise = "Raises the FPS and evens out frametimes, by giving the game CPU, "
                     + "GPU or memory that Windows was spending on something else.",
         },
         new()
@@ -142,22 +148,98 @@ public static class TweakCategories
             Promise = "Stops things appearing over what you are doing, stealing focus, or "
                     + "restarting the machine at a moment you did not choose.",
         },
+        // "Background & Cleanup" used to be all five of the categories below, and held 38 of
+        // the 84 tweaks -- nearly half the catalog under one heading, thirty of them the same
+        // sentence with a different service name in it. A bucket that large is not a category,
+        // it is the absence of one: nothing in it could be found except by reading all of it,
+        // and its promise had to be vague enough to cover the Fax service and NTFS timestamps
+        // at once. Each of these makes a claim narrow enough to be worth reading.
         new()
         {
-            Id = Background,
+            Id = Telemetry,
             Group = TweakGroup.Windows,
             Keywords =
             [
-                "services", "startup", "boot", "bloat", "debloat", "cleanup", "telemetry",
-                "privacy", "disk", "memory", "ram",
+                "telemetry", "privacy", "tracking", "diagnostics", "data collection", "spying",
+                "advertising", "location", "activity history",
             ],
-            Name = "Background & Cleanup",
+            Name = "Telemetry & Privacy",
             Order = 5,
-            // The honest home for most service tweaks. Turning off the Fax service is a
-            // reasonable thing to do and a dishonest thing to sell as a framerate tweak, and
-            // this bucket is what lets the catalog offer it without making that claim.
-            Promise = "Stops Windows running services and features you do not use. Frees some "
-                    + "memory and boot time; does not, on its own, promise you frames.",
+            Promise = "Stops Windows collecting, identifying and uploading what you do. Nothing "
+                    + "here is about speed, and none of it is a substitute for the privacy "
+                    + "settings Windows already offers.",
+        },
+        new()
+        {
+            Id = Startup,
+            Group = TweakGroup.Windows,
+            Keywords = ["startup", "boot", "start-up", "login", "sign-in", "prefetch", "superfetch", "indexing"],
+            Name = "Startup & Boot",
+            Order = 6,
+            Promise = "Shortens the gap between signing in and a machine that is actually ready, "
+                    + "by removing work Windows schedules for itself in those first minutes.",
+        },
+        // These two were one bucket, and the bucket was called Unused Features while holding
+        // twenty tweaks that were all services. So the label described nothing: there was no
+        // distinction being drawn, only a name that implied one.
+        //
+        // The line between them is who is qualified to decide. Everything in Unused Features
+        // names something the reader recognises -- Bluetooth, printing, Xbox, Fax -- and can
+        // therefore settle in a second, from facts about their own life that this program has
+        // no access to. Everything in Services names something almost nobody has heard of, where
+        // the reader has no basis for an opinion and the tweak has to supply one.
+        //
+        // That is a real difference in how the two lists get read, which is what a category is
+        // for. "Is it a service?" would not have been: they are all services.
+        new()
+        {
+            Id = Unused,
+            Group = TweakGroup.Windows,
+            Keywords =
+            [
+                "unused", "bloat", "debloat", "cleanup", "fax", "bluetooth", "printer",
+                "smart card", "nfc", "sensors", "xbox", "game pass", "game bar", "gamebar",
+            ],
+            Name = "Unused Features",
+            Order = 7,
+            // The Xbox services live here rather than in a category of their own. They were
+            // separated on the argument that they are one decision rather than four, which is
+            // true -- and it is equally true of printing, of Bluetooth and of Fax. "Do you use
+            // Game Pass?" is the same shape of question as "do you have a printer?", so it
+            // belongs in the same list as those, not in a fourth sidebar entry of its own.
+            Promise = "Turns off features this PC has but you do not use -- Bluetooth, printing, "
+                    + "Xbox and Game Pass, Fax. You already know which of these you need; each "
+                    + "one names what stops working.",
+        },
+        new()
+        {
+            Id = Services,
+            Group = TweakGroup.Windows,
+            Keywords =
+            [
+                "services", "background", "netbios", "alljoyn", "remote registry",
+                "link tracking", "offline files", "backup", "plumbing",
+            ],
+            Name = "Background Services",
+            Order = 8,
+            // The honest home for a service with no user-visible feature attached. Turning off
+            // Distributed Link Tracking is a reasonable thing to do and a dishonest thing to
+            // sell as a framerate tweak, and this bucket is what lets the catalog offer it
+            // without making that claim.
+            Promise = "Stops Windows services that run for nothing you use. Unlike the features "
+                    + "above, these have no name you would recognise, so each one says what it "
+                    + "is actually for. Frees a little memory and boot time; does not, on its "
+                    + "own, promise you frames.",
+        },
+        new()
+        {
+            Id = Storage,
+            Group = TweakGroup.Windows,
+            Keywords = ["disk", "ssd", "hdd", "ntfs", "filesystem", "file system", "storage", "writes"],
+            Name = "Disk & Filesystem",
+            Order = 9,
+            Promise = "Removes bookkeeping NTFS does on every file operation for the sake of "
+                    + "software that is no longer here.",
         },
     ];
 

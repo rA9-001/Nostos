@@ -37,10 +37,11 @@ public sealed class ResponsivenessTests
             string tweakId,
             IReadOnlyDictionary<string, string>? options = null,
             bool dryRun = false,
+            TweakTarget? target = null,
             CancellationToken ct = default)
         {
             await Gate.Task;
-            return await base.ApplyAsync(tweakId, options, dryRun, ct);
+            return await base.ApplyAsync(tweakId, options, dryRun, target, ct);
         }
     }
 

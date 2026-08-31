@@ -1,8 +1,8 @@
 # storage.ntfs-8dot3-off
 
-**Group:** Windows · **Improves:** Background & Cleanup · **Risk:** Moderate · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** yes
+**Group:** Windows · **Improves:** Disk & Filesystem · **Risk:** Moderate · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** yes
 
-> Stops Windows running services and features you do not use. Frees some memory and boot time; does not, on its own, promise you frames.
+> Removes bookkeeping NTFS does on every file operation for the sake of software that is no longer here.
 
 ## What it changes
 

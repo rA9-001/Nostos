@@ -47,6 +47,21 @@ public static class AppPaths
 
     public static string ProfilesDirectory => Path.Combine(Root, "profiles");
 
+    /// <summary>The user's preferences for the app itself. See <c>Settings\AppSettings</c>.</summary>
+    public static string SettingsPath => Path.Combine(Root, "settings.json");
+
+    /// <summary>
+    /// Per-user state that cannot live in <see cref="Root"/>.
+    ///
+    /// Only one thing needs this: a single-file build unpacks its renderer somewhere it can be
+    /// loaded from, and a machine-wide folder that ordinary users can write to is a DLL-planting
+    /// invitation. It is named here rather than only inside the unpacker because removing the
+    /// app has to know every place the app writes, and a location only one file knows about is
+    /// a location the uninstaller will eventually miss.
+    /// </summary>
+    public static string LocalStateRoot => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), ProductFolder);
+
     public static void EnsureCreated()
     {
         Directory.CreateDirectory(Root);

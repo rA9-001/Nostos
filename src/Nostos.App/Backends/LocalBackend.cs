@@ -1,3 +1,4 @@
+using Nostos.Core.Localization;
 using Nostos.Core;
 using Nostos.Core.Abstractions;
 using Nostos.Core.Engine;
@@ -38,10 +39,11 @@ public sealed class LocalBackend : ILocalBackend
             sink);
 
         CanApplyMachineScope = WindowsPrivilegeCheck.Instance.IsElevated;
-        Description = CanApplyMachineScope ? "direct, elevated" : "direct, not elevated";
     }
 
-    public string Description { get; }
+    public string Description => CanApplyMachineScope
+        ? Strings.Get("connection.direct.elevated")
+        : Strings.Get("connection.direct.plain");
 
     public bool IsService => false;
 
@@ -98,6 +100,7 @@ public sealed class LocalBackend : ILocalBackend
     public async Task<TweakStatusSummary?> GetStatusAsync(
         string tweakId,
         IReadOnlyDictionary<string, string>? options,
+        TweakTarget? target = null,
         CancellationToken ct = default)
     {
         var tweak = _engine.Registry.Find(tweakId);
@@ -107,6 +110,8 @@ public sealed class LocalBackend : ILocalBackend
         var context = new TweakContext
         {
             Options = options ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+            TargetProcessId = target?.ProcessId,
+            TargetProcessName = target?.ProcessName,
         };
 
         var statuses = await OffUiThread(
@@ -119,27 +124,33 @@ public sealed class LocalBackend : ILocalBackend
         new TweakSummary(
             s.Metadata.Id, s.Metadata.Title, s.Metadata.Summary, s.Metadata.Category,
             s.Metadata.Scope, s.Metadata.Lifetime, s.Metadata.Risk, s.Metadata.Evidence,
-            s.Metadata.RequiresReboot, s.Metadata.RequiresElevation, s.Metadata.Choices),
+            s.Metadata.RequiresReboot, s.Metadata.RequiresElevation, s.Metadata.Choices,
+            s.Metadata.TakesTargetProcess, s.Metadata.Tags),
         s.State.IsApplied,
         s.IsManagedByUs,
         s.State.Description,
         s.Applicability.IsApplicable,
-        s.Applicability.Reason);
+        s.Applicability.Reason,
+        s.Applicability.ReasonKey,
+        s.Applicability.ReasonArgs);
 
     public async Task<IReadOnlyList<ChangeResult>> ApplyAsync(
         string tweakId,
         IReadOnlyDictionary<string, string>? options = null,
         bool dryRun = false,
+        TweakTarget? target = null,
         CancellationToken ct = default)
     {
         var context = new TweakContext
         {
             Options = options ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             DryRun = dryRun,
+            TargetProcessId = target?.ProcessId,
+            TargetProcessName = target?.ProcessName,
         };
 
         return Flatten(await OffUiThread(
-            () => _engine.ApplyManyAsync([new TweakSelection(tweakId, options)], context, "gui", ct),
+            () => _engine.ApplyManyAsync([new TweakSelection(tweakId, options)], context, "gui", ct: ct),
             ct).ConfigureAwait(false));
     }
 
@@ -165,10 +176,15 @@ public sealed class LocalBackend : ILocalBackend
         => OffUiThread<IReadOnlyList<ProfileSummary>>(() => Task.FromResult<IReadOnlyList<ProfileSummary>>(
             [.. ProfileLoader
                 .LoadDirectory(AppPaths.ProfilesDirectory)
-                .Select(p => new ProfileSummary(p.Name, p.Description, p.Tweaks.Count))]),
+                .Select(p => new ProfileSummary(
+                    p.Name,
+                    p.Description,
+                    p.Tweaks.Count,
+                    [.. p.Tweaks.Select(t => t.TweakId)]))]),
             ct);
 
-    public async Task<IReadOnlyList<ChangeResult>> ApplyProfileAsync(string name, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ChangeResult>> ApplyProfileAsync(
+        string name, Func<BatchProgress, Task>? onProgress = null, CancellationToken ct = default)
     {
         return Flatten(await OffUiThread(() =>
         {
@@ -178,7 +194,8 @@ public sealed class LocalBackend : ILocalBackend
                 .FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))
                 ?? throw new KeyNotFoundException($"No profile named '{name}'.");
 
-            return _engine.ApplyManyAsync(profile.Tweaks.ToList(), null, $"profile:{profile.Name}", ct);
+            return _engine.ApplyManyAsync(
+                profile.Tweaks.ToList(), null, $"profile:{profile.Name}", onProgress, ct);
         }, ct).ConfigureAwait(false));
     }
 
@@ -186,6 +203,40 @@ public sealed class LocalBackend : ILocalBackend
         => results
             .Select(r => new ChangeResult(r.TweakId, r.Outcome, r.Message, r.RequiresReboot))
             .ToList();
+
+    /// <summary>
+    /// Switches a startup entry in this process, which is the signed-in user's.
+    ///
+    /// Per-user entries have to be done here: HKCU inside the LocalSystem service is SYSTEM's
+    /// own hive. Machine-wide ones are attempted too and fail honestly if the app is not
+    /// elevated, which is the same bargain every machine-scoped tweak makes without a service.
+    /// </summary>
+    public async Task<StartupSetResult> SetStartupEnabledAsync(
+        string id, bool enabled, CancellationToken ct = default)
+    {
+        if (StartupWire.Find(id) is not { } item)
+        {
+            return new StartupSetResult(id, false,
+                "no startup entry with that id; it may have been uninstalled since the list was read");
+        }
+
+        try
+        {
+            StartupItems.SetEnabled(item, enabled);
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or IOException or InvalidOperationException)
+        {
+            return new StartupSetResult(id, false, e.Message);
+        }
+
+        // Recorded only after the write succeeded. The history is a record of what happened to
+        // the machine, not of what was attempted -- a refused write leaves the entry exactly as
+        // it was, and a line saying otherwise would be the one kind of lie this log must not
+        // contain.
+        await StartupJournal.RecordAsync(_journal, item.Id, item.Name, enabled, ct).ConfigureAwait(false);
+
+        return new StartupSetResult(id, true, enabled ? "enabled" : "disabled");
+    }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

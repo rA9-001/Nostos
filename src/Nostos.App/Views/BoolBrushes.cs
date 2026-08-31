@@ -26,10 +26,19 @@ public sealed class BoolBrushConverter : IValueConverter
 public static class BoolBrushes
 {
     /// <summary>Green when a tweak is currently applied, grey when it is not.</summary>
-    public static readonly BoolBrushConverter OnOff = new("#4ade80", "#64748b");
+    public static readonly BoolBrushConverter OnOff = new("#3DDC97", "#66738C");
+
+    /// <summary>
+    /// The wash behind <see cref="OnOff"/>, for the chip the label sits in.
+    ///
+    /// Translucent rather than mixed: the chip sits on a row that is transparent, tinted on
+    /// hover and tinted again when selected, and an opaque fill would be the one thing on the
+    /// row that did not respond to any of that.
+    /// </summary>
+    public static readonly BoolBrushConverter OnOffTint = new("#243DDC97", "#14FFFFFF");
 
     /// <summary>Red for an error in the status bar, normal text otherwise.</summary>
-    public static readonly BoolBrushConverter ErrorNormal = new("#f87171", "#cbd5e1");
+    public static readonly BoolBrushConverter ErrorNormal = new("#FF6B81", "#E9EDF7");
 }
 
 /// <summary>Colours the setup checklist by step outcome.</summary>
@@ -37,10 +46,10 @@ public sealed class StepStatusBrushConverter : IValueConverter
 {
     public static readonly StepStatusBrushConverter Instance = new();
 
-    private static readonly IBrush Done = SolidColorBrush.Parse("#4ade80");
-    private static readonly IBrush Skipped = SolidColorBrush.Parse("#94a3b8");
-    private static readonly IBrush Failed = SolidColorBrush.Parse("#fbbf24");
-    private static readonly IBrush Pending = SolidColorBrush.Parse("#64748b");
+    private static readonly IBrush Done = SolidColorBrush.Parse("#3DDC97");
+    private static readonly IBrush Skipped = SolidColorBrush.Parse("#93A0B8");
+    private static readonly IBrush Failed = SolidColorBrush.Parse("#FFC24B");
+    private static readonly IBrush Pending = SolidColorBrush.Parse("#66738C");
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         => value switch

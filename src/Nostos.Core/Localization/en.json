@@ -1,0 +1,440 @@
+// The interface, in English. The source language: every key exists here.
+//
+// Generated to start with, hand-editable from then on. The key set and the {0} style
+// placeholders in every value are checked against the English file by
+// StringTableTests, so a missing or mistyped key fails the build rather than the app.
+{
+
+  // ==== window chrome: the app draws its own title bar, so it names its own buttons
+  "window.minimise": "Minimise",
+  "window.maximise": "Maximise",
+  "window.restore": "Restore down",
+  "window.close": "Close",
+
+  // ============================================================== header
+  "app.refresh": "Refresh",
+  "app.revert.all": "Revert everything",
+  "app.settings.tip": "Settings: updates, and removing Nostos",
+  "app.managed.one": "1 change managed by this app",
+  "app.managed.many": "{0} changes managed by this app",
+
+  // ================================================================ tabs
+  "tab.tweaks": "Tweaks",
+  "tab.profiles": "Profiles",
+  "tab.history": "History",
+  "tab.startup": "Startup",
+  "tab.updates": "Windows Update",
+  "updates.heading": "WINDOWS UPDATE",
+  "updates.summary": "{0} of {1} on",
+  "updates.blurb": "Everything this program can do about Windows Update, in one place. Nostos does not turn Windows Update off, and will not offer to: security patches keep arriving. What these change is the parts that interrupt you — the driver swapped underneath you, the restart in the middle of a match, the download competing with your game for the line.",
+  "updates.hint": "Click a row to switch it on or off. Every one of these is captured before it is changed and can be undone from the History tab.",
+  "updates.hint.on": "Click to apply “{0}”",
+  "updates.hint.off": "Click to undo “{0}” and put the previous value back",
+  "updates.stance": "Why there is no “disable Windows Update” button: it deletes the SoftwareDistribution folder, which cannot be captured, so it could not be undone — and WaaSMedic repairs the rest on its own schedule, so the row would report itself broken forever.",
+  "updates.empty": "No Windows Update tweaks apply to this PC.",
+  "startup.heading": "RUNS WHEN YOU SIGN IN",
+  "startup.summary": "{0} of {1} enabled",
+  "startup.blurb": "Everything Windows launches at sign-in. Switching one off does not delete it — it writes the same record Task Manager's Startup tab uses, so it stays here and comes straight back on.",
+  "startup.refresh": "Refresh",
+  "startup.hint": "Click a row to switch it on or off. Nothing is deleted — switching one back on restores it exactly.",
+  "startup.hint.turnoff": "Click to stop {0} running at sign-in",
+  "startup.hint.turnon": "Click to let {0} run at sign-in again",
+  "startup.allusers": "All users",
+  "startup.you": "This account",
+  "startup.on": "On",
+  "startup.off": "Off",
+  "startup.empty": "Nothing runs at sign-in on this PC.",
+  "startup.error.nobackend": "Not connected yet. Wait for the window to finish starting up, then try again.",
+
+  // ================================================== the activity panel
+  "activity.working": "Working…",
+  "activity.ready": "Ready",
+  "activity.saved.first": "Your previous settings are saved before anything is changed.",
+  "activity.changes.none": "Nothing has been changed on this PC by this program.",
+  "activity.changes.one": "1 change made by this program. Revert everything puts it back.",
+  "activity.changes.many": "{0} changes made by this program. Revert everything puts them back.",
+  "activity.updated.never": "not read yet",
+  "activity.updated.live": "live",
+  "activity.updated.seconds": "updated {0}s ago",
+  "activity.updated.minutes": "updated {0}m ago",
+  "activity.updated.stale": "stale",
+  "activity.reading": "Reading your PC's current settings…",
+  "activity.checking": "Checking your PC's current settings…",
+  "activity.loaded": "{0} tweaks loaded",
+  "activity.confirming": "Checking what actually changed…",
+  "activity.reverting": "Reverting {0} change(s)…",
+  "activity.settingupservice": "Setting up the background service…",
+  "activity.preset.named": "the '{0}' preset",
+  "status.couldnotstart": "could not start: {0}",
+  "status.refreshed": "refreshed",
+  "status.service.running": "background service is running",
+  "status.service.without": "continuing without the background service",
+  "activity.applying.one": "Applying {0}…",
+  "activity.applying.profile": "Applying preset '{0}' — {1} tweak(s)…",
+  "activity.nothing.title": "Nothing to undo",
+  "activity.nothing.detail": "This program has not changed anything on this PC.",
+
+  // ======================================= banners and the setup overlay
+  "banner.update.install": "Update",
+  "banner.service.missing": "Running without the background service",
+  "banner.service.broken": "The background service needs repairing",
+  "banner.service.known": "Worth knowing",
+  "banner.service.explain": "Machine-wide tweaks are unavailable without it. Enabling the service takes one administrator approval, once.",
+  "banner.service.enable": "Enable",
+  "banner.service.repair": "Repair",
+  "setup.title": "Getting ready",
+  "setup.detail": "Setting up everything this needs. You may see one administrator prompt.",
+
+  // ========================================================= the catalog
+  "tweaks.search": "Search tweaks",
+  "tweaks.category": "CATEGORY",
+  "tweaks.all": "All tweaks",
+  "tweaks.managed": "MANAGED",
+  "tweaks.empty": "Select a tweak to see exactly what it changes, and what it would put back.",
+  "tweaks.currentvalue": "CURRENT VALUE",
+  "tweaks.recommended": "RECOMMENDED",
+  "tweaks.documentation": "DOCUMENTATION",
+  "tweaks.apply": "Apply",
+  "tweaks.dryrun": "Dry run",
+  "tweaks.revert": "Revert",
+  "tweaks.revertnote": "Revert restores the exact value captured before this app first changed it.",
+  "tweaks.target": "TARGET PROCESS",
+  "tweaks.target.pick": "Pick a running program…",
+  "tweaks.target.refresh": "Refresh",
+  "tweaks.target.note": "This tweak acts on one running process and is undone when that process exits. Only programs with a window are listed; the command line takes any process with --pid.",
+  "tweaks.target.note.persistent": "This tweak records a priority for the game's executable, so every future launch starts that way. Pick a running copy of the game to name it; the command line can name one that is not running, with --set exe=game.exe.",
+  "tweaks.na.name": "Not applicable",
+  "tweaks.na.heading": "NOT APPLICABLE HERE",
+  "tweaks.na.header": "Not applicable on this PC",
+  "tweaks.na.description": "These need something this PC does not have: a service that is not installed, a Windows version that never had the setting, or a running game to point at. They are listed so you can see they exist, and they all read OFF because none of them can be switched on.",
+
+  // ============================== why a tweak cannot run on this machine
+  //
+  // These are produced in the tweak layer, which on an installed copy is a service running as
+  // SYSTEM with no user and no language. It sends the English text and the key beside it, and
+  // the window picks. See Applicability in Core/Abstractions/ITweak.cs.
+  "notapplicable.minbuild": "needs Windows build {0} or later (this machine is {1})",
+  "notapplicable.proonly": "this is a Windows Update for Business policy, and Windows Home ignores it. Setting it here would look like it worked (this machine is {0}).",
+  "notapplicable.battery": "this tweak trades battery life for performance and is disabled on battery-powered machines",
+  "notapplicable.ultimatebattery": "this machine has a battery, and Ultimate Performance is a straight battery-life regression. Pass allowOnBattery=true if you want it anyway.",
+  "notapplicable.nopid": "no target process specified",
+  "notapplicable.noexe": "no target executable specified: pick a running program, or pass exe=game.exe",
+  "notapplicable.processgone": "process {0} is not running",
+  "notapplicable.nointerfaces": "no network interfaces are registered on this machine",
+  "notapplicable.servicemissing": "'{0}' is not registered on this machine, so there is nothing to change.",
+  "notapplicable.servicedriver": "'{0}' starts at {1} scope on this machine, which means it is loaded as a driver. Changing that can leave the machine unbootable.",
+  "notapplicable.network.interrupt-moderation-off": "no network adapter on this machine exposes an interrupt moderation setting, so there is nothing to turn off",
+  "notapplicable.network.receive-coalescing-off": "no network adapter on this machine exposes a per-adapter coalescing setting; on this machine it can only be changed globally, with `netsh int tcp set global rsc=disabled`",
+  "notapplicable.network.energy-efficient-ethernet-off": "no network adapter on this machine exposes an energy-efficient ethernet or green ethernet setting",
+  "notapplicable.network.flow-control-off": "no network adapter on this machine exposes a flow control setting",
+
+  // ========================================================= the journal
+  "history.title": "Everything this program has changed on this PC",
+  "history.intro": "Newest first. Every tweak saved your previous setting before touching anything, so any of it can be undone with Revert everything. Startup switches are listed here too, but are not part of that — undo one in the Startup tab, where nothing was deleted in the first place.",
+  "history.interrupted.title": "Some changes were interrupted",
+  "history.interrupted.detail": "They were started but never confirmed finished, usually because the PC shut down partway through. Your old settings were saved first, so Revert everything will still put them back.",
+  "history.empty": "Nothing has been changed on this PC by this program yet.",
+
+  // ============================================================ profiles
+  "profiles.apply": "Apply",
+  "profiles.count": "{0} TWEAKS",
+  "profiles.progress": "{0} of {1}",
+  "profiles.unknown": "not in this build",
+  "profiles.applied": "{0} of {1} already applied",
+  "profile.basic.name": "Basic",
+  "profile.intermediate.name": "Intermediate",
+  "profile.expert.name": "Expert",
+  "profile.basic.description": "The uncontroversial set. Every change here is rated Safe, needs no reboot, and switches nothing off that you might be using: it stops background recording, hands the foreground game the CPU Windows was holding back, and gets notifications and update restarts out of your way. Apply it and forget it.",
+  "profile.intermediate.description": "Everything in Basic, plus the changes whose cost is a reboot or a trade-off worth naming: the kernel stays in RAM, the network card stops batching packets, Windows Update stops replacing your drivers, and the telemetry and advertising identifiers are turned off. Still nothing that switches a Windows feature off outright.",
+  "profile.expert.description": "Everything in Intermediate, plus turning Windows features off: services for hardware this PC does not have, the Xbox and Game Pass stack, search indexing, SysMain, and NTFS bookkeeping. Read the list before applying this one — if you use Game Pass, Bluetooth or file-content search, it will take them away.",
+
+  // The three profiles this build ships. Keyed by profile name, and looked up with a fallback
+  // to the text in the .json file itself, so a profile somebody wrote shows their own words.
+  // The name is not translated: it is the identifier the CLI and the file name use.
+
+  // ============================================================ settings
+  "settings.title": "Settings",
+  "settings.updates": "UPDATES",
+  "settings.check": "Check GitHub for a newer version",
+  "settings.howoften": "How often",
+  "settings.checknow": "Check now",
+  "settings.updatenote": "An update is never installed on its own. Nostos tells you one exists, and the download is checked against a signature compiled into this build before anything is replaced.",
+  "settings.language": "LANGUAGE",
+  "settings.language.label": "Interface language",
+  "settings.language.note": "Applies straight away. English is the language every string is written in, so anything not yet translated appears in English.",
+  "cadence.everylaunch": "Every time Nostos starts",
+  "cadence.daily": "Once a day",
+  "cadence.weekly": "Once a week",
+  "settings.policy.everylaunch": "Nostos checks each time it starts, and never installs anything on its own.",
+  "settings.policy.daily": "Nostos checks at most once a day, and never installs anything on its own.",
+  "settings.policy.weekly": "Nostos checks at most once a week, and never installs anything on its own.",
+
+  // ==================================================== removing the app
+  "removal.title": "Remove Nostos from this PC",
+  "removal.intro": "Puts your settings back, then deletes everything Nostos has stored anywhere on this machine. When it finishes, deleting the file or folder it names below is all that is left to do.",
+  "removal.restorepoints": "System Restore points that Windows took before risky changes are left alone. They protect everything else on this PC as well, and deleting somebody's recovery history to tidy up after ourselves would be a larger act than removing an app.",
+  "removal.button": "Remove Nostos…",
+  "removal.confirm": "Yes, remove Nostos",
+  "removal.cancel": "Cancel",
+  "removal.leftovers": "STILL ON THE DISK",
+  "removal.outcome": "Nothing else on this PC belongs to Nostos. Close it, then delete:",
+  "removal.close": "Close Nostos",
+
+  // ================================================= the badges on a row
+  "state.on": "ON",
+  "state.off": "OFF",
+  "risk.safe": "safe",
+  "risk.moderate": "moderate",
+  "risk.risky": "risky",
+  "risk.experimental": "experimental",
+  "evidence.measured": "measured",
+  "evidence.plausible": "plausible",
+  "scope.machine": "machine",
+  "scope.user": "user",
+  "scope.process": "process",
+  "facet.sessiononly": "session only",
+  "facet.reboot": "needs reboot",
+
+  // ======================================= the two halves of the catalog
+  "group.gaming.name": "Gaming",
+  "group.gaming.description": "Changes with a mechanism that reaches the game.",
+  "group.windows.name": "Windows",
+  "group.windows.description": "Changes to Windows itself. Worth doing, but not because of a game.",
+
+  // ==================== the risk bands, shown when one category is chosen
+  //
+  // A category is a promise; within it the only question left is what a change costs if it
+  // goes wrong, so that is what the list is ordered and banded by. See CatalogFilter.SectionOf.
+  "band.risk.safe.name": "Safe",
+  "band.risk.safe.description": "Reversible, no reboot, and nothing here touches hardware or how the machine starts.",
+  "band.risk.moderate.name": "Moderate",
+  "band.risk.moderate.description": "Reversible, but you will notice them: battery life, or how something outside the game behaves.",
+  "band.risk.risky.name": "Risky",
+  "band.risk.risky.description": "Can leave the machine unbootable or without a display. A System Restore point is taken before any of these.",
+  "band.risk.experimental.name": "Experimental",
+  "band.risk.experimental.description": "Unproven, and capable of destabilising the machine. Apply one at a time, and only if you are willing to undo it.",
+
+  // =================== categories: the name and the claim each one makes
+  "category.performance.name": "Performance",
+  "category.performance.promise": "Raises the FPS and evens out frametimes, by giving the game CPU, GPU or memory that Windows was spending on something else.",
+  "category.input-lag.name": "Input Lag & Aim",
+  "category.input-lag.promise": "Shortens or steadies the path from your mouse and keyboard to the screen, so the same movement always produces the same result.",
+  "category.ping.name": "Ping",
+  "category.ping.promise": "Cuts round-trip network latency, or stops Windows adding delay of its own to traffic the game is waiting on.",
+  "category.stability.name": "Crashes & Freezes",
+  "category.stability.promise": "Fixes a specific fault that shows up while playing: driver timeouts, black screens, flicker. Repairs a broken machine rather than making a working one faster.",
+  "category.interruptions.name": "Interruptions",
+  "category.interruptions.promise": "Stops things appearing over what you are doing, stealing focus, or restarting the machine at a moment you did not choose.",
+  "category.telemetry.name": "Telemetry & Privacy",
+  "category.telemetry.promise": "Stops Windows collecting, identifying and uploading what you do. Nothing here is about speed, and none of it is a substitute for the privacy settings Windows already offers.",
+  "category.startup.name": "Startup & Boot",
+  "category.startup.promise": "Shortens the gap between signing in and a machine that is actually ready, by removing work Windows schedules for itself in those first minutes.",
+  "category.unused.name": "Unused Features",
+  "category.unused.promise": "Turns off features this PC has but you do not use -- Bluetooth, printing, Xbox and Game Pass, Fax. You already know which of these you need; each one names what stops working.",
+  "category.services.name": "Background Services",
+  "category.services.promise": "Stops Windows services that run for nothing you use. Unlike the features above, these have no name you would recognise, so each one says what it is actually for. Frees a little memory and boot time; does not, on its own, promise you frames.",
+  "category.storage.name": "Disk & Filesystem",
+  "category.storage.promise": "Removes bookkeeping NTFS does on every file operation for the sake of software that is no longer here.",
+
+  // ================================== update policy when checking is off
+  "settings.policy.off": "Nostos will not check for updates. You can still check by hand, here.",
+
+  // ============================================ the sidebar's third band
+  "tweaks.thispc": "THIS PC",
+
+  // =============================== the update banner and the update flow
+  "update.available.title": "Nostos {0} is available",
+  "update.available.detail": "You have version {0}. Update now.",
+  "update.available.status": "Nostos {0} is available. The banner at the top of the window will install it.",
+  "update.checkfailed": "Could not check for updates: {0}",
+  "update.newest": "You are running the newest version ({0}).",
+  "update.downloading": "Downloading Nostos {0}…",
+  "update.downloading.percent": "Downloading… {0}%",
+  "update.failed": "Update failed: {0}",
+
+  // ======= what the activity panel says while one tweak is being changed
+  "activity.applying": "Applying {0}…",
+  "activity.dryrun": "Checking {0}…",
+  "activity.reverting.one": "Reverting {0}…",
+  "activity.everything": "everything this program changed",
+
+  // ========================================== what the app is talking to
+  "connection.direct.elevated": "direct, elevated",
+  "connection.direct.plain": "direct, not elevated",
+  "connection.service": "service v{0}",
+  "connection.connecting": "connecting…",
+  "connection.removed": "removed",
+
+  // ============================================== journal: what happened
+  "journal.headline.interrupted": "Interrupted — {0}",
+  "journal.headline.applied": "Applied — {0}",
+  "journal.headline.undone": "Undone — {0}",
+  "journal.headline.startupoff": "Startup off — {0}",
+  "journal.headline.startupon": "Startup on — {0}",
+  "journal.explain.startupoff": "It no longer runs when you sign in. Switch it back on in the Startup tab; nothing was deleted, so it is still listed there.",
+  "journal.explain.startupon": "It runs again when you sign in.",
+  "journal.headline.applyfailed": "Could not apply — {0}",
+  "journal.headline.revertfailed": "Could not undo — {0}",
+  "journal.headline.starting": "Starting — {0}",
+  "journal.headline.other": "{0} — {1}",
+
+  // =============================== journal: what it means for undoing it
+  "journal.explain.interrupted": "{0}, but it never finished — usually because the PC shut down partway through. Your old setting was saved first, so nothing was lost. Use Revert everything to be sure.",
+  "journal.explain.applied": "{0}. Your previous setting was saved first, so this can be undone.",
+  "journal.explain.undone": "{0}. Your original setting was restored exactly as it was.",
+  "journal.explain.applyfailed": "{0}. Nothing was changed, or what was changed was put back automatically.",
+  "journal.explain.revertfailed": "{0}. The setting is still changed. Try Revert everything.",
+  "journal.explain.other": "{0}.",
+
+  // ================================================= journal: who did it
+  "journal.origin.profile": "Part of the '{0}' preset",
+  "journal.origin.gui": "You did this in this window",
+  "journal.origin.cli": "You did this from the command line",
+  "journal.origin.manual": "You asked for this",
+  "journal.origin.watchdog": "Undone automatically by the old safety timer, which no longer exists. Nothing undoes a change on its own any more",
+  "journal.origin.reconcile": "Re-applied automatically, because Windows had changed it back on its own",
+  "journal.origin.service": "Done by the background service",
+  "journal.origin.unknown": "Source: {0}",
+
+  // ================================================ journal: day headers
+  "journal.day.today": "Today",
+  "journal.day.yesterday": "Yesterday",
+
+  // ========================================== what happened to one tweak
+  "summary.applied": "Applied — {0}",
+  "summary.applied.reboot": "Restart your PC for this to take effect. Until then nothing has changed for you.",
+  "summary.applied.undoable": "Your previous setting was saved, so this can be undone at any time.",
+  "summary.alreadyset": "Already set — {0}",
+  "summary.alreadyset.detail": "This was already how you wanted it, so nothing was changed.",
+  "summary.undone": "Undone — {0}",
+  "summary.undone.detail": "Your original setting is back, exactly as it was before.",
+  "summary.nothingtoundo": "Nothing to undo — {0}",
+  "summary.nothingtoundo.detail": "This program never changed this setting, so there is nothing to put back.",
+  "summary.skipped": "Skipped — {0}",
+  "summary.rolledback": "Did not work — {0}",
+  "summary.rolledback.detail": "Something went wrong partway through, so your original setting was put back automatically. Your PC is as it was.",
+  "summary.unverified": "Applied, but could not confirm — {0}",
+  "summary.unverified.detail": "The change was made and can be undone, but reading it back did not confirm it. Something else on this PC may be overriding it.",
+  "summary.failed": "Could not apply — {0}",
+
+  // ====================================== what happened to a whole batch
+  "summary.nothingtodo": "Nothing to do — {0}",
+  "summary.nothingtodo.detail": "No settings needed changing.",
+  "summary.nochanges": "No changes needed — {0}",
+  "summary.changesmade": "{0} made — {1}",
+  "summary.count.change.one": "1 change",
+  "summary.count.change.many": "{0} changes",
+  "summary.count.problem.one": "1 problem",
+  "summary.count.problem.many": "{0} problems",
+  "summary.note.already": "{0} already set the way you wanted",
+  "summary.note.skipped": "{0} skipped (not applicable to this PC, or needs administrator)",
+  "summary.note.problems": "{0}: {1}",
+  "summary.note.reboot": "restart your PC for everything to take effect",
+  "summary.alldone": "Your previous settings were saved, so all of this can be undone.",
+
+  // =============================================== the startup checklist
+  "setup.step.data": "Preparing data folder",
+  "setup.step.profiles": "Checking built-in profiles",
+  "setup.step.service": "Setting up the background service",
+  "setup.step.connect": "Connecting",
+  "setup.profiles.existing": "{0} profile(s)",
+  "setup.profiles.none.shipped": "this build ships no default profiles",
+  "setup.profiles.installed": "installed {0} default profile(s)",
+  "setup.profiles.none": "none to install",
+  "setup.service.portable": "portable mode: running without the background service",
+  "setup.service.running": "already running",
+  "setup.service.othercopy": "running from another copy of the app",
+  "setup.service.orphaned": "running, but registered to a folder that is gone",
+  "setup.service.declined": "previously declined",
+  "setup.service.missingexe": "Nostos.Service.exe is missing from this folder",
+  "setup.service.uacdeclined": "administrator approval declined",
+  "setup.service.installed": "installed and started",
+  "setup.service.repaired": "repaired and started",
+  "setup.service.notrunning": "setup ran but the service is not running",
+
+  // ================================ the notices the setup banner carries
+  "notice.portable": "Portable mode. Machine-wide tweaks need an elevated launch; everything user-scoped works as it is.",
+  "notice.service.declined": "The background service is not installed, so machine-wide tweaks are unavailable. You can enable it at any time.",
+  "notice.service.incomplete": "This copy is incomplete: the service executable is missing, so only user-scope tweaks are available.",
+  "notice.service.uacdeclined": "Continuing without the background service. Machine-wide tweaks stay unavailable until it is installed.",
+  "notice.service.notrunning": "The service was set up but is not running. Continuing directly.",
+  "notice.service.othercopy": "The background service is running from another copy of the app ({0}). Changes made here still go through it.",
+  "notice.service.orphaned": "The background service is registered to a folder that no longer exists ({0}), so it will not come back after a restart. Use Enable background service to repair it.",
+  "notice.renderer.missing": "{0} is missing and this build carries no copy of it. The download is incomplete.",
+  "notice.renderer.unpackfailed": "Could not unpack the rendering libraries: {0}",
+  "notice.smartappcontrol": "Smart App Control is enforced on this machine. Unsigned builds are blocked from running, so parts of this app may not start until it is signed.",
+
+  // ================================ removing the app: what each step did
+  "removal.step.servicestopped": "Stopped the background service. Its registration clears at the next restart.",
+  "removal.step.serviceremoved": "Stopped and removed the background service",
+  "removal.step.deleted": "Deleted {0}",
+  "removal.problem.servicenothere": "The background service is installed, but Nostos.Service.exe is not in this folder, so it cannot be removed from here. Run `Nostos.Service.exe remove` from the copy that installed it, as an administrator.",
+  "removal.problem.helperstart": "Could not start the elevated helper.",
+  "removal.problem.helperfailed": "The elevated helper failed (exit {0}). Nothing else was removed.",
+  "removal.problem.uacdeclined": "Removal needs administrator approval to delete the background service. Nothing was removed.",
+  "removal.problem.helperrun": "Could not run the elevated helper: {0}",
+
+  // ================================= the version line and the last check
+  "settings.version.dev": "Development build. Any published release will look newer than this.",
+  "settings.version": "Version {0}",
+  "settings.checked.never": "Never checked.",
+  "settings.checked.now": "Checked just now.",
+  "settings.checked.minutes": "Checked {0} minutes ago.",
+  "settings.checked.hours": "Checked {0} hours ago.",
+  "settings.checked.date": "Checked on {0}.",
+  "settings.saveproblem": "Could not save your settings to {0}. They apply for this session only.",
+
+  // =============================== the removal plan and its confirmation
+  "removal.revert.one": "Undo the 1 change Nostos made to this PC",
+  "removal.revert.many": "Undo the {0} changes Nostos made to this PC",
+  "removal.warning.reverting": "Your settings are put back first, then Nostos deletes everything it stored. There is no undo afterwards: the record of what it changed goes with it.",
+  "removal.warning.keeping": "Nostos will be removed and its changes LEFT IN PLACE. The journal that knows what they were is deleted too, so nothing will be able to put them back.",
+  "removal.warning.unlessuntick": " (unless you untick it)",
+  "removal.plan.service": "Stop and delete the background service — one administrator prompt",
+  "removal.plan.dataroot": "Delete {0} — journal, logs, profiles and these settings",
+  "removal.plan.cache": "Delete {0} — the unpacked renderer",
+  "removal.plan.byhand.one": "Leave you to delete {0}, which is all that remains",
+  "removal.plan.byhand.many": "Leave you to delete {0} in {1}, which is all that remains",
+  "removal.status.reverting": "Putting your settings back…",
+  "removal.status.undone.one": "Undid 1 change",
+  "removal.status.undone.many": "Undid {0} changes",
+  "removal.status.removing": "Removing Nostos…",
+  "removal.status.failed": "Removal did not finish.",
+  "removal.status.done": "Nostos is off this PC. Delete what is listed below and it is gone.",
+  "removal.status.partial": "Nostos is removed, apart from the files listed below.",
+
+  // ============================== joining two file names in one sentence
+  "removal.plan.and": " and ",
+
+  // ======================== day and month names, and the shape of a date
+  "date.day.0": "Sunday",
+  "date.day.1": "Monday",
+  "date.day.2": "Tuesday",
+  "date.day.3": "Wednesday",
+  "date.day.4": "Thursday",
+  "date.day.5": "Friday",
+  "date.day.6": "Saturday",
+  "date.month.1": "January",
+  "date.month.2": "February",
+  "date.month.3": "March",
+  "date.month.4": "April",
+  "date.month.5": "May",
+  "date.month.6": "June",
+  "date.month.7": "July",
+  "date.month.8": "August",
+  "date.month.9": "September",
+  "date.month.10": "October",
+  "date.month.11": "November",
+  "date.month.12": "December",
+  "date.withweekday": "{0} {1} {2}",
+  "date.withyear": "{0} {1} {2}",
+
+  // ==== the choice every service tweak offers, translated once for all 35
+  "choice.start.title": "How the service should start",
+  "choice.start.description": "Windows starts this service automatically at boot. This is what it should do instead.",
+  "choice.start.manual.title": "Manual - only when something asks",
+  "choice.start.manual.description": "The service no longer starts at boot, but Windows can still start it on demand. If it turns out something on this machine needs it, that something keeps working -- it just pays the start-up cost the first time instead of every boot. This is the setting to pick unless you have a specific reason not to.",
+  "choice.start.disabled.title": "Disabled - never, by anything",
+  "choice.start.disabled.description": "The service cannot start at all. Nothing can start it, including Windows components that need it, and what they report is a generic failure that names neither the service nor this tool. Pick this only when Manual has been tried and the service is demonstrably still starting itself.",
+
+}

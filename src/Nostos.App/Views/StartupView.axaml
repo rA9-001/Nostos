@@ -1,0 +1,223 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nostos.App.ViewModels"
+             xmlns:loc="using:Nostos.App.Localization"
+             x:Class="Nostos.App.Views.StartupView"
+             x:DataType="vm:MainWindowViewModel">
+
+  <!-- Everything Windows launches when you sign in.
+
+       Deliberately not a tweak list. There is no catalog entry per program, no risk rating and
+       no evidence claim, because the catalog cannot know what is on your machine: the decision
+       here is "do I want Razer Synapse running before I have asked for it", which is a fact
+       about the reader, not about Windows. So the tab shows what is actually there and gets out
+       of the way.
+
+       Switching a row off writes the same StartupApproved record Task Manager writes. Nothing is
+       deleted, which is why the row stays on screen afterwards rather than vanishing. -->
+
+  <UserControl.Styles>
+
+    <!-- The whole row is the button.
+
+         It used to be a small toggle at the far right of an inert row, and the only thing on
+         screen saying any of it could be changed was that toggle's hover state, which you had to
+         already be on top of to see. A list of fifteen programs where nothing looks clickable
+         reads as a report rather than a control panel. The hit target is now the card, it
+         responds under the pointer, and the switch says which way it will go. -->
+    <Style Selector="Button.startuprow">
+      <Setter Property="Background" Value="{DynamicResource SurfaceFlat}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerCard}" />
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="FontSize" Value="13" />
+
+      <!-- The base Button theme shrinks on press, which is right for a 90px button and wrong for
+           one the width of the window: the whole list appears to flinch. -->
+      <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
+    <!-- Opaque, and deliberately not SurfaceHover.
+
+         SurfaceHover is a translucent white meant to sit on top of whatever is underneath. On a
+         row that already paints its own SurfaceFlat background it does not lighten the card, it
+         replaces it. The hovered row became a pale band composited over the panel behind, and the
+         dimmed text of a switched-off program was washed out on top of it. These are the card
+         colour, two steps lighter. -->
+    <Style Selector="Button.startuprow:pointerover">
+      <Setter Property="Background" Value="#1E2537" />
+      <Setter Property="BorderBrush" Value="{DynamicResource StrokeStrong}" />
+    </Style>
+
+    <Style Selector="Button.startuprow:pressed">
+      <Setter Property="Background" Value="#252E44" />
+      <Setter Property="BorderBrush" Value="{DynamicResource StrokeStrong}" />
+      <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
+    <!-- Both halves of the switch are always in the tree and one of them is transparent, so a
+         flipped row crossfades instead of blinking. -->
+    <Style Selector="Border.switch">
+      <Setter Property="Width" Value="46" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Border.switch.on">
+      <Setter Property="Background" Value="{DynamicResource RiskSafeTint}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource RiskSafe}" />
+    </Style>
+
+    <Style Selector="Border.switch.off">
+      <Setter Property="Background" Value="{DynamicResource SurfaceInset}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Stroke}" />
+    </Style>
+
+    <!-- The switch brightens with the row under the pointer, so it reads as part of the thing
+         being hovered rather than a separate control sitting on top of it. -->
+    <Style Selector="Button.startuprow:pointerover Border.switch.off">
+      <Setter Property="BorderBrush" Value="{DynamicResource StrokeStrong}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="panel" Padding="10,14,10,10">
+    <DockPanel>
+
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="14,2,14,16">
+        <StackPanel Grid.Column="0" Spacing="4" MaxWidth="820" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Classes="title" VerticalAlignment="Center"
+                       Text="{loc:Tr startup.heading}" />
+            <Border Classes="chip" VerticalAlignment="Center">
+              <TextBlock Classes="chiptext" Text="{Binding StartupSummary}"
+                         Foreground="{DynamicResource Muted}" />
+            </Border>
+          </StackPanel>
+          <TextBlock Classes="muted" TextWrapping="Wrap" LineHeight="19"
+                     Text="{loc:Tr startup.blurb}" />
+
+          <!-- Says outright what the rows do. The affordance should carry this on its own and
+               mostly now does, but one line costs nothing, and this is a list where a misread
+               costs somebody their audio driver at the next boot. -->
+          <TextBlock Classes="faint" TextWrapping="Wrap" Margin="0,2,0,0"
+                     Text="{loc:Tr startup.hint}" />
+        </StackPanel>
+
+        <Button Grid.Column="1" Classes="ghost" VerticalAlignment="Top" Margin="20,0,0,0"
+                Command="{Binding RefreshStartupCommand}"
+                Content="{loc:Tr startup.refresh}" />
+      </Grid>
+
+      <!-- A refused write gets a banner rather than a red row: the reason is usually about the
+           machine ("the service is not installed") rather than about that one program, and it
+           would read as though that program were broken. -->
+      <Border DockPanel.Dock="Top" Classes="banner danger" Margin="14,0,14,14"
+              IsVisible="{Binding HasStartupError}">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Grid.Column="0" Width="3" CornerRadius="2" Margin="0,1,15,1"
+                  Background="{DynamicResource DangerText}" />
+          <TextBlock Grid.Column="1" Classes="muted" TextWrapping="Wrap"
+                     Text="{Binding StartupError}" />
+        </Grid>
+      </Border>
+
+      <TextBlock DockPanel.Dock="Top" Classes="muted" Margin="14,20,14,0"
+                 HorizontalAlignment="Center"
+                 Text="{loc:Tr startup.empty}"
+                 IsVisible="{Binding !StartupItems.Count}" />
+
+      <ScrollViewer>
+        <ItemsControl ItemsSource="{Binding StartupItems}" Margin="4,0,4,4">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:StartupItemViewModel">
+
+              <Button Classes="startuprow" Margin="0,1"
+                      IsEnabled="{Binding IsInteractive}"
+                      ToolTip.Tip="{Binding ToggleHint}"
+                      Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleStartupCommand}"
+                      CommandParameter="{Binding}">
+
+                <Grid ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="14">
+
+                  <!-- A bar rather than another word. Reading down the left edge answers "what
+                       starts with my PC" in one movement, which is the question the tab exists
+                       for; everything else on the row is detail you only want once you have
+                       found the program you were looking for. -->
+                  <Border Grid.Column="0" Width="3" Height="30" CornerRadius="2"
+                          VerticalAlignment="Center"
+                          IsVisible="{Binding IsEnabled}"
+                          Background="{DynamicResource RiskSafe}" />
+
+                  <!-- The icon is the fastest way to recognise a program, and the reason this
+                       list reads better than a column of registry value names. A fixed 28px box
+                       whether or not there is an icon, so the names below stay in one column. -->
+                  <Border Grid.Column="1" Width="28" Height="28" VerticalAlignment="Center"
+                          Opacity="{Binding RowOpacity}"
+                          CornerRadius="{DynamicResource CornerControl}">
+                    <Image Source="{Binding Icon}" Width="24" Height="24"
+                           IsVisible="{Binding HasIcon}"
+                           RenderOptions.BitmapInterpolationMode="HighQuality" />
+                  </Border>
+
+                  <StackPanel Grid.Column="2" Spacing="2" VerticalAlignment="Center"
+                              Opacity="{Binding RowOpacity}">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+
+                    <!-- The path under the name, because a Run value's name is chosen by whoever
+                         wrote the installer: "RtkAudUService" and "Update.exe" mean nothing on
+                         their own, and where a thing came from is what identifies it. -->
+                    <TextBlock Classes="faint mono" FontSize="11"
+                               TextTrimming="CharacterEllipsis"
+                               Text="{Binding Path}" />
+                  </StackPanel>
+
+                  <!-- Where the entry lives and who it applies to. Muted, because it is the
+                       answer to a question most readers will not ask, and the one that
+                       explains why a row sometimes needs the service. -->
+                  <StackPanel Grid.Column="3" Spacing="3" VerticalAlignment="Center"
+                              HorizontalAlignment="Right" Opacity="{Binding RowOpacity}">
+                    <Border Classes="chip" HorizontalAlignment="Right">
+                      <TextBlock Classes="chiptext" Text="{Binding ScopeText}"
+                                 Foreground="{DynamicResource Muted}" />
+                    </Border>
+                    <TextBlock Classes="faint" FontSize="10" HorizontalAlignment="Right"
+                               Text="{Binding Location}" />
+                  </StackPanel>
+
+                  <!-- A switch rather than a word. "On" and "Off" describe a state; a switch
+                       with its knob on one side describes a state *and* which way it moves,
+                       which is the part that was missing. -->
+                  <Panel Grid.Column="4" Width="46" Height="24" VerticalAlignment="Center">
+
+                    <Border Classes="switch off" Opacity="{Binding OffOpacity}">
+                      <Ellipse Width="16" Height="16" Margin="3,0"
+                               HorizontalAlignment="Left" VerticalAlignment="Center"
+                               Fill="{DynamicResource Muted}" />
+                    </Border>
+
+                    <Border Classes="switch on" Opacity="{Binding OnOpacity}">
+                      <Ellipse Width="16" Height="16" Margin="3,0"
+                               HorizontalAlignment="Right" VerticalAlignment="Center"
+                               Fill="{DynamicResource RiskSafe}" />
+                    </Border>
+                  </Panel>
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </DockPanel>
+  </Border>
+</UserControl>

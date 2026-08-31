@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Nostos.Core.Abstractions;
@@ -139,11 +140,15 @@ public sealed class GameProcessTuningTweak : ITweak
     public Task<Applicability> CheckApplicabilityAsync(TweakContext context, CancellationToken ct = default)
     {
         if (context.TargetProcessId is not { } pid)
-            return Task.FromResult(Applicability.No("no target process specified"));
+            return Task.FromResult(Applicability.No(
+                "notapplicable.nopid", "no target process specified"));
 
         return Task.FromResult(ProcessControl.IsRunning(pid)
             ? Applicability.Applicable
-            : Applicability.No($"process {pid} is not running"));
+            : Applicability.No(
+                "notapplicable.processgone",
+                $"process {pid} is not running",
+                pid.ToString(CultureInfo.InvariantCulture)));
     }
 
     public Task<TweakState> ReadAsync(TweakContext context, CancellationToken ct = default)

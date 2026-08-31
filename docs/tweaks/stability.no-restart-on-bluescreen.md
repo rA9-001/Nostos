@@ -1,8 +1,8 @@
 # stability.no-restart-on-bluescreen
 
-**Group:** Windows · **Improves:** Background & Cleanup · **Risk:** Moderate · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** no
+**Group:** Gaming · **Improves:** Crashes & Freezes · **Risk:** Moderate · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** no
 
-> Stops Windows running services and features you do not use. Frees some memory and boot time; does not, on its own, promise you frames.
+> Fixes a specific fault that shows up while playing: driver timeouts, black screens, flicker. Repairs a broken machine rather than making a working one faster.
 ## What it changes
 
 `HKLM\SYSTEM\CurrentControlSet\Control\CrashControl`

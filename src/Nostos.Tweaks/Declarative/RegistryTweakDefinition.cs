@@ -82,6 +82,43 @@ public sealed record RegistryChoiceOptionDefinition
 }
 
 /// <summary>
+/// A Group Policy value that takes a setting out of the user's hands.
+///
+/// Read-only, and read at the moment applicability is asked -- a policy can arrive or leave
+/// between two launches, and a tweak that was unavailable this morning is genuinely available
+/// this afternoon.
+/// </summary>
+public sealed record PolicyOverride
+{
+    public required string Hive { get; init; }
+    public required string Key { get; init; }
+    public required string Name { get; init; }
+
+    /// <summary>
+    /// The value that means "the policy is in force", or null for "the policy exists at all".
+    ///
+    /// Most policies of this kind are a single DWORD where one value disables the feature and
+    /// the other explicitly enables it, and only one of the two takes the setting away.
+    /// </summary>
+    public string? WhenValue { get; init; }
+
+    /// <summary>What the policy is called where a reader could look it up.</summary>
+    public required string Describe { get; init; }
+
+    /// <summary>True when the policy is present, and set to the value that takes over.</summary>
+    public bool IsInForce()
+    {
+        var (current, kind) = RegistryAccess.Read(new RegistryValueRef(Hive, Key, Name));
+        if (current is null)
+            return false;
+
+        return WhenValue is null
+               || string.Equals(RegistryAccess.Encode(current, kind), WhenValue,
+                                StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+/// <summary>
 /// A tweak expressed entirely as data.
 ///
 /// This is the contributor surface: adding a registry tweak is a JSON object and a docs page,
@@ -111,6 +148,33 @@ public sealed record RegistryTweakDefinition
 
     /// <summary>Set when a tweak is a straight regression on battery-powered machines.</summary>
     public bool DesktopOnly { get; init; }
+
+    /// <summary>
+    /// Set when the setting is a Windows Update for Business policy, which Home ignores.
+    ///
+    /// These are the one class of registry value where writing succeeds and nothing happens:
+    /// the key is writable on every edition, the value stays where it was put, and the update
+    /// client on Home simply never reads it. Without this flag such a tweak would apply
+    /// cleanly, verify cleanly, and change nothing at all -- the worst possible outcome for a
+    /// program whose whole argument is that it tells you the truth about your machine.
+    /// </summary>
+    public bool ProOnly { get; init; }
+
+    /// <summary>
+    /// A Group Policy value that owns this setting, when one can.
+    ///
+    /// Windows lets a machine-wide policy take a per-user setting away from the user, and when
+    /// it does, the user-hive value behind that setting stops being writable -- not by ACL,
+    /// which is why nothing in this program could see it coming, but by a kernel callback that
+    /// refuses that one value name and returns access denied. Every other value in the same key
+    /// still writes fine.
+    ///
+    /// So a tweak whose setting can be policy-owned names the policy here, and reports itself
+    /// not applicable while it is in force rather than offering a button that cannot work. It
+    /// is not a substitute for handling the write failing: a policy this program has never
+    /// heard of can appear on somebody's machine tomorrow.
+    /// </summary>
+    public PolicyOverride? OverriddenBy { get; init; }
 
     public required IReadOnlyList<RegistryValueSpec> Values { get; init; }
 
@@ -189,21 +253,13 @@ public static class RegistryTweakCatalog
         => JsonSerializer.Deserialize(json, CatalogJsonContext.Default.ListRegistryTweakDefinition)
            ?? throw new InvalidDataException("Catalog file did not contain a tweak array.");
 
-    /// <summary>Loads every embedded catalog file shipped with this assembly.</summary>
+    /// <summary>
+    /// Loads every embedded registry catalog file.
+    ///
+    /// Matched by name prefix rather than by "every .json in the assembly", which is what this
+    /// used to do: the catalog now also ships services.json and adapters.json, and parsing one
+    /// of those as a registry definition would fail in a way that named neither file.
+    /// </summary>
     public static IReadOnlyList<RegistryTweakDefinition> LoadEmbedded()
-    {
-        var assembly = typeof(RegistryTweakCatalog).Assembly;
-        var definitions = new List<RegistryTweakDefinition>();
-
-        foreach (var name in assembly.GetManifestResourceNames().Where(n => n.EndsWith(".json", StringComparison.Ordinal)))
-        {
-            using var stream = assembly.GetManifestResourceStream(name);
-            if (stream is null)
-                continue;
-            using var reader = new StreamReader(stream);
-            definitions.AddRange(Parse(reader.ReadToEnd()));
-        }
-
-        return definitions;
-    }
+        => [.. EmbeddedCatalog.Read("registry").SelectMany(Parse)];
 }

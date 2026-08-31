@@ -149,6 +149,79 @@ public sealed class TweakEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task A_batch_says_where_it_has_got_to_as_it_goes()
+    {
+        // So a window can show a profile being worked through rather than a spinner over a
+        // frozen list. Reported from inside the loop that does the work, which is the whole
+        // point: the alternative -- animating through the list at a plausible rate while the
+        // real batch runs elsewhere -- puts something on screen that is not true.
+        var engine = BuildEngine(new FakeTweak("test.first"), new FakeTweak("test.second"));
+        var reports = new List<BatchProgress>();
+
+        await engine.ApplyManyAsync(
+            [new TweakSelection("test.first"), new TweakSelection("test.second")],
+            onProgress: p =>
+            {
+                reports.Add(p);
+                return Task.CompletedTask;
+            });
+
+        // Twice per tweak: once on the way in with no outcome, once on the way out with one.
+        Assert.Equal(
+            [("test.first", null), ("test.first", Outcome.Applied),
+             ("test.second", null), ("test.second", Outcome.Applied)],
+            reports.Select(r => (r.TweakId, r.Outcome)));
+
+        Assert.All(reports, r => Assert.Equal(2, r.Total));
+        Assert.Equal([1, 1, 2, 2], reports.Select(r => r.Index));
+    }
+
+    [Fact]
+    public async Task The_report_stops_on_the_tweak_that_stops()
+    {
+        // A progress display whose last word is the tweak that failed is worth having. One that
+        // carries on to "42 of 42" because it was counting on a timer is worse than none.
+        var second = new FakeTweak("test.second") { ThrowOnApply = true };
+        var engine = BuildEngine(new FakeTweak("test.first"), second);
+        var reports = new List<BatchProgress>();
+
+        await engine.ApplyManyAsync(
+            [new TweakSelection("test.first"), new TweakSelection("test.second")],
+            onProgress: p =>
+            {
+                reports.Add(p);
+                return Task.CompletedTask;
+            });
+
+        Assert.Equal("test.second", reports[^1].TweakId);
+        Assert.NotEqual(Outcome.Applied, reports[^1].Outcome);
+    }
+
+    [Fact]
+    public async Task A_batch_refused_as_a_whole_reports_nothing_rather_than_a_phantom_run()
+    {
+        // Conflicts and the safety gate refuse before the loop starts, so nothing was worked
+        // on and nothing should appear to have been. The refusal comes back in the results.
+        var first = new FakeTweak("test.first")
+        {
+            Metadata = new FakeTweak("test.first").Metadata with { ConflictsWith = ["test.second"] },
+        };
+        var engine = BuildEngine(first, new FakeTweak("test.second"));
+        var reports = new List<BatchProgress>();
+
+        var results = await engine.ApplyManyAsync(
+            [new TweakSelection("test.first"), new TweakSelection("test.second")],
+            onProgress: p =>
+            {
+                reports.Add(p);
+                return Task.CompletedTask;
+            });
+
+        Assert.Empty(reports);
+        Assert.All(results, r => Assert.Equal(Outcome.Skipped, r.Outcome));
+    }
+
+    [Fact]
     public async Task Conflicting_tweaks_are_refused_as_a_batch_without_applying_either()
     {
         var first = new FakeTweak("test.first")

@@ -1,4 +1,5 @@
 using Nostos.Core.Abstractions;
+using Nostos.Core.Profiles;
 using Nostos.Tweaks;
 using Nostos.Tweaks.Declarative;
 
@@ -125,6 +126,108 @@ public sealed class CatalogIntegrityTests
             + "category it is filed under. Say what it improves, or file it somewhere else.");
     }
 
+    /// <summary>The three profiles this build ships, loaded from the repository.</summary>
+    private static IReadOnlyList<TweakProfile> Shipped { get; } =
+        ProfileLoader.LoadDirectory(Path.Combine(RepoRoot, "profiles"));
+
+    [Fact]
+    public void Every_profile_names_tweaks_that_exist()
+    {
+        // A profile is a list of ids with nothing checking them. Rename a tweak and the profile
+        // silently applies one fewer thing than it says on the card, which is the kind of
+        // wrong nobody notices because the apply still reports success.
+        var known = All.Select(t => t.Metadata.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var unknown = Shipped
+            .SelectMany(p => p.Tweaks.Select(t => $"{p.Name}: {t.TweakId}"))
+            .Where(pair => !known.Contains(pair.Split(": ")[1]))
+            .OrderBy(x => x, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(unknown.Count == 0, string.Join(Environment.NewLine, unknown));
+    }
+
+    [Fact]
+    public void Every_option_a_profile_picks_exists_on_the_tweak()
+    {
+        var byId = All.ToDictionary(t => t.Metadata.Id, t => t.Metadata, StringComparer.OrdinalIgnoreCase);
+        var problems = new List<string>();
+
+        foreach (var profile in Shipped)
+        {
+            foreach (var selection in profile.Tweaks)
+            {
+                if (!byId.TryGetValue(selection.TweakId, out var metadata))
+                    continue;
+
+                foreach (var (choiceId, optionId) in selection.EffectiveOptions)
+                {
+                    var choice = metadata.Choices.FirstOrDefault(c =>
+                        string.Equals(c.Id, choiceId, StringComparison.OrdinalIgnoreCase));
+
+                    if (choice is null)
+                        problems.Add($"{profile.Name}/{selection.TweakId}: no choice '{choiceId}'");
+                    else if (!choice.Options.Any(o => string.Equals(o.Id, optionId, StringComparison.OrdinalIgnoreCase)))
+                        problems.Add($"{profile.Name}/{selection.TweakId}/{choiceId}: no option '{optionId}'");
+                }
+            }
+        }
+
+        Assert.True(problems.Count == 0, string.Join(Environment.NewLine, problems));
+    }
+
+    /// <summary>
+    /// No profile applies anything rated Risky or Experimental.
+    ///
+    /// A profile is one click, and one click must not be able to leave a machine unbootable or
+    /// without a display. Both of those tweaks stay in the catalog with their own warnings and
+    /// their own docs page, where somebody choosing them has read what they do.
+    /// </summary>
+    [Fact]
+    public void No_profile_applies_a_risky_or_experimental_tweak()
+    {
+        var byId = All.ToDictionary(t => t.Metadata.Id, t => t.Metadata, StringComparer.OrdinalIgnoreCase);
+
+        var offenders = Shipped
+            .SelectMany(p => p.Tweaks.Select(t => (Profile: p.Name, t.TweakId)))
+            .Where(x => byId.TryGetValue(x.TweakId, out var m)
+                        && m.Risk is Risk.Risky or Risk.Experimental)
+            .Select(x => $"{x.Profile}: {x.TweakId}")
+            .OrderBy(x => x, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(offenders.Count == 0, string.Join(Environment.NewLine, offenders));
+    }
+
+    /// <summary>
+    /// Basic, Intermediate and Expert are a ladder, and each rung contains the one below it.
+    ///
+    /// That is the whole claim the names make. If Intermediate could drop something Basic
+    /// applies, "everything in Basic, plus..." would be a lie, and somebody moving up a rung
+    /// would silently have a change reverted out from under them.
+    /// </summary>
+    [Theory]
+    [InlineData("basic", "intermediate")]
+    [InlineData("intermediate", "expert")]
+    public void Each_profile_contains_the_one_below_it(string lower, string higher)
+    {
+        var below = Shipped.Single(p => p.Name == lower);
+        var above = Shipped.Single(p => p.Name == higher);
+
+        var missing = below.Tweaks
+            .Select(t => t.TweakId)
+            .Except(above.Tweaks.Select(t => t.TweakId), StringComparer.OrdinalIgnoreCase)
+            .OrderBy(id => id, StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(
+            missing.Count == 0,
+            $"'{higher}' says it contains everything in '{lower}' and is missing: "
+            + string.Join(", ", missing));
+
+        Assert.True(above.Tweaks.Count > below.Tweaks.Count, $"'{higher}' adds nothing to '{lower}'.");
+    }
+
     /// <summary>
     /// The Gaming/Windows split is the promise the catalog makes before any individual tweak
     /// does. An empty half would mean the tool claims a distinction it does not draw.
@@ -239,6 +342,29 @@ public sealed class CatalogIntegrityTests
                 Assert.Contains(value.Hive.ToUpperInvariant(), supported);
                 Assert.False(string.IsNullOrWhiteSpace(value.Key), definition.Id);
             }
+        }
+    }
+
+    /// <summary>
+    /// A tweak Home cannot use has to say so where somebody on Home would read it.
+    ///
+    /// The window already reports it as not applicable, with the reason. The docs page is the
+    /// other half: a reader who wants to know *why* their machine will not take a setting that
+    /// clearly exists in the registry should find the answer on the page for it, not conclude
+    /// the program is guessing.
+    /// </summary>
+    [Fact]
+    public void Every_pro_only_tweak_documents_the_edition_it_needs()
+    {
+        foreach (var definition in RegistryTweakCatalog.LoadEmbedded().Where(d => d.ProOnly))
+        {
+            var text = File.ReadAllText(
+                Path.Combine(RepoRoot, "docs", "tweaks", $"{definition.Id}.md"));
+
+            Assert.True(
+                text.Contains("Home", StringComparison.Ordinal),
+                $"docs/tweaks/{definition.Id}.md is marked proOnly but never mentions Home, "
+                + "the edition it will refuse to run on.");
         }
     }
 

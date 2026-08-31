@@ -102,15 +102,44 @@ public sealed class ProfileLoaderTests : IDisposable
     {
         // The three defaults are seeded into every fresh install, so a mistake in one of them
         // is a mistake every new user meets first.
-        var repo = FindRepositoryRoot();
-        var shipped = Path.Combine(repo, "profiles");
-
-        var profiles = ProfileLoader.LoadDirectory(shipped);
+        var profiles = ProfileLoader.LoadDirectory(ShippedDirectory);
 
         Assert.NotEmpty(profiles);
         foreach (var profile in profiles)
             Assert.NotEmpty(profile.Tweaks);
     }
+
+    [Fact]
+    public void The_shipped_profiles_read_as_a_ladder()
+    {
+        // Sorted by Order, not by file name. Alphabetically this is Basic, Expert,
+        // Intermediate, which says the opposite of what the three names mean.
+        Assert.Equal(
+            ["basic", "intermediate", "expert"],
+            ProfileLoader.LoadDirectory(ShippedDirectory).Select(p => p.Name));
+    }
+
+    [Fact]
+    public void A_profile_with_no_order_sorts_by_name_among_the_rest()
+    {
+        // What somebody's own profile looks like: no "order" field at all, which leaves it at
+        // zero. It must not end up in an arbitrary place, and it must not throw.
+        Write("mine.json", """
+            { "name": "mine", "tweaks": [ { "tweakId": "a" } ] }
+            """);
+        Write("theirs.json", """
+            { "name": "theirs", "order": 5, "tweaks": [ { "tweakId": "b" } ] }
+            """);
+        Write("also-mine.json", """
+            { "name": "also-mine", "tweaks": [ { "tweakId": "c" } ] }
+            """);
+
+        Assert.Equal(
+            ["also-mine", "mine", "theirs"],
+            ProfileLoader.LoadDirectory(_directory).Select(p => p.Name));
+    }
+
+    private static string ShippedDirectory => Path.Combine(FindRepositoryRoot(), "profiles");
 
     private static string FindRepositoryRoot()
     {

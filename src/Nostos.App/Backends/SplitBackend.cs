@@ -1,5 +1,7 @@
 using Nostos.Core.Abstractions;
+using Nostos.Core.Engine;
 using Nostos.Ipc;
+using Nostos.Win32.Services;
 
 namespace Nostos.App.Backends;
 
@@ -39,7 +41,19 @@ public sealed class SplitBackend : IOptimizerBackend
     /// <summary>True for tweaks that live in the calling user's hive.</summary>
     private bool IsUserScoped(string tweakId) => _local.ScopeOf(tweakId) == TweakScope.User;
 
-    private IOptimizerBackend For(string tweakId) => IsUserScoped(tweakId) ? _local : _service;
+    /// <summary>
+    /// True for tweaks this process can carry out itself.
+    ///
+    /// The user's own hive, and a process in the user's own session. Both are things the app
+    /// has the rights for without the service, and a process-scoped tweak in particular is
+    /// better done here: the service runs as SYSTEM in session 0, so the pid it is handed comes
+    /// from a session it cannot see, and it needs a privilege to reach into one it did not
+    /// launch. The app is already sitting in the right session with the right token.
+    /// </summary>
+    private bool RunsLocally(string tweakId)
+        => _local.ScopeOf(tweakId) is TweakScope.User or TweakScope.Process;
+
+    private IOptimizerBackend For(string tweakId) => RunsLocally(tweakId) ? _local : _service;
 
     public async Task<IReadOnlyList<TweakStatusSummary>> GetStatusAsync(CancellationToken ct = default)
     {
@@ -57,7 +71,7 @@ public sealed class SplitBackend : IOptimizerBackend
                 continue;
             }
 
-            var local = await _local.GetStatusAsync(status.Tweak.Id, null, ct).ConfigureAwait(false);
+            var local = await _local.GetStatusAsync(status.Tweak.Id, null, ct: ct).ConfigureAwait(false);
             corrected.Add(local ?? status);
         }
 
@@ -67,15 +81,17 @@ public sealed class SplitBackend : IOptimizerBackend
     public Task<TweakStatusSummary?> GetStatusAsync(
         string tweakId,
         IReadOnlyDictionary<string, string>? options,
+        TweakTarget? target = null,
         CancellationToken ct = default)
-        => For(tweakId).GetStatusAsync(tweakId, options, ct);
+        => For(tweakId).GetStatusAsync(tweakId, options, target, ct);
 
     public Task<IReadOnlyList<ChangeResult>> ApplyAsync(
         string tweakId,
         IReadOnlyDictionary<string, string>? options = null,
         bool dryRun = false,
+        TweakTarget? target = null,
         CancellationToken ct = default)
-        => For(tweakId).ApplyAsync(tweakId, options, dryRun, ct);
+        => For(tweakId).ApplyAsync(tweakId, options, dryRun, target, ct);
 
     public Task<IReadOnlyList<ChangeResult>> RevertAsync(string tweakId, CancellationToken ct = default)
         => For(tweakId).RevertAsync(tweakId, ct);
@@ -108,22 +124,57 @@ public sealed class SplitBackend : IOptimizerBackend
     /// explanation, which for the shipped profiles is most of them.
     /// </summary>
     public async Task<IReadOnlyList<ChangeResult>> ApplyProfileAsync(
-        string name, CancellationToken ct = default)
+        string name, Func<BatchProgress, Task>? onProgress = null, CancellationToken ct = default)
     {
         var selections = _local.ProfileSelections(name);
         var results = new List<ChangeResult>(selections.Count);
 
-        foreach (var selection in selections)
+        // This half already worked a tweak at a time, so saying where it has got to costs
+        // nothing and is true by construction: the report happens either side of the call that
+        // does the work, and a tweak that throws stops the count where it stopped.
+        for (var i = 0; i < selections.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
 
-            results.AddRange(await For(selection.TweakId)
-                .ApplyAsync(selection.TweakId, selection.EffectiveOptions, dryRun: false, ct)
-                .ConfigureAwait(false));
+            var selection = selections[i];
+
+            if (onProgress is not null)
+                await onProgress(new BatchProgress(i + 1, selections.Count, selection.TweakId))
+                    .ConfigureAwait(false);
+
+            var applied = await For(selection.TweakId)
+                .ApplyAsync(selection.TweakId, selection.EffectiveOptions, dryRun: false, ct: ct)
+                .ConfigureAwait(false);
+
+            results.AddRange(applied);
+
+            if (onProgress is not null)
+            {
+                // The row's own outcome, not the batch's. A profile entry is one tweak and comes
+                // back as one result; anything else would be a backend doing something
+                // unexpected, and reporting it as still running would leave the row spinning.
+                var outcome = applied.Count == 1 ? applied[0].Outcome : Outcome.Applied;
+                await onProgress(new BatchProgress(i + 1, selections.Count, selection.TweakId, outcome))
+                    .ConfigureAwait(false);
+            }
         }
 
         return results;
     }
+
+    /// <summary>
+    /// Sends a startup switch to whichever half can actually perform it.
+    ///
+    /// The same split as the tweaks, decided per entry rather than per call: an HKLM Run value
+    /// needs the elevated service, and an HKCU one needs this process, because HKCU inside a
+    /// LocalSystem service is SYSTEM's own hive and the write would succeed while changing
+    /// nothing the user would ever see.
+    /// </summary>
+    public Task<StartupSetResult> SetStartupEnabledAsync(
+        string id, bool enabled, CancellationToken ct = default)
+        => StartupWire.Find(id) is { IsMachineWide: true }
+            ? _service.SetStartupEnabledAsync(id, enabled, ct)
+            : _local.SetStartupEnabledAsync(id, enabled, ct);
 
     public async ValueTask DisposeAsync()
     {

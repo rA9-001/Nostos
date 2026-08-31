@@ -39,6 +39,7 @@ try
         "status" => await CatalogCommands.StatusAsync(host, commandLine, cancellation.Token),
         "show" => await CatalogCommands.ShowAsync(host, commandLine, cancellation.Token),
         "journal" => await CatalogCommands.JournalAsync(host, commandLine, cancellation.Token),
+        "startup" => await StartupCommands.RunAsync(host, commandLine, cancellation.Token),
         "doctor" => await CatalogCommands.DoctorAsync(host, commandLine, cancellation.Token),
         "apply" => await ChangeCommands.ApplyAsync(host, commandLine, cancellation.Token),
         "revert" => await ChangeCommands.RevertAsync(host, commandLine, cancellation.Token),
@@ -83,7 +84,7 @@ static void PrintUsage()
 
         {Ansi.Bold}Commands{Ansi.Reset}
           list                    Show the tweak catalog, grouped by what it improves
-          categories              What the six categories are and what each one claims
+          categories              What each category is and what it claims
           status [id...]          Show what is currently set on this machine
           show <id>               Everything about one tweak, including its options
           apply <id...>           Apply tweaks
@@ -91,6 +92,9 @@ static void PrintUsage()
           bench [run|list|compare]
                                   Measure network latency, and compare two measurements
           update [--install]      Check GitHub for a newer release, and install it
+          startup [list]          What runs when you sign in
+          startup enable|disable <id>
+                                  Switch one startup entry, the way Task Manager does
           journal                 Show the change log
           doctor                  Report the environment and any pending state
           profile list | apply <path>

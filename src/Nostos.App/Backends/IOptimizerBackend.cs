@@ -35,12 +35,14 @@ public interface IOptimizerBackend : IAsyncDisposable
     Task<TweakStatusSummary?> GetStatusAsync(
         string tweakId,
         IReadOnlyDictionary<string, string>? options,
+        TweakTarget? target = null,
         CancellationToken ct = default);
 
     Task<IReadOnlyList<ChangeResult>> ApplyAsync(
         string tweakId,
         IReadOnlyDictionary<string, string>? options = null,
         bool dryRun = false,
+        TweakTarget? target = null,
         CancellationToken ct = default);
 
     Task<IReadOnlyList<ChangeResult>> RevertAsync(string tweakId, CancellationToken ct = default);
@@ -51,8 +53,40 @@ public interface IOptimizerBackend : IAsyncDisposable
 
     Task<IReadOnlyList<ProfileSummary>> GetProfilesAsync(CancellationToken ct = default);
 
-    Task<IReadOnlyList<ChangeResult>> ApplyProfileAsync(string name, CancellationToken ct = default);
+    /// <param name="onProgress">
+    /// Called as each tweak starts and again as it finishes, so the window can show the profile
+    /// being worked through. Optional, and genuinely optional: a backend that cannot report
+    /// real progress passes nothing, and the window shows an indeterminate bar rather than an
+    /// animation it made up.
+    /// </param>
+    Task<IReadOnlyList<ChangeResult>> ApplyProfileAsync(
+        string name,
+        Func<BatchProgress, Task>? onProgress = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Switches one startup entry on or off.
+    ///
+    /// Only the write goes through the backend. Reading the list needs no privilege, so the
+    /// window enumerates it in-process rather than over the pipe -- which also means the startup
+    /// tab works before the service is installed, and shows per-user entries even when the
+    /// machine-wide half is unavailable.
+    /// </summary>
+    Task<StartupSetResult> SetStartupEnabledAsync(
+        string id, bool enabled, CancellationToken ct = default);
 }
+
+/// <summary>
+/// The process a process-scoped tweak acts on.
+///
+/// Carried alongside the options rather than inside them: the options dictionary is a tweak's
+/// own choices, it goes into the journal as the record of what was asked for, and a process id
+/// is neither a choice nor worth keeping -- it is meaningless the moment the process exits.
+///
+/// The name travels with the id purely so the journal and the log can say "notepad.exe (12345)"
+/// rather than a bare number nobody can identify afterwards.
+/// </summary>
+public sealed record TweakTarget(int ProcessId, string? ProcessName);
 
 /// <summary>
 /// A backend that also has the catalog and the profiles to hand, because it is running in this

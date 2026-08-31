@@ -1,0 +1,256 @@
+{
+  "name": "expert",
+  "description": "Everything in Intermediate, plus turning Windows features off: services for hardware this PC does not have, the Xbox and Game Pass stack, search indexing, SysMain, and NTFS bookkeeping. Read the list before applying this one \u2014 if you use Game Pass, Bluetooth or file-content search, it will take them away.",
+  "order": 2,
+  "tweaks": [
+    {
+      "tweakId": "gamedvr.policy-off"
+    },
+    {
+      "tweakId": "gamedvr.user-capture-off"
+    },
+    {
+      "tweakId": "mmcss.games-task-priority"
+    },
+    {
+      "tweakId": "mmcss.system-responsiveness",
+      "options": {
+        "reserve": "balanced"
+      }
+    },
+    {
+      "tweakId": "power.throttling-off"
+    },
+    {
+      "tweakId": "shell.background-apps-off"
+    },
+    {
+      "tweakId": "shell.game-mode",
+      "options": {
+        "state": "on"
+      }
+    },
+    {
+      "tweakId": "shell.transparency-off"
+    },
+    {
+      "tweakId": "shell.visual-effects"
+    },
+    {
+      "tweakId": "graphics.fullscreen-optimizations-off"
+    },
+    {
+      "tweakId": "input.mouse-acceleration-off"
+    },
+    {
+      "tweakId": "shell.menu-show-delay",
+      "options": {
+        "delay": "instant"
+      }
+    },
+    {
+      "tweakId": "mmcss.network-throttling-off"
+    },
+    {
+      "tweakId": "network.qos-reserved-bandwidth"
+    },
+    {
+      "tweakId": "update.delivery-optimization-off",
+      "options": {
+        "mode": "off"
+      }
+    },
+    {
+      "tweakId": "input.accessibility-shortcuts-off"
+    },
+    {
+      "tweakId": "shell.notifications-off"
+    },
+    {
+      "tweakId": "shell.search-highlights-off"
+    },
+    {
+      "tweakId": "shell.suggestions-off"
+    },
+    {
+      "tweakId": "shell.widgets-off"
+    },
+    {
+      "tweakId": "update.no-auto-restart"
+    },
+    {
+      "tweakId": "cpu.priority-separation",
+      "options": {
+        "policy": "short-variable"
+      }
+    },
+    {
+      "tweakId": "memory.paging-executive"
+    },
+    {
+      "tweakId": "graphics.hags"
+    },
+    {
+      "tweakId": "input.usb-selective-suspend-off"
+    },
+    {
+      "tweakId": "power.ultimate-performance"
+    },
+    {
+      "tweakId": "network.interrupt-moderation-off"
+    },
+    {
+      "tweakId": "network.receive-coalescing-off"
+    },
+    {
+      "tweakId": "network.energy-efficient-ethernet-off"
+    },
+    {
+      "tweakId": "network.flow-control-off"
+    },
+    {
+      "tweakId": "network.tcp-latency"
+    },
+    {
+      "tweakId": "services.delivery-optimization"
+    },
+    {
+      "tweakId": "power.fast-startup-off"
+    },
+    {
+      "tweakId": "stability.driver-search-off"
+    },
+    {
+      "tweakId": "privacy.activity-history-off"
+    },
+    {
+      "tweakId": "privacy.advertising-id-off"
+    },
+    {
+      "tweakId": "privacy.telemetry-policy"
+    },
+    {
+      "tweakId": "services.diagnostic-policy"
+    },
+    {
+      "tweakId": "services.geolocation"
+    },
+    {
+      "tweakId": "services.telemetry"
+    },
+    {
+      "tweakId": "shell.startup-delay-off"
+    },
+    {
+      "tweakId": "update.notify-before-download"
+    },
+    {
+      "tweakId": "services.search-indexer"
+    },
+    {
+      "tweakId": "services.sysmain"
+    },
+    {
+      "tweakId": "memory.svchost-split-threshold",
+      "options": {
+        "mode": "grouped"
+      }
+    },
+    {
+      "tweakId": "services.error-reporting"
+    },
+    {
+      "tweakId": "services.printer-notifications"
+    },
+    {
+      "tweakId": "services.program-compatibility"
+    },
+    {
+      "tweakId": "services.push-notifications"
+    },
+    {
+      "tweakId": "services.touch-keyboard"
+    },
+    {
+      "tweakId": "services.xbox-accessory"
+    },
+    {
+      "tweakId": "services.xbox-game-save"
+    },
+    {
+      "tweakId": "services.xbox-live-auth"
+    },
+    {
+      "tweakId": "services.xbox-networking"
+    },
+    {
+      "tweakId": "services.alljoyn-router"
+    },
+    {
+      "tweakId": "services.bluetooth"
+    },
+    {
+      "tweakId": "services.downloaded-maps"
+    },
+    {
+      "tweakId": "services.fax"
+    },
+    {
+      "tweakId": "services.internet-sharing"
+    },
+    {
+      "tweakId": "services.link-tracking"
+    },
+    {
+      "tweakId": "services.netbios-helper"
+    },
+    {
+      "tweakId": "services.offline-files"
+    },
+    {
+      "tweakId": "services.parental-controls"
+    },
+    {
+      "tweakId": "services.payments-nfc"
+    },
+    {
+      "tweakId": "services.phone"
+    },
+    {
+      "tweakId": "services.print-spooler"
+    },
+    {
+      "tweakId": "services.remote-registry"
+    },
+    {
+      "tweakId": "services.retail-demo"
+    },
+    {
+      "tweakId": "services.sensors"
+    },
+    {
+      "tweakId": "services.smart-card"
+    },
+    {
+      "tweakId": "services.wallet"
+    },
+    {
+      "tweakId": "services.windows-backup"
+    },
+    {
+      "tweakId": "services.windows-insider"
+    },
+    {
+      "tweakId": "services.wmp-network-sharing"
+    },
+    {
+      "tweakId": "storage.ntfs-8dot3-off"
+    },
+    {
+      "tweakId": "storage.ntfs-last-access-off",
+      "options": {
+        "mode": "off"
+      }
+    }
+  ]
+}

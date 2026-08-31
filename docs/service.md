@@ -44,6 +44,16 @@ and offers **Repair**, which is the same one-prompt setup. If the path merely di
 copy you launched, it says which folder is in charge and changes nothing — running a second
 copy is not by itself a reason to take the service away from the first.
 
+## Removing it
+
+`Nostos.Service.exe uninstall` stops and deregisters the service and changes nothing else:
+tweaks stay applied and `%ProgramData%\Nostos` stays where it is.
+
+`Nostos.Service.exe remove` is the harder version -- service *and* data folder -- and is what
+the app's **Remove Nostos from this PC** runs, elevated, after it has reverted everything
+through the ordinary path. It takes no arguments deliberately; see
+[docs/uninstall.md](uninstall.md).
+
 ## Using it
 
 Add `--service` to any command to route it through the daemon instead of the local engine:

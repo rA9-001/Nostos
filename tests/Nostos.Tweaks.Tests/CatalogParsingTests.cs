@@ -1,4 +1,5 @@
 using Microsoft.Win32;
+using Nostos.Core.Abstractions;
 using Nostos.Tweaks.Declarative;
 using Nostos.Win32.Services;
 
@@ -125,5 +126,103 @@ public sealed class CatalogParsingTests
         // state line stops matching the value a user would see in regedit.
         Assert.Equal("506", RegistryAccess.Describe("506", RegistryValueKind.String));
         Assert.Equal("a\nb", RegistryAccess.Describe(new[] { "a", "b" }, RegistryValueKind.MultiString));
+    }
+
+    // --------------------------------------------------------- services.json
+
+    [Fact]
+    public void A_service_entry_needs_only_six_fields()
+    {
+        var definitions = ServiceTweakCatalog.Parse("""
+            [
+              {
+                "id": "services.test",
+                "service": "TestSvc",
+                "title": "Stop the test service starting at boot",
+                "summary": "Exists only in this test.",
+                "category": "unused",
+                "evidence": "Plausible"
+              }
+            ]
+            """);
+
+        var definition = Assert.Single(definitions);
+        Assert.Equal("TestSvc", definition.Service);
+
+        // The two defaults that are not written down in the file. Both are the cautious answer:
+        // a service tweak nobody has rated is Moderate, and it is tagged as a service.
+        Assert.Null(definition.Risk);
+        Assert.Equal(["service"], definition.Tags);
+        Assert.Equal(Risk.Moderate, definition.ToTweak().Metadata.Risk);
+    }
+
+    [Fact]
+    public void A_service_entry_that_does_not_say_what_its_evidence_is_refuses_to_load()
+    {
+        // This is the trap that made AppSettings.CheckForUpdates nullable, in the other
+        // direction. The source generator passes `default` for a missing property, and
+        // `default(Evidence)` is Measured -- the strongest claim in the vocabulary, handed out
+        // for free to an entry whose author never made it. Failing to load is the only safe
+        // reading of silence.
+        Assert.ThrowsAny<Exception>(() => ServiceTweakCatalog.Parse("""
+            [
+              {
+                "id": "services.test",
+                "service": "TestSvc",
+                "title": "Stop the test service starting at boot",
+                "summary": "Says nothing about evidence.",
+                "category": "unused"
+              }
+            ]
+            """));
+    }
+
+    [Fact]
+    public void Every_service_tweak_that_ships_comes_from_the_data_file()
+    {
+        // Cheap, but it is the test that fails loudly if services.json stops being embedded --
+        // which would otherwise show up as a catalog that is quietly 35 tweaks shorter.
+        var definitions = ServiceTweakCatalog.LoadEmbedded();
+
+        Assert.NotEmpty(definitions);
+        Assert.All(definitions, d => Assert.StartsWith("services.", d.Id, StringComparison.Ordinal));
+        Assert.Equal(
+            definitions.Count,
+            CatalogFactory.CreateAll().OfType<Nostos.Tweaks.Native.WindowsServiceTweak>().Count());
+    }
+
+    // --------------------------------------------------------- adapters.json
+
+    [Fact]
+    public void An_adapter_entry_parses_its_keyword_list()
+    {
+        var definitions = AdapterTweakCatalog.Parse("""
+            [
+              {
+                "id": "network.test",
+                "title": "Stop the test thing",
+                "summary": "Exists only in this test.",
+                "keywords": ["*One", "*Two"],
+                "target": "0",
+                "absentReason": "no adapter here has it"
+              }
+            ]
+            """);
+
+        var definition = Assert.Single(definitions);
+        Assert.Equal(["*One", "*Two"], definition.Keywords);
+        Assert.Empty(definition.Tags);
+    }
+
+    [Fact]
+    public void Every_adapter_tweak_that_ships_comes_from_the_data_file()
+    {
+        var definitions = AdapterTweakCatalog.LoadEmbedded();
+
+        Assert.NotEmpty(definitions);
+        Assert.All(definitions, d => Assert.NotEmpty(d.Keywords));
+        Assert.Equal(
+            definitions.Count,
+            CatalogFactory.CreateAll().OfType<Nostos.Tweaks.Native.NetworkAdapterTweak>().Count());
     }
 }

@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using Nostos.Core;
+using Nostos.Core.Localization;
 
 namespace Nostos.App.Startup;
 
@@ -40,11 +41,22 @@ internal static class NativeAssets
     {
         // Cached because the startup checklist reads it after the fact, on a different thread.
         Warning = EnsureCore();
-        return Warning;
+        return Warning is null ? null : Strings.Get(Warning);
     }
 
-    /// <summary>What went wrong during <see cref="Ensure"/>, or null. Set once, at startup.</summary>
+    /// <summary>
+    /// The string-table key for what went wrong during <see cref="Ensure"/>, or null.
+    ///
+    /// A key rather than the message, because this runs before Avalonia and therefore before
+    /// anything has read which language the user chose -- it is the first thing that happens
+    /// after the portable check, and the renderer has to be on disk before a window can exist
+    /// to say anything in. The checklist that shows this reads it much later, by which time
+    /// the language is known.
+    /// </summary>
     public static string? Warning { get; private set; }
+
+    /// <summary>The one argument the unpack failure needs. Null when there is no failure.</summary>
+    public static string? WarningDetail { get; private set; }
 
     private static string? EnsureCore()
     {
@@ -57,7 +69,8 @@ internal static class NativeAssets
         {
             // Neither beside the executable nor inside it. Rendering will fail, but say why
             // rather than letting Avalonia throw a DllNotFoundException at the user.
-            return $"{Probe} is missing and this build carries no copy of it. The download is incomplete.";
+            WarningDetail = Probe;
+            return "notice.renderer.missing";
         }
 
         try
@@ -68,7 +81,8 @@ internal static class NativeAssets
         }
         catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
         {
-            return $"Could not unpack the rendering libraries: {e.Message}";
+            WarningDetail = e.Message;
+            return "notice.renderer.unpackfailed";
         }
     }
 
@@ -142,9 +156,7 @@ internal static class NativeAssets
     private static string CacheRoot()
         => AppPaths.IsPortable
             ? Path.Combine(AppPaths.Root, "runtime")
-            : Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "Nostos", "runtime");
+            : Path.Combine(AppPaths.LocalStateRoot, "runtime");
 
     private static void CleanUpOldVersions(string root, string keep)
     {

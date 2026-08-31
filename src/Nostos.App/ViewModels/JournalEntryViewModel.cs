@@ -1,3 +1,4 @@
+using Nostos.Core.Localization;
 using Nostos.Ipc;
 
 namespace Nostos.App.ViewModels;
@@ -53,16 +54,38 @@ public sealed class JournalEntryViewModel
     /// produces. Same vocabulary as the activity panel, so the two describe the same event in
     /// the same words.
     /// </summary>
-    public string Headline => IsUnfinished
-        ? $"Interrupted — {TweakTitle}"
+    /// <summary>
+    /// True for a startup entry being switched rather than a tweak being applied.
+    ///
+    /// These lines are a different kind of event and read badly in the tweak vocabulary:
+    /// "Applied -- Steam" is not what happened, and "Your previous setting was saved first, so
+    /// this can be undone" is not true of something that was never captured.
+    /// </summary>
+    public bool IsStartup => Core.Journal.StartupJournal.Owns(Line.TweakId);
+
+    private bool StartupEnabled => Core.Journal.StartupJournal.WasEnabled(Line.Detail);
+
+    private string StartupName => Core.Journal.StartupJournal.NameOf(Line.TweakId, Line.Detail);
+
+    public string Headline => IsStartup
+        ? Strings.Format(
+            StartupEnabled ? "journal.headline.startupon" : "journal.headline.startupoff",
+            StartupName)
+        : IsUnfinished
+        ? Strings.Format("journal.headline.interrupted", TweakTitle)
         : Line.Action switch
         {
-            nameof(Core.Journal.JournalAction.ApplyCommitted) => $"Applied — {TweakTitle}",
-            nameof(Core.Journal.JournalAction.RevertCommitted) => $"Undone — {TweakTitle}",
-            nameof(Core.Journal.JournalAction.ApplyFailed) => $"Could not apply — {TweakTitle}",
-            nameof(Core.Journal.JournalAction.RevertFailed) => $"Could not undo — {TweakTitle}",
-            nameof(Core.Journal.JournalAction.ApplyIntent) => $"Starting — {TweakTitle}",
-            _ => $"{Line.Action} — {TweakTitle}",
+            nameof(Core.Journal.JournalAction.ApplyCommitted) =>
+                Strings.Format("journal.headline.applied", TweakTitle),
+            nameof(Core.Journal.JournalAction.RevertCommitted) =>
+                Strings.Format("journal.headline.undone", TweakTitle),
+            nameof(Core.Journal.JournalAction.ApplyFailed) =>
+                Strings.Format("journal.headline.applyfailed", TweakTitle),
+            nameof(Core.Journal.JournalAction.RevertFailed) =>
+                Strings.Format("journal.headline.revertfailed", TweakTitle),
+            nameof(Core.Journal.JournalAction.ApplyIntent) =>
+                Strings.Format("journal.headline.starting", TweakTitle),
+            _ => Strings.Format("journal.headline.other", Line.Action, TweakTitle),
         };
 
     /// <summary>Who or what did it, and what that means for undoing it.</summary>
@@ -72,36 +95,41 @@ public sealed class JournalEntryViewModel
         {
             var who = DescribeOrigin(Line.Origin);
 
-            if (IsUnfinished)
+            if (IsStartup)
             {
-                return $"{who}, but it never finished — usually because the PC shut down partway "
-                     + "through. Your old setting was saved first, so nothing was lost. Use Revert "
-                     + "everything to be sure.";
+                return Strings.Get(StartupEnabled
+                    ? "journal.explain.startupon"
+                    : "journal.explain.startupoff");
             }
+
+            if (IsUnfinished)
+                return Strings.Format("journal.explain.interrupted", who);
 
             return Line.Action switch
             {
                 nameof(Core.Journal.JournalAction.ApplyCommitted) =>
-                    $"{who}. Your previous setting was saved first, so this can be undone.",
+                    Strings.Format("journal.explain.applied", who),
                 nameof(Core.Journal.JournalAction.RevertCommitted) =>
-                    $"{who}. Your original setting was restored exactly as it was.",
+                    Strings.Format("journal.explain.undone", who),
                 nameof(Core.Journal.JournalAction.ApplyFailed) =>
-                    $"{who}. Nothing was changed, or what was changed was put back automatically.",
+                    Strings.Format("journal.explain.applyfailed", who),
                 nameof(Core.Journal.JournalAction.RevertFailed) =>
-                    $"{who}. The setting is still changed. Try Revert everything.",
-                _ => who + ".",
+                    Strings.Format("journal.explain.revertfailed", who),
+                _ => Strings.Format("journal.explain.other", who),
             };
         }
     }
 
     /// <summary>Emoji-free glyph, so it renders the same on every machine.</summary>
-    public string Glyph => IsFailure ? "×" : IsUnfinished ? "!" : Line.Action switch
+    public string Glyph => IsStartup ? (StartupEnabled ? "▲" : "▼")
+        : IsFailure ? "×" : IsUnfinished ? "!" : Line.Action switch
     {
         nameof(Core.Journal.JournalAction.RevertCommitted) => "↩",
         _ => "✓",
     };
 
-    public string GlyphBrushKey => IsFailure ? "RiskHigh" : IsUnfinished ? "RiskModerate" : "RiskSafe";
+    public string GlyphBrushKey => IsStartup ? (StartupEnabled ? "RiskSafe" : "Muted")
+        : IsFailure ? "RiskHigh" : IsUnfinished ? "RiskModerate" : "RiskSafe";
 
     /// <summary>
     /// Turns an origin tag into who did it.
@@ -116,19 +144,17 @@ public sealed class JournalEntryViewModel
     private static string DescribeOrigin(string origin)
     {
         if (origin.StartsWith("profile:", StringComparison.OrdinalIgnoreCase))
-            return $"Part of the '{origin["profile:".Length..]}' preset";
+            return Strings.Format("journal.origin.profile", origin["profile:".Length..]);
 
         return origin.ToLowerInvariant() switch
         {
-            "gui" => "You did this in this window",
-            "cli" => "You did this from the command line",
-            "manual" => "You asked for this",
-            "watchdog" => "Undone automatically by the old safety timer, which no longer exists. "
-                        + "Nothing undoes a change on its own any more",
-            "reconcile" or "reconciler" => "Re-applied automatically, because Windows had changed "
-                                         + "it back on its own",
-            "service" => "Done by the background service",
-            _ => $"Source: {origin}",
+            "gui" => Strings.Get("journal.origin.gui"),
+            "cli" => Strings.Get("journal.origin.cli"),
+            "manual" => Strings.Get("journal.origin.manual"),
+            "watchdog" => Strings.Get("journal.origin.watchdog"),
+            "reconcile" or "reconciler" => Strings.Get("journal.origin.reconcile"),
+            "service" => Strings.Get("journal.origin.service"),
+            _ => Strings.Format("journal.origin.unknown", origin),
         };
     }
 
@@ -201,12 +227,13 @@ public sealed class JournalEntryViewModel
         var day = when.Date;
 
         if (day == today)
-            return "Today";
+            return Strings.Get("journal.day.today");
         if (day == today.AddDays(-1))
-            return "Yesterday";
+            return Strings.Get("journal.day.yesterday");
 
-        return day.Year == today.Year
-            ? when.ToString("dddd d MMMM")
-            : when.ToString("d MMMM yyyy");
+        // The month's name is text like any other, so it follows the language the user chose
+        // rather than the one Windows is installed in. A German window that says "25 August"
+        // in one row and "Gestern" in the next is worse than either on its own.
+        return Strings.DateText(when, withYear: day.Year != today.Year);
     }
 }

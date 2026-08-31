@@ -1,0 +1,196 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nostos.App.ViewModels"
+             xmlns:views="using:Nostos.App.Views"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             xmlns:loc="using:Nostos.App.Localization"
+             x:Class="Nostos.App.Views.SettingsView"
+             x:DataType="vm:SettingsViewModel">
+
+  <!-- The settings panel's contents. Its DataContext is the SettingsViewModel, which is why
+       nothing in here says "Settings." -->
+
+  <StackPanel Spacing="16" Margin="24,18,24,24">
+
+    <!-- =================================================================== language ==
+
+         First, and above updates, on purpose: it is the setting that decides whether the rest
+         of this panel can be read at all.                                                     -->
+    <Border Classes="card" Padding="18">
+      <StackPanel Spacing="14">
+        <TextBlock Classes="section" Text="{loc:Tr settings.language}" />
+
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock Classes="muted" Text="{loc:Tr settings.language.label}"
+                     VerticalAlignment="Center" />
+          <ComboBox Width="260"
+                    ItemsSource="{Binding Languages}"
+                    SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:LanguageOption">
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+
+        <TextBlock Classes="faint" TextWrapping="Wrap" Text="{loc:Tr settings.language.note}" />
+      </StackPanel>
+    </Border>
+
+    <!-- ==================================================================== updates -->
+    <Border Classes="card" Padding="18">
+      <StackPanel Spacing="14">
+
+        <StackPanel Spacing="6">
+          <TextBlock Classes="section" Text="{loc:Tr settings.updates}" />
+          <TextBlock Text="{Binding VersionText}" Classes="title" />
+        </StackPanel>
+
+        <CheckBox IsChecked="{Binding CheckForUpdates, Mode=TwoWay}"
+                  Content="{loc:Tr settings.check}" />
+
+        <StackPanel Orientation="Horizontal" Spacing="12"
+                    IsEnabled="{Binding CadenceEnabled}">
+          <TextBlock Classes="muted" Text="{loc:Tr settings.howoften}" VerticalAlignment="Center" />
+          <ComboBox Width="260"
+                    ItemsSource="{Binding Cadences}"
+                    SelectedItem="{Binding SelectedCadence, Mode=TwoWay}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:CadenceOption">
+                <TextBlock Text="{Binding Label}" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+        </StackPanel>
+
+        <TextBlock Classes="muted" TextWrapping="Wrap" Text="{Binding UpdatePolicyText}" />
+
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <Button Content="{loc:Tr settings.checknow}" Command="{Binding CheckNowCommand}" />
+          <TextBlock Classes="muted" VerticalAlignment="Center"
+                     Text="{Binding LastCheckedText}" />
+        </StackPanel>
+
+        <ProgressBar Height="3" IsIndeterminate="True"
+                     IsVisible="{Binding IsCheckingUpdates}" />
+
+        <Border Classes="inset" IsVisible="{Binding HasCheckResult}">
+          <TextBlock Text="{Binding CheckResult}" TextWrapping="Wrap" Classes="muted" />
+        </Border>
+
+        <TextBlock Text="{Binding SaveProblem}" TextWrapping="Wrap" Classes="muted"
+                   Foreground="{DynamicResource WarningText}"
+                   IsVisible="{Binding HasSaveProblem}" />
+
+        <TextBlock Classes="faint" TextWrapping="Wrap"
+                   Text="{loc:Tr settings.updatenote}" />
+      </StackPanel>
+    </Border>
+
+    <!-- ==================================================================== removal ==
+
+         Its own red walled card, at the bottom, behind two clicks. Everything above it in this
+         window is reversible and this is not.                                                 -->
+    <Border Classes="banner danger" Margin="0" Padding="18">
+      <StackPanel Spacing="14">
+
+        <TextBlock Classes="title" Text="{loc:Tr removal.title}"
+                   Foreground="{DynamicResource DangerText}" />
+
+        <TextBlock Classes="muted" TextWrapping="Wrap"
+                   Text="{loc:Tr removal.intro}" />
+
+        <ItemsControl ItemsSource="{Binding RemovalPlan}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <Grid ColumnDefinitions="16,*" Margin="0,3">
+                <Border Grid.Column="0" Width="4" Height="4" CornerRadius="2"
+                        Background="{DynamicResource Danger}"
+                        HorizontalAlignment="Left" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding}" TextWrapping="Wrap"
+                           Classes="muted" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <CheckBox IsChecked="{Binding RevertChanges, Mode=TwoWay}"
+                  Content="{Binding RevertChangesLabel}"
+                  IsVisible="{Binding HasChangesToRevert}" />
+
+        <TextBlock Classes="faint" TextWrapping="Wrap"
+                   Text="{loc:Tr removal.restorepoints}" />
+
+        <!-- Two clicks, and the second one has to be read. -->
+        <Button Classes="danger" Content="{loc:Tr removal.button}"
+                HorizontalAlignment="Left"
+                Command="{Binding ArmRemovalCommand}"
+                IsVisible="{Binding ShowRemoveButton}" />
+
+        <StackPanel Spacing="12" IsVisible="{Binding ShowRemovalConfirmation}">
+          <Border Classes="inset">
+            <TextBlock Text="{Binding RemovalWarning}" TextWrapping="Wrap" />
+          </Border>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Classes="danger" Content="{loc:Tr removal.confirm}"
+                    Command="{Binding RemoveCommand}" />
+            <Button Classes="ghost" Content="{loc:Tr removal.cancel}"
+                    Command="{Binding CancelRemovalCommand}" />
+          </StackPanel>
+        </StackPanel>
+
+        <ProgressBar Height="3" IsIndeterminate="True" IsVisible="{Binding IsRemoving}" />
+
+        <TextBlock Text="{Binding RemovalStatus}" TextWrapping="Wrap"
+                   FontWeight="SemiBold" IsVisible="{Binding HasRemovalStatus}" />
+
+        <ItemsControl ItemsSource="{Binding RemovalSteps}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <Grid ColumnDefinitions="22,*" Margin="0,3">
+                <Path Grid.Column="0" Data="{DynamicResource CheckIcon}" Stretch="Uniform"
+                      Width="11" Height="11" Fill="{DynamicResource Success}"
+                      HorizontalAlignment="Left" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding}" TextWrapping="Wrap" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="{Binding RemovalProblem}" TextWrapping="Wrap"
+                   Foreground="{DynamicResource Danger}"
+                   IsVisible="{Binding HasRemovalProblem}" />
+
+        <StackPanel Spacing="6" IsVisible="{Binding HasLeftovers}">
+          <TextBlock Classes="section" Text="{loc:Tr removal.leftovers}" />
+          <ItemsControl ItemsSource="{Binding Leftovers}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="x:String">
+                <TextBlock Classes="mono" Text="{Binding}" TextWrapping="Wrap"
+                           Foreground="{DynamicResource WarningText}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <StackPanel Spacing="10" IsVisible="{Binding ShowRemovalOutcome}">
+          <TextBlock Classes="muted" TextWrapping="Wrap"
+                     Text="{loc:Tr removal.outcome}" />
+          <Border Classes="inset">
+            <ItemsControl ItemsSource="{Binding DeleteByHand}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="x:String">
+                  <TextBlock Classes="mono" Text="{Binding}" TextWrapping="Wrap"
+                             Foreground="{DynamicResource TextPrimary}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+          <Button Classes="accent" Content="{loc:Tr removal.close}" HorizontalAlignment="Left"
+                  Command="{Binding CloseCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

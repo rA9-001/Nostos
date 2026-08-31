@@ -37,9 +37,35 @@ public interface ITweak
 }
 
 /// <param name="IsApplicable">False when the tweak cannot work here.</param>
-/// <param name="Reason">Shown to the user when not applicable, e.g. "needs Windows 11 22H2 or later".</param>
-public readonly record struct Applicability(bool IsApplicable, string? Reason = null)
+/// <param name="Reason">
+/// Shown to the user when not applicable, e.g. "needs Windows 11 22H2 or later". Always
+/// English: this is what the CLI prints, what goes in a log, and what a bug report quotes.
+/// </param>
+/// <param name="ReasonKey">
+/// The string-table key for <paramref name="Reason"/>, when one exists.
+///
+/// Carried alongside the English rather than instead of it, because these are produced deep in
+/// the tweak layer -- which, on an installed copy, is running inside a machine-wide service
+/// under SYSTEM with no user and no language. The service cannot know what language to answer
+/// in, so it sends both and lets whoever is displaying it decide. A window with a language
+/// setting looks the key up; the CLI, the journal and the log ignore it.
+/// </param>
+/// <param name="ReasonArgs">
+/// What to substitute into the translated string, in order. Strings rather than objects so the
+/// pair survives the trip over the pipe as ordinary JSON.
+/// </param>
+public readonly record struct Applicability(
+    bool IsApplicable,
+    string? Reason = null,
+    string? ReasonKey = null,
+    IReadOnlyList<string>? ReasonArgs = null)
 {
     public static readonly Applicability Applicable = new(true);
+
+    /// <summary>Not applicable, with English text only. Nothing translates this one.</summary>
     public static Applicability No(string reason) => new(false, reason);
+
+    /// <summary>Not applicable, with English text and the key that translates it.</summary>
+    public static Applicability No(string reasonKey, string reason, params string[] args)
+        => new(false, reason, reasonKey, args);
 }

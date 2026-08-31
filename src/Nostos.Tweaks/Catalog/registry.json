@@ -8,10 +8,7 @@
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "mmcss",
-      "scheduler"
-    ],
+    "tags": ["mmcss", "scheduler"],
     "values": [],
     "choices": [
       {
@@ -25,13 +22,7 @@
             "title": "Windows default - 20%",
             "description": "Writes the value Windows client ships with. Use this to pin the setting explicitly, so a future Windows update that changes the default is caught by drift reconciliation.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile",
-                "name": "SystemResponsiveness",
-                "kind": "DWord",
-                "value": "20"
-              }
+              { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile", "name": "SystemResponsiveness", "kind": "DWord", "value": "20" }
             ]
           },
           {
@@ -40,13 +31,7 @@
             "description": "Halves the reservation. Leaves enough for the audio engine and background work while giving MMCSS-registered game threads more room. This is the one to pick if you are not sure.",
             "recommended": true,
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile",
-                "name": "SystemResponsiveness",
-                "kind": "DWord",
-                "value": "10"
-              }
+              { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile", "name": "SystemResponsiveness", "kind": "DWord", "value": "10" }
             ]
           },
           {
@@ -54,13 +39,7 @@
             "title": "No reservation - 0%",
             "description": "Reserves nothing for non-multimedia work. Widely recommended and widely regretted: it starves the audio engine, which shows up as crackling or dropouts under load. Offered because people set it anyway, and doing it here means it is journaled and revertible.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile",
-                "name": "SystemResponsiveness",
-                "kind": "DWord",
-                "value": "0"
-              }
+              { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile", "name": "SystemResponsiveness", "kind": "DWord", "value": "0" }
             ]
           }
         ]
@@ -76,18 +55,9 @@
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "mmcss",
-      "latency"
-    ],
+    "tags": ["mmcss", "latency"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile",
-        "name": "NetworkThrottlingIndex",
-        "kind": "DWord",
-        "value": "0xFFFFFFFF"
-      }
+      { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile", "name": "NetworkThrottlingIndex", "kind": "DWord", "value": "0xFFFFFFFF" }
     ]
   },
   {
@@ -99,33 +69,11 @@
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "mmcss",
-      "scheduler",
-      "widely-shared"
-    ],
+    "tags": ["mmcss", "scheduler", "widely-shared"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games",
-        "name": "Priority",
-        "kind": "DWord",
-        "value": "6"
-      },
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games",
-        "name": "Scheduling Category",
-        "kind": "String",
-        "value": "High"
-      },
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games",
-        "name": "SFIO Priority",
-        "kind": "String",
-        "value": "High"
-      }
+      { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games", "name": "Priority", "kind": "DWord", "value": "6" },
+      { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games", "name": "Scheduling Category", "kind": "String", "value": "High" },
+      { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games", "name": "SFIO Priority", "kind": "String", "value": "High" }
     ]
   },
   {
@@ -137,18 +85,9 @@
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Measured",
-    "tags": [
-      "gamedvr",
-      "capture"
-    ],
+    "tags": ["gamedvr", "capture"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\GameDVR",
-        "name": "AllowGameDVR",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\GameDVR", "name": "AllowGameDVR", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -161,18 +100,9 @@
     "risk": "Safe",
     "evidence": "Measured",
     "requiresElevation": false,
-    "tags": [
-      "gamedvr",
-      "capture"
-    ],
+    "tags": ["gamedvr", "capture"],
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "System\\GameConfigStore",
-        "name": "GameDVR_Enabled",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKCU", "key": "System\\GameConfigStore", "name": "GameDVR_Enabled", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -186,18 +116,9 @@
     "evidence": "Plausible",
     "requiresReboot": true,
     "minBuild": 19041,
-    "tags": [
-      "hags",
-      "wddm"
-    ],
+    "tags": ["hags", "wddm"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers",
-        "name": "HwSchMode",
-        "kind": "DWord",
-        "value": "2"
-      }
+      { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers", "name": "HwSchMode", "kind": "DWord", "value": "2" }
     ]
   },
   {
@@ -210,10 +131,7 @@
     "risk": "Moderate",
     "evidence": "Plausible",
     "requiresReboot": true,
-    "tags": [
-      "tdr",
-      "widely-shared"
-    ],
+    "tags": ["tdr", "widely-shared"],
     "values": [],
     "choices": [
       {
@@ -227,13 +145,7 @@
             "title": "Windows default - 2 seconds",
             "description": "The shipped timeout. A hung driver is reset quickly, so a genuine fault shows up as a brief flicker rather than a long freeze.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers",
-                "name": "TdrDelay",
-                "kind": "DWord",
-                "value": "2"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers", "name": "TdrDelay", "kind": "DWord", "value": "2" }
             ]
           },
           {
@@ -242,13 +154,7 @@
             "description": "Tolerates long shader compilation and heavy GPU work without a spurious reset. The cost is that a real driver hang leaves you looking at a frozen screen for eight seconds instead of two.",
             "recommended": true,
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers",
-                "name": "TdrDelay",
-                "kind": "DWord",
-                "value": "8"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers", "name": "TdrDelay", "kind": "DWord", "value": "8" }
             ]
           },
           {
@@ -256,13 +162,7 @@
             "title": "Compute workloads - 60 seconds",
             "description": "For machines running GPU compute kernels that legitimately take a minute. Wrong for gaming: a hang becomes a minute-long freeze, and if you are hitting the timeout while playing, the fault is the overclock, the card or the driver, and hiding it does not fix it.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers",
-                "name": "TdrDelay",
-                "kind": "DWord",
-                "value": "60"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\GraphicsDrivers", "name": "TdrDelay", "kind": "DWord", "value": "60" }
             ]
           }
         ]
@@ -279,33 +179,11 @@
     "risk": "Safe",
     "evidence": "Plausible",
     "requiresReboot": false,
-    "tags": [
-      "mouse",
-      "input",
-      "aim"
-    ],
+    "tags": ["mouse", "input", "aim"],
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "Control Panel\\Mouse",
-        "name": "MouseSpeed",
-        "kind": "String",
-        "value": "0"
-      },
-      {
-        "hive": "HKCU",
-        "key": "Control Panel\\Mouse",
-        "name": "MouseThreshold1",
-        "kind": "String",
-        "value": "0"
-      },
-      {
-        "hive": "HKCU",
-        "key": "Control Panel\\Mouse",
-        "name": "MouseThreshold2",
-        "kind": "String",
-        "value": "0"
-      }
+      { "hive": "HKCU", "key": "Control Panel\\Mouse", "name": "MouseSpeed", "kind": "String", "value": "0" },
+      { "hive": "HKCU", "key": "Control Panel\\Mouse", "name": "MouseThreshold1", "kind": "String", "value": "0" },
+      { "hive": "HKCU", "key": "Control Panel\\Mouse", "name": "MouseThreshold2", "kind": "String", "value": "0" }
     ]
   },
   {
@@ -319,19 +197,9 @@
     "evidence": "Plausible",
     "requiresReboot": false,
     "desktopOnly": true,
-    "tags": [
-      "ecoqos",
-      "throttling",
-      "cpu"
-    ],
+    "tags": ["ecoqos", "throttling", "cpu"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SYSTEM\\CurrentControlSet\\Control\\Power\\PowerThrottling",
-        "name": "PowerThrottlingOff",
-        "kind": "DWord",
-        "value": "1"
-      }
+      { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\Power\\PowerThrottling", "name": "PowerThrottlingOff", "kind": "DWord", "value": "1" }
     ]
   },
   {
@@ -344,19 +212,9 @@
     "risk": "Moderate",
     "evidence": "Plausible",
     "requiresReboot": true,
-    "tags": [
-      "dwm",
-      "overlay",
-      "flicker"
-    ],
+    "tags": ["dwm", "overlay", "flicker"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Microsoft\\Windows\\Dwm",
-        "name": "OverlayTestMode",
-        "kind": "DWord",
-        "value": "5"
-      }
+      { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\Windows\\Dwm", "name": "OverlayTestMode", "kind": "DWord", "value": "5" }
     ]
   },
   {
@@ -369,18 +227,9 @@
     "risk": "Safe",
     "evidence": "Plausible",
     "requiresReboot": false,
-    "tags": [
-      "uwp",
-      "background"
-    ],
+    "tags": ["uwp", "background"],
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications",
-        "name": "GlobalUserDisabled",
-        "kind": "DWord",
-        "value": "1"
-      }
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications", "name": "GlobalUserDisabled", "kind": "DWord", "value": "1" }
     ]
   },
   {
@@ -393,18 +242,9 @@
     "risk": "Safe",
     "evidence": "Plausible",
     "requiresReboot": false,
-    "tags": [
-      "notifications",
-      "focus"
-    ],
+    "tags": ["notifications", "focus"],
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\PushNotifications",
-        "name": "ToastEnabled",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKCU", "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\PushNotifications", "name": "ToastEnabled", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -417,10 +257,7 @@
     "risk": "Safe",
     "evidence": "Plausible",
     "requiresReboot": false,
-    "tags": [
-      "gamemode",
-      "scheduler"
-    ],
+    "tags": ["gamemode", "scheduler"],
     "values": [],
     "choices": [
       {
@@ -435,13 +272,7 @@
             "description": "The Windows default and Microsoft's own recommendation. Keeps Windows Update from restarting the machine mid-match, which is the part nobody argues with.",
             "recommended": true,
             "values": [
-              {
-                "hive": "HKCU",
-                "key": "Software\\Microsoft\\GameBar",
-                "name": "AutoGameModeEnabled",
-                "kind": "DWord",
-                "value": "1"
-              }
+              { "hive": "HKCU", "key": "Software\\Microsoft\\GameBar", "name": "AutoGameModeEnabled", "kind": "DWord", "value": "1" }
             ]
           },
           {
@@ -449,13 +280,7 @@
             "title": "Off",
             "description": "Turns it off. Worth trying only if you are chasing a specific stutter that you have actually traced to Game Mode; a handful of titles have historically behaved worse with it on.",
             "values": [
-              {
-                "hive": "HKCU",
-                "key": "Software\\Microsoft\\GameBar",
-                "name": "AutoGameModeEnabled",
-                "kind": "DWord",
-                "value": "0"
-              }
+              { "hive": "HKCU", "key": "Software\\Microsoft\\GameBar", "name": "AutoGameModeEnabled", "kind": "DWord", "value": "0" }
             ]
           }
         ]
@@ -472,20 +297,9 @@
     "risk": "Moderate",
     "evidence": "Plausible",
     "requiresReboot": true,
-    "tags": [
-      "usb",
-      "mouse",
-      "controller",
-      "power"
-    ],
+    "tags": ["usb", "mouse", "controller", "power"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SYSTEM\\CurrentControlSet\\Services\\USB",
-        "name": "DisableSelectiveSuspend",
-        "kind": "DWord",
-        "value": "1"
-      }
+      { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Services\\USB", "name": "DisableSelectiveSuspend", "kind": "DWord", "value": "1" }
     ]
   },
   {
@@ -498,41 +312,12 @@
     "risk": "Safe",
     "evidence": "Plausible",
     "requiresReboot": false,
-    "tags": [
-      "fse",
-      "fullscreen",
-      "dwm",
-      "present"
-    ],
+    "tags": ["fse", "fullscreen", "dwm", "present"],
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "System\\GameConfigStore",
-        "name": "GameDVR_FSEBehaviorMode",
-        "kind": "DWord",
-        "value": "2"
-      },
-      {
-        "hive": "HKCU",
-        "key": "System\\GameConfigStore",
-        "name": "GameDVR_HonorUserFSEBehaviorMode",
-        "kind": "DWord",
-        "value": "1"
-      },
-      {
-        "hive": "HKCU",
-        "key": "System\\GameConfigStore",
-        "name": "GameDVR_DXGIHonorFSEWindowsCompatible",
-        "kind": "DWord",
-        "value": "1"
-      },
-      {
-        "hive": "HKCU",
-        "key": "System\\GameConfigStore",
-        "name": "GameDVR_EFSEFeatureFlags",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKCU", "key": "System\\GameConfigStore", "name": "GameDVR_FSEBehaviorMode", "kind": "DWord", "value": "2" },
+      { "hive": "HKCU", "key": "System\\GameConfigStore", "name": "GameDVR_HonorUserFSEBehaviorMode", "kind": "DWord", "value": "1" },
+      { "hive": "HKCU", "key": "System\\GameConfigStore", "name": "GameDVR_DXGIHonorFSEWindowsCompatible", "kind": "DWord", "value": "1" },
+      { "hive": "HKCU", "key": "System\\GameConfigStore", "name": "GameDVR_EFSEFeatureFlags", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -545,19 +330,9 @@
     "risk": "Safe",
     "evidence": "Plausible",
     "requiresReboot": false,
-    "tags": [
-      "dwm",
-      "acrylic",
-      "compositor"
-    ],
+    "tags": ["dwm", "acrylic", "compositor"],
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
-        "name": "EnableTransparency",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", "name": "EnableTransparency", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -569,48 +344,23 @@
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "shell",
-      "dwm",
-      "animation"
-    ],
+    "tags": ["shell", "dwm", "animation"],
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects",
-        "name": "VisualFXSetting",
-        "kind": "DWord",
-        "value": "2"
-      },
-      {
-        "hive": "HKCU",
-        "key": "Control Panel\\Desktop\\WindowMetrics",
-        "name": "MinAnimate",
-        "kind": "String",
-        "value": "0"
-      },
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-        "name": "TaskbarAnimations",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\VisualEffects", "name": "VisualFXSetting", "kind": "DWord", "value": "2" },
+      { "hive": "HKCU", "key": "Control Panel\\Desktop\\WindowMetrics", "name": "MinAnimate", "kind": "String", "value": "0" },
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "TaskbarAnimations", "kind": "DWord", "value": "0" }
     ]
   },
   {
     "id": "shell.menu-show-delay",
     "title": "Remove the menu open delay",
     "summary": "Windows waits before opening a menu you have hovered. The wait is 400ms out of the box and is not measuring anything - it is just a pause.",
-    "category": "background",
+    "category": "input-lag",
     "scope": "User",
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Measured",
-    "tags": [
-      "shell",
-      "responsiveness"
-    ],
+    "tags": ["shell", "responsiveness"],
     "values": [],
     "choices": [
       {
@@ -625,13 +375,7 @@
             "description": "Menus open on hover with no wait at all. The one downside is that sweeping the pointer across a menu bar now opens every menu it passes over, which some people find busy.",
             "recommended": true,
             "values": [
-              {
-                "hive": "HKCU",
-                "key": "Control Panel\\Desktop",
-                "name": "MenuShowDelay",
-                "kind": "String",
-                "value": "0"
-              }
+              { "hive": "HKCU", "key": "Control Panel\\Desktop", "name": "MenuShowDelay", "kind": "String", "value": "0" }
             ]
           },
           {
@@ -639,13 +383,7 @@
             "title": "Short - 100ms",
             "description": "Fast enough to feel immediate, long enough that dragging the pointer across a menu bar does not open everything on the way. The compromise if instant feels twitchy.",
             "values": [
-              {
-                "hive": "HKCU",
-                "key": "Control Panel\\Desktop",
-                "name": "MenuShowDelay",
-                "kind": "String",
-                "value": "100"
-              }
+              { "hive": "HKCU", "key": "Control Panel\\Desktop", "name": "MenuShowDelay", "kind": "String", "value": "100" }
             ]
           },
           {
@@ -653,13 +391,7 @@
             "title": "Windows default - 400ms",
             "description": "Writes the value Windows ships with. Use this to pin the setting explicitly rather than leaving it unset, so drift reconciliation has something to compare against.",
             "values": [
-              {
-                "hive": "HKCU",
-                "key": "Control Panel\\Desktop",
-                "name": "MenuShowDelay",
-                "kind": "String",
-                "value": "400"
-              }
+              { "hive": "HKCU", "key": "Control Panel\\Desktop", "name": "MenuShowDelay", "kind": "String", "value": "400" }
             ]
           }
         ]
@@ -676,19 +408,21 @@
     "risk": "Safe",
     "evidence": "Plausible",
     "minBuild": 22000,
-    "tags": [
-      "shell",
-      "taskbar",
-      "widgets"
-    ],
+    "tags": ["shell", "taskbar", "widgets"],
+    // Widgets can be taken away machine-wide by policy, and when it has been, Windows refuses
+    // to let anything write TaskbarDa -- the per-user value this tweak sets. Not by ACL: the
+    // key is fully writable and every other value in it accepts a write, so nothing this
+    // program could read told it in advance. Without this the row offered a button that could
+    // only ever fail.
+    "overriddenBy": {
+      "hive": "HKLM",
+      "key": "SOFTWARE\\Policies\\Microsoft\\Dsh",
+      "name": "AllowNewsAndInterests",
+      "whenValue": "0",
+      "describe": "Windows Components > Widgets > Allow widgets"
+    },
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
-        "name": "TaskbarDa",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "name": "TaskbarDa", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -701,19 +435,9 @@
     "risk": "Safe",
     "evidence": "Plausible",
     "minBuild": 22000,
-    "tags": [
-      "shell",
-      "taskbar",
-      "search"
-    ],
+    "tags": ["shell", "taskbar", "search"],
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\SearchSettings",
-        "name": "IsDynamicSearchBoxEnabled",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\SearchSettings", "name": "IsDynamicSearchBoxEnabled", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -725,54 +449,14 @@
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "shell",
-      "advertising",
-      "start-menu"
-    ],
+    "tags": ["shell", "advertising", "start-menu"],
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-        "name": "SystemPaneSuggestionsEnabled",
-        "kind": "DWord",
-        "value": "0"
-      },
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-        "name": "SilentInstalledAppsEnabled",
-        "kind": "DWord",
-        "value": "0"
-      },
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-        "name": "SubscribedContent-338389Enabled",
-        "kind": "DWord",
-        "value": "0"
-      },
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-        "name": "SubscribedContent-338393Enabled",
-        "kind": "DWord",
-        "value": "0"
-      },
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-        "name": "SubscribedContent-353694Enabled",
-        "kind": "DWord",
-        "value": "0"
-      },
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager",
-        "name": "SubscribedContent-353696Enabled",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SystemPaneSuggestionsEnabled", "kind": "DWord", "value": "0" },
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SilentInstalledAppsEnabled", "kind": "DWord", "value": "0" },
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-338389Enabled", "kind": "DWord", "value": "0" },
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-338393Enabled", "kind": "DWord", "value": "0" },
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-353694Enabled", "kind": "DWord", "value": "0" },
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "name": "SubscribedContent-353696Enabled", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -784,18 +468,9 @@
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Measured",
-    "tags": [
-      "windows-update",
-      "reboot"
-    ],
+    "tags": ["windows-update", "reboot"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
-        "name": "NoAutoRebootWithLoggedOnUsers",
-        "kind": "DWord",
-        "value": "1"
-      }
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU", "name": "NoAutoRebootWithLoggedOnUsers", "kind": "DWord", "value": "1" }
     ]
   },
   {
@@ -807,11 +482,7 @@
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "windows-update",
-      "bandwidth",
-      "p2p"
-    ],
+    "tags": ["windows-update", "bandwidth", "p2p"],
     "values": [],
     "choices": [
       {
@@ -826,13 +497,7 @@
             "description": "Updates come over plain HTTP from Microsoft and this PC never uploads to anyone. Downloads can be slower on a slow line, which is a cost paid once per update rather than every evening.",
             "recommended": true,
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization",
-                "name": "DODownloadMode",
-                "kind": "DWord",
-                "value": "0"
-              }
+              { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization", "name": "DODownloadMode", "kind": "DWord", "value": "0" }
             ]
           },
           {
@@ -840,13 +505,7 @@
             "title": "PCs on my local network only",
             "description": "Keeps peer sharing inside your own network, which is genuinely useful with several Windows machines at home, and stops the upload ever leaving your router.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization",
-                "name": "DODownloadMode",
-                "kind": "DWord",
-                "value": "1"
-              }
+              { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DeliveryOptimization", "name": "DODownloadMode", "kind": "DWord", "value": "1" }
             ]
           }
         ]
@@ -862,19 +521,9 @@
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "network",
-      "qos",
-      "widely-shared"
-    ],
+    "tags": ["network", "qos", "widely-shared"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\Psched",
-        "name": "NonBestEffortLimit",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\Psched", "name": "NonBestEffortLimit", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -887,19 +536,9 @@
     "risk": "Moderate",
     "evidence": "Plausible",
     "requiresReboot": true,
-    "tags": [
-      "memory",
-      "kernel",
-      "widely-shared"
-    ],
+    "tags": ["memory", "kernel", "widely-shared"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management",
-        "name": "DisablePagingExecutive",
-        "kind": "DWord",
-        "value": "1"
-      }
+      { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management", "name": "DisablePagingExecutive", "kind": "DWord", "value": "1" }
     ]
   },
   {
@@ -912,12 +551,7 @@
     "risk": "Moderate",
     "evidence": "Plausible",
     "requiresReboot": true,
-    "tags": [
-      "memory",
-      "prefetch",
-      "disk",
-      "widely-shared"
-    ],
+    "tags": ["memory", "prefetch", "disk", "widely-shared"],
     "values": [],
     "choices": [
       {
@@ -932,13 +566,7 @@
             "description": "The setting Windows ships with. Pinning it explicitly means drift reconciliation will tell you when something else changes it behind your back, which tweak packs do.",
             "recommended": true,
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
-                "name": "EnablePrefetcher",
-                "kind": "DWord",
-                "value": "3"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters", "name": "EnablePrefetcher", "kind": "DWord", "value": "3" }
             ]
           },
           {
@@ -946,13 +574,7 @@
             "title": "Boot only",
             "description": "Keeps the boot prefetch, which measurably shortens start-up, and drops the per-application one. This is the middle setting people usually mean when they say prefetch off.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
-                "name": "EnablePrefetcher",
-                "kind": "DWord",
-                "value": "2"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters", "name": "EnablePrefetcher", "kind": "DWord", "value": "2" }
             ]
           },
           {
@@ -960,13 +582,7 @@
             "title": "Nothing",
             "description": "No prefetching at all. Application launches get slower, the game's included, and on an NVMe drive the background I/O you saved was not costing you much to begin with.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters",
-                "name": "EnablePrefetcher",
-                "kind": "DWord",
-                "value": "0"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management\\PrefetchParameters", "name": "EnablePrefetcher", "kind": "DWord", "value": "0" }
             ]
           }
         ]
@@ -983,12 +599,7 @@
     "risk": "Moderate",
     "evidence": "Plausible",
     "requiresReboot": true,
-    "tags": [
-      "input",
-      "mouse",
-      "keyboard",
-      "widely-shared"
-    ],
+    "tags": ["input", "mouse", "keyboard", "widely-shared"],
     "values": [],
     "choices": [
       {
@@ -1003,20 +614,8 @@
             "description": "Half the default, the most commonly recommended value, and still far more headroom than a responsive machine ever uses. This is as far as it is worth going.",
             "recommended": true,
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Services\\mouclass\\Parameters",
-                "name": "MouseDataQueueSize",
-                "kind": "DWord",
-                "value": "50"
-              },
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Services\\kbdclass\\Parameters",
-                "name": "KeyboardDataQueueSize",
-                "kind": "DWord",
-                "value": "50"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Services\\mouclass\\Parameters", "name": "MouseDataQueueSize", "kind": "DWord", "value": "50" },
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Services\\kbdclass\\Parameters", "name": "KeyboardDataQueueSize", "kind": "DWord", "value": "50" }
             ]
           },
           {
@@ -1024,20 +623,8 @@
             "title": "Smallest - 20 packets",
             "description": "The aggressive value from the tweaking forums. At a 1000Hz polling rate that is 20ms of buffer, so anything that stalls longer loses mouse movement outright instead of receiving it late.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Services\\mouclass\\Parameters",
-                "name": "MouseDataQueueSize",
-                "kind": "DWord",
-                "value": "20"
-              },
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Services\\kbdclass\\Parameters",
-                "name": "KeyboardDataQueueSize",
-                "kind": "DWord",
-                "value": "20"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Services\\mouclass\\Parameters", "name": "MouseDataQueueSize", "kind": "DWord", "value": "20" },
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Services\\kbdclass\\Parameters", "name": "KeyboardDataQueueSize", "kind": "DWord", "value": "20" }
             ]
           },
           {
@@ -1045,20 +632,8 @@
             "title": "Windows default - 100 packets",
             "description": "Writes the shipping value explicitly. Useful for putting a machine back after some other tool has been through it, since these two are a favourite of registry tweak packs.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Services\\mouclass\\Parameters",
-                "name": "MouseDataQueueSize",
-                "kind": "DWord",
-                "value": "100"
-              },
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Services\\kbdclass\\Parameters",
-                "name": "KeyboardDataQueueSize",
-                "kind": "DWord",
-                "value": "100"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Services\\mouclass\\Parameters", "name": "MouseDataQueueSize", "kind": "DWord", "value": "100" },
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Services\\kbdclass\\Parameters", "name": "KeyboardDataQueueSize", "kind": "DWord", "value": "100" }
             ]
           }
         ]
@@ -1069,24 +644,14 @@
     "id": "stability.no-restart-on-bluescreen",
     "title": "Stay on the bluescreen instead of rebooting instantly",
     "summary": "By default Windows reboots the moment it crashes, so the stop code is gone before you can read it. This keeps it on screen.",
-    "category": "background",
+    "category": "stability",
     "scope": "Machine",
     "lifetime": "Persistent",
     "risk": "Moderate",
     "evidence": "Plausible",
-    "tags": [
-      "crash",
-      "diagnostics",
-      "bluescreen"
-    ],
+    "tags": ["crash", "diagnostics", "bluescreen"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SYSTEM\\CurrentControlSet\\Control\\CrashControl",
-        "name": "AutoReboot",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\CrashControl", "name": "AutoReboot", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -1098,12 +663,7 @@
     "lifetime": "Persistent",
     "risk": "Moderate",
     "evidence": "Plausible",
-    "tags": [
-      "cpu",
-      "scheduler",
-      "quantum",
-      "widely-shared"
-    ],
+    "tags": ["cpu", "scheduler", "quantum", "widely-shared"],
     "values": [],
     "choices": [
       {
@@ -1117,13 +677,7 @@
             "title": "Windows default - 2",
             "description": "The value a clean Windows client install carries. It is not a setting so much as an instruction to use the per-SKU defaults, which on client are short quantum, variable, 3:1 foreground boost. Pin it here so drift reconciliation catches a tweak pack that changed it behind your back.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl",
-                "name": "Win32PrioritySeparation",
-                "kind": "DWord",
-                "value": "2"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl", "name": "Win32PrioritySeparation", "kind": "DWord", "value": "2" }
             ]
           },
           {
@@ -1132,13 +686,7 @@
             "description": "Spells out the client default explicitly instead of relying on the SKU to supply it. Behaviour is the same as '2' on a desktop Windows install, which is why nobody has ever been able to benchmark a difference. Worth setting only because an explicit value cannot be reinterpreted by a future build.",
             "recommended": true,
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl",
-                "name": "Win32PrioritySeparation",
-                "kind": "DWord",
-                "value": "38"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl", "name": "Win32PrioritySeparation", "kind": "DWord", "value": "38" }
             ]
           },
           {
@@ -1146,13 +694,7 @@
             "title": "Short, fixed, no boost - 40 (0x28)",
             "description": "Every thread gets the same short quantum whether or not its window has focus. Trades peak foreground throughput for a scheduler that behaves the same way all the time, which is the argument people make for it on frametime consistency. It is an argument, not a measurement.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl",
-                "name": "Win32PrioritySeparation",
-                "kind": "DWord",
-                "value": "40"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl", "name": "Win32PrioritySeparation", "kind": "DWord", "value": "40" }
             ]
           },
           {
@@ -1160,13 +702,7 @@
             "title": "Background services - 24 (0x18)",
             "description": "What the Control Panel writes when you pick 'Adjust for best performance of: Background services'. Long fixed quantum, no foreground boost. This is the one to pick if the machine also streams, encodes or hosts a server while you play, and the wrong one if it only plays.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl",
-                "name": "Win32PrioritySeparation",
-                "kind": "DWord",
-                "value": "24"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\PriorityControl", "name": "Win32PrioritySeparation", "kind": "DWord", "value": "24" }
             ]
           }
         ]
@@ -1177,18 +713,13 @@
     "id": "memory.svchost-split-threshold",
     "title": "Group services back into shared svchost processes",
     "summary": "Windows splits every service into its own svchost.exe on machines with more than 3.5 GB of RAM. This is the threshold that decides, and raising it above your RAM puts the grouping back.",
-    "category": "background",
+    "category": "startup",
     "scope": "Machine",
     "lifetime": "Persistent",
     "risk": "Moderate",
     "evidence": "Plausible",
     "requiresReboot": true,
-    "tags": [
-      "memory",
-      "services",
-      "svchost",
-      "widely-shared"
-    ],
+    "tags": ["memory", "services", "svchost", "widely-shared"],
     "values": [],
     "choices": [
       {
@@ -1202,13 +733,7 @@
             "title": "Windows default - 3.5 GB, one process per service",
             "description": "The threshold Windows ships. On any machine with more than 3.5 GB of RAM this means each service runs isolated, which is why Task Manager shows dozens of svchost.exe entries. Isolation is the point: one service crashing cannot take unrelated ones with it.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control",
-                "name": "SvcHostSplitThresholdInKB",
-                "kind": "DWord",
-                "value": "0x380000"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control", "name": "SvcHostSplitThresholdInKB", "kind": "DWord", "value": "0x380000" }
             ]
           },
           {
@@ -1217,13 +742,7 @@
             "description": "Sets the threshold higher than any amount of RAM you could have, so Windows treats the machine as low-memory and packs services into shared processes. Saves a few hundred megabytes of per-process overhead and shortens the process list. Costs you the isolation: a crash in one grouped service now takes its neighbours down too.",
             "recommended": true,
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control",
-                "name": "SvcHostSplitThresholdInKB",
-                "kind": "DWord",
-                "value": "0xFFFFFFFF"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control", "name": "SvcHostSplitThresholdInKB", "kind": "DWord", "value": "0xFFFFFFFF" }
             ]
           }
         ]
@@ -1234,41 +753,27 @@
     "id": "shell.startup-delay-off",
     "title": "Remove Explorer's startup-item delay",
     "summary": "Explorer deliberately waits about ten seconds after the desktop appears before launching your startup programs, so the desktop feels ready sooner. This removes the wait.",
-    "category": "background",
+    "category": "startup",
     "scope": "User",
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "shell",
-      "startup",
-      "boot"
-    ],
+    "tags": ["shell", "startup", "boot"],
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Serialize",
-        "name": "StartupDelayInMSec",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKCU", "key": "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Serialize", "name": "StartupDelayInMSec", "kind": "DWord", "value": "0" }
     ]
   },
   {
     "id": "storage.ntfs-last-access-off",
     "title": "Stop NTFS recording when files were last read",
     "summary": "NTFS writes a timestamp every time a file is opened, including files nothing changed. Turning it off removes a metadata write from every read on the volume.",
-    "category": "background",
+    "category": "storage",
     "scope": "Machine",
     "lifetime": "Persistent",
     "risk": "Moderate",
     "evidence": "Plausible",
     "requiresReboot": true,
-    "tags": [
-      "storage",
-      "ntfs",
-      "disk"
-    ],
+    "tags": ["storage", "ntfs", "disk"],
     "values": [],
     "choices": [
       {
@@ -1282,13 +787,7 @@
             "title": "System managed, timestamps on - 0x80000002",
             "description": "The shipped value. Windows decides, and reserves the right to change its mind on a future build. Pin it here if you want drift reconciliation to notice when something else has been at this key.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\FileSystem",
-                "name": "NtfsDisableLastAccessUpdate",
-                "kind": "DWord",
-                "value": "0x80000002"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\FileSystem", "name": "NtfsDisableLastAccessUpdate", "kind": "DWord", "value": "0x80000002" }
             ]
           },
           {
@@ -1297,13 +796,7 @@
             "description": "Stops the write and takes the setting out of Windows' hands so it stays stopped. Backup tools that select files by last-access time, and a handful of forensic and archiving tools, lose information they were relying on. Nothing a game does reads it.",
             "recommended": true,
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Control\\FileSystem",
-                "name": "NtfsDisableLastAccessUpdate",
-                "kind": "DWord",
-                "value": "0x80000001"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\FileSystem", "name": "NtfsDisableLastAccessUpdate", "kind": "DWord", "value": "0x80000001" }
             ]
           }
         ]
@@ -1314,26 +807,15 @@
     "id": "storage.ntfs-8dot3-off",
     "title": "Stop NTFS generating MS-DOS short filenames",
     "summary": "Every file with a long name also gets a hidden PROGRA~1-style alias, which costs a directory lookup and an extra index entry per create. Almost nothing has needed them since 16-bit software stopped shipping.",
-    "category": "background",
+    "category": "storage",
     "scope": "Machine",
     "lifetime": "Persistent",
     "risk": "Moderate",
     "evidence": "Plausible",
     "requiresReboot": true,
-    "tags": [
-      "storage",
-      "ntfs",
-      "disk",
-      "legacy"
-    ],
+    "tags": ["storage", "ntfs", "disk", "legacy"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SYSTEM\\CurrentControlSet\\Control\\FileSystem",
-        "name": "NtfsDisable8dot3NameCreation",
-        "kind": "DWord",
-        "value": "1"
-      }
+      { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\FileSystem", "name": "NtfsDisable8dot3NameCreation", "kind": "DWord", "value": "1" }
     ]
   },
   {
@@ -1345,20 +827,9 @@
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "power",
-      "boot",
-      "drivers",
-      "widely-shared"
-    ],
+    "tags": ["power", "boot", "drivers", "widely-shared"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power",
-        "name": "HiberbootEnabled",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Power", "name": "HiberbootEnabled", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -1371,20 +842,9 @@
     "risk": "Experimental",
     "evidence": "Plausible",
     "requiresReboot": true,
-    "tags": [
-      "power",
-      "sleep",
-      "s3",
-      "modern-standby"
-    ],
+    "tags": ["power", "sleep", "s3", "modern-standby"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SYSTEM\\CurrentControlSet\\Control\\Power",
-        "name": "PlatformAoAcOverride",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Control\\Power", "name": "PlatformAoAcOverride", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -1396,27 +856,18 @@
     "lifetime": "Persistent",
     "risk": "Moderate",
     "evidence": "Plausible",
-    "tags": [
-      "drivers",
-      "windows-update",
-      "gpu",
-      "widely-shared"
-    ],
+    "tags": ["drivers", "windows-update", "gpu", "widely-shared"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DriverSearching",
-        "name": "SearchOrderConfig",
-        "kind": "DWord",
-        "value": "0"
-      },
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate",
-        "name": "ExcludeWUDriversInQualityUpdate",
-        "kind": "DWord",
-        "value": "1"
-      }
+      { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\DriverSearching", "name": "SearchOrderConfig", "kind": "DWord", "value": "0" },
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ExcludeWUDriversInQualityUpdate", "kind": "DWord", "value": "1" },
+
+      // The three below are the policy half of the same setting. SearchOrderConfig above is
+      // the user preference behind the old Device installation settings dialog, and a
+      // preference is something Windows feels free to re-derive; a policy is not. Both,
+      // because either one alone leaves a path open.
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DriverSearching", "name": "DontSearchWindowsUpdate", "kind": "DWord", "value": "1" },
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DriverSearching", "name": "DontPromptForWindowsUpdate", "kind": "DWord", "value": "1" },
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DriverSearching", "name": "DriverUpdateWizardWuSearchEnabled", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -1428,35 +879,11 @@
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Measured",
-    "tags": [
-      "input",
-      "keyboard",
-      "focus",
-      "accessibility",
-      "widely-shared"
-    ],
+    "tags": ["input", "keyboard", "focus", "accessibility", "widely-shared"],
     "values": [
-      {
-        "hive": "HKCU",
-        "key": "Control Panel\\Accessibility\\StickyKeys",
-        "name": "Flags",
-        "kind": "String",
-        "value": "506"
-      },
-      {
-        "hive": "HKCU",
-        "key": "Control Panel\\Accessibility\\Keyboard Response",
-        "name": "Flags",
-        "kind": "String",
-        "value": "122"
-      },
-      {
-        "hive": "HKCU",
-        "key": "Control Panel\\Accessibility\\ToggleKeys",
-        "name": "Flags",
-        "kind": "String",
-        "value": "58"
-      }
+      { "hive": "HKCU", "key": "Control Panel\\Accessibility\\StickyKeys", "name": "Flags", "kind": "String", "value": "506" },
+      { "hive": "HKCU", "key": "Control Panel\\Accessibility\\Keyboard Response", "name": "Flags", "kind": "String", "value": "122" },
+      { "hive": "HKCU", "key": "Control Panel\\Accessibility\\ToggleKeys", "name": "Flags", "kind": "String", "value": "58" }
     ]
   },
   {
@@ -1469,12 +896,7 @@
     "risk": "Risky",
     "evidence": "Plausible",
     "requiresReboot": true,
-    "tags": [
-      "network",
-      "ipv6",
-      "teredo",
-      "widely-shared"
-    ],
+    "tags": ["network", "ipv6", "teredo", "widely-shared"],
     "values": [],
     "choices": [
       {
@@ -1488,13 +910,7 @@
             "title": "Windows default - everything enabled",
             "description": "IPv6 fully on with its normal precedence, which is what a clean install does by not having this value at all. Writing a 0 is equivalent and makes the state explicit so drift reconciliation can see it.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
-                "name": "DisabledComponents",
-                "kind": "DWord",
-                "value": "0"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters", "name": "DisabledComponents", "kind": "DWord", "value": "0" }
             ]
           },
           {
@@ -1503,13 +919,7 @@
             "description": "Leaves IPv6 working but tries IPv4 first when a name resolves to both. This is the one worth trying: it removes the connect-timeout stall you get when a host advertises IPv6 that does not actually route, without breaking anything that needs IPv6.",
             "recommended": true,
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
-                "name": "DisabledComponents",
-                "kind": "DWord",
-                "value": "0x20"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters", "name": "DisabledComponents", "kind": "DWord", "value": "0x20" }
             ]
           },
           {
@@ -1517,13 +927,7 @@
             "title": "Disable the tunnel interfaces - 0x01",
             "description": "Turns off Teredo, 6to4 and ISATAP while leaving native IPv6 alone. Teredo is what Xbox multiplayer and some peer-to-peer matchmaking use to punch through NAT, so turning it off can leave you unable to join parties.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
-                "name": "DisabledComponents",
-                "kind": "DWord",
-                "value": "0x01"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters", "name": "DisabledComponents", "kind": "DWord", "value": "0x01" }
             ]
           },
           {
@@ -1531,13 +935,7 @@
             "title": "Disable IPv6 entirely - 0xFF",
             "description": "What the guides mean by 'disable IPv6'. Microsoft explicitly does not recommend it and tests Windows with IPv6 on. Expect Xbox and Store multiplayer, some VPNs and some ISPs' native connectivity to stop working, and expect the cause to be extremely hard to spot later.",
             "values": [
-              {
-                "hive": "HKLM",
-                "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters",
-                "name": "DisabledComponents",
-                "kind": "DWord",
-                "value": "0xFF"
-              }
+              { "hive": "HKLM", "key": "SYSTEM\\CurrentControlSet\\Services\\Tcpip6\\Parameters", "name": "DisabledComponents", "kind": "DWord", "value": "0xFF" }
             ]
           }
         ]
@@ -1548,85 +946,44 @@
     "id": "privacy.activity-history-off",
     "title": "Stop Windows collecting and uploading activity history",
     "summary": "The Timeline feed: what you opened, when, and on which device, published to your Microsoft account. The feature's UI was removed years ago; the collection policy was not.",
-    "category": "background",
+    "category": "telemetry",
     "scope": "Machine",
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "privacy",
-      "telemetry",
-      "activity"
-    ],
+    "tags": ["privacy", "telemetry", "activity"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\System",
-        "name": "EnableActivityFeed",
-        "kind": "DWord",
-        "value": "0"
-      },
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\System",
-        "name": "PublishUserActivities",
-        "kind": "DWord",
-        "value": "0"
-      },
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\System",
-        "name": "UploadUserActivities",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\System", "name": "EnableActivityFeed", "kind": "DWord", "value": "0" },
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\System", "name": "PublishUserActivities", "kind": "DWord", "value": "0" },
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\System", "name": "UploadUserActivities", "kind": "DWord", "value": "0" }
     ]
   },
   {
     "id": "privacy.advertising-id-off",
     "title": "Turn off the per-user advertising ID",
     "summary": "Windows hands apps a stable identifier so they can profile you across them. Turning it off costs nothing and buys nothing measurable in a game; it is here because it is a one-line policy and people ask for it.",
-    "category": "background",
+    "category": "telemetry",
     "scope": "Machine",
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "privacy",
-      "advertising"
-    ],
+    "tags": ["privacy", "advertising"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\AdvertisingInfo",
-        "name": "DisabledByGroupPolicy",
-        "kind": "DWord",
-        "value": "1"
-      }
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\AdvertisingInfo", "name": "DisabledByGroupPolicy", "kind": "DWord", "value": "1" }
     ]
   },
   {
     "id": "privacy.telemetry-policy",
     "title": "Set the diagnostic data policy to its lowest allowed level",
     "summary": "The policy behind 'AllowTelemetry=0'. On Home and Pro the floor is Required regardless of what you write here, which is the part the tweak guides leave out.",
-    "category": "background",
+    "category": "telemetry",
     "scope": "Machine",
     "lifetime": "Persistent",
     "risk": "Safe",
     "evidence": "Plausible",
-    "tags": [
-      "privacy",
-      "telemetry",
-      "widely-shared"
-    ],
+    "tags": ["privacy", "telemetry", "widely-shared"],
     "values": [
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection",
-        "name": "AllowTelemetry",
-        "kind": "DWord",
-        "value": "0"
-      }
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection", "name": "AllowTelemetry", "kind": "DWord", "value": "0" }
     ]
   },
   {
@@ -1638,26 +995,152 @@
     "lifetime": "Persistent",
     "risk": "Moderate",
     "evidence": "Plausible",
-    "tags": [
-      "windows-update",
-      "bandwidth",
-      "interruptions"
-    ],
+    "tags": ["windows-update", "bandwidth", "interruptions"],
     "values": [
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU", "name": "NoAutoUpdate", "kind": "DWord", "value": "0" },
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU", "name": "AUOptions", "kind": "DWord", "value": "2" }
+    ]
+  },
+
+  // ============================================================ Windows Update, the rest of it
+  //
+  // update.no-auto-restart, update.notify-before-download and update.delivery-optimization-off
+  // are above. These four cover what those three leave: the driver getting swapped underneath
+  // you, the restart toast, the feature update, and the Store's separate downloader.
+  //
+  // What is deliberately NOT here is the "turn Windows Update off" preset every other tool
+  // ships -- NoAutoUpdate=1 with wuauserv disabled and SoftwareDistribution deleted. The delete
+  // cannot be captured, so it cannot be reverted, so it cannot be an ITweak; and WaaSMedic
+  // repairs the service half on its own schedule, which would leave Verify reporting drift
+  // forever. See docs/tweaks/update.no-driver-updates.md for the longer version.
+
+  {
+    "id": "update.active-hours",
+    "title": "Tell Windows which hours you actually use this PC",
+    "summary": "Active hours are the window Windows Update will not restart or interrupt you in. Windows guesses them from when you are signed in, and guesses badly on a PC that is left on.",
+    "category": "interruptions",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Measured",
+    "tags": ["windows-update", "reboot", "interruptions"],
+    "values": [
+      { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings", "name": "SmartActiveHoursState", "kind": "DWord", "value": "0" }
+    ],
+    "choices": [
       {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
-        "name": "NoAutoUpdate",
-        "kind": "DWord",
-        "value": "0"
-      },
-      {
-        "hive": "HKLM",
-        "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
-        "name": "AUOptions",
-        "kind": "DWord",
-        "value": "2"
+        "id": "hours",
+        "title": "The hours to keep quiet",
+        "description": "Windows allows an 18-hour window at most, so this cannot cover the whole day. Pick the block that contains the evenings you play in; the hours outside it are when a restart is allowed to happen.",
+        "default": "wide",
+        "options": [
+          {
+            "id": "wide",
+            "title": "08:00 to 02:00 - the longest window Windows allows",
+            "description": "Eighteen hours, the maximum. Updates may restart the machine between two and eight in the morning, which on a desktop that is left on is exactly when you want them to.",
+            "recommended": true,
+            "values": [
+              { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings", "name": "ActiveHoursStart", "kind": "DWord", "value": "8" },
+              { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings", "name": "ActiveHoursEnd", "kind": "DWord", "value": "2" }
+            ]
+          },
+          {
+            "id": "evenings",
+            "title": "15:00 to 02:00 - afternoons and nights",
+            "description": "Leaves the working day open for restarts, which suits a machine that is genuinely idle until the afternoon. Shorter than it needs to be if you also use the PC in the morning.",
+            "values": [
+              { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings", "name": "ActiveHoursStart", "kind": "DWord", "value": "15" },
+              { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings", "name": "ActiveHoursEnd", "kind": "DWord", "value": "2" }
+            ]
+          },
+          {
+            "id": "daytime",
+            "title": "06:00 to 22:00 - a normal waking day",
+            "description": "Sixteen hours ending at ten in the evening. Choose this only if you are reliably finished by then, because a restart at half past ten is precisely the thing this tweak exists to prevent.",
+            "values": [
+              { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings", "name": "ActiveHoursStart", "kind": "DWord", "value": "6" },
+              { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings", "name": "ActiveHoursEnd", "kind": "DWord", "value": "22" }
+            ]
+          }
+        ]
       }
+    ]
+  },
+
+  {
+    "id": "update.no-restart-notifications",
+    "title": "Silence the restart-required notification",
+    "summary": "The toast that says the PC needs restarting takes focus when it appears. In a fullscreen game a focus change is a dropped frame at best and a minimised window at worst.",
+    "category": "interruptions",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "tags": ["windows-update", "notifications", "focus", "reboot"],
+    "values": [
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU", "name": "SetAutoRestartNotificationDisable", "kind": "DWord", "value": "1" },
+      { "hive": "HKLM", "key": "SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings", "name": "RestartNotificationsAllowed2", "kind": "DWord", "value": "0" }
+    ]
+  },
+
+  {
+    "id": "update.pin-windows-version",
+    "title": "Stay on this Windows version instead of being upgraded",
+    "summary": "Feature updates are a multi-gigabyte download and a long reboot, and they reset settings other tweaks here rely on. Security and quality updates keep arriving normally.",
+    "category": "interruptions",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Moderate",
+    "evidence": "Measured",
+    "proOnly": true,
+    "minBuild": 19041,
+    "tags": ["windows-update", "feature-update", "wufb"],
+    "values": [
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersion", "kind": "DWord", "value": "1" },
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "ProductVersion", "kind": "String", "value": "Windows 11" }
+    ],
+    "choices": [
+      {
+        "id": "version",
+        "title": "The version to stay on",
+        "description": "Pick the version this machine is running now. Naming a newer one does not hold the machine back - it tells Windows to upgrade to that version and then stop, which is an upgrade you did not ask for. Settings, System, About shows what you have.",
+        "default": "25h2",
+        "options": [
+          {
+            "id": "25h2",
+            "title": "Windows 11 25H2",
+            "description": "The current release at the time of writing. Serviced until late 2027 for Pro; after that this pin has to move or the machine stops getting security updates.",
+            "recommended": true,
+            "values": [
+              { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersionInfo", "kind": "String", "value": "25H2" }
+            ]
+          },
+          {
+            "id": "24h2",
+            "title": "Windows 11 24H2",
+            "description": "The previous release. Choose this only if the machine is actually running it, and check its end-of-servicing date before relying on the pin for long.",
+            "values": [
+              { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate", "name": "TargetReleaseVersionInfo", "kind": "String", "value": "24H2" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+
+  {
+    "id": "update.store-auto-download-off",
+    "title": "Stop the Microsoft Store updating apps on its own",
+    "summary": "The Store is a second downloader with its own schedule, and Windows Update's settings do not touch it. It will happily pull a few gigabytes down mid-match.",
+    "category": "ping",
+    "scope": "Machine",
+    "lifetime": "Persistent",
+    "risk": "Safe",
+    "evidence": "Plausible",
+    "proOnly": true,
+    "tags": ["store", "bandwidth", "windows-update"],
+    "values": [
+      { "hive": "HKLM", "key": "SOFTWARE\\Policies\\Microsoft\\WindowsStore", "name": "AutoDownload", "kind": "DWord", "value": "2" }
     ]
   }
 ]

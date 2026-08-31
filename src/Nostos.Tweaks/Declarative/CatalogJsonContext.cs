@@ -16,4 +16,6 @@ namespace Nostos.Tweaks.Declarative;
     AllowTrailingCommas = true,
     UseStringEnumConverter = true)]
 [JsonSerializable(typeof(List<RegistryTweakDefinition>))]
+[JsonSerializable(typeof(List<ServiceTweakDefinition>))]
+[JsonSerializable(typeof(List<AdapterTweakDefinition>))]
 public sealed partial class CatalogJsonContext : JsonSerializerContext;

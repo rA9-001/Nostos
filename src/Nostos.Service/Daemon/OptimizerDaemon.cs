@@ -159,6 +159,10 @@ public sealed class OptimizerDaemon
             IpcCommands.Profiles => IpcResponse.Success(request.Id, ListProfiles()),
             IpcCommands.ApplyProfile => IpcResponse.Success(
                 request.Id, await ApplyProfileAsync(Required<ApplyProfileRequest>(request), ct).ConfigureAwait(false)),
+            IpcCommands.StartupList => IpcResponse.Success(request.Id, StartupItems.List().ToWire()),
+            IpcCommands.StartupSet => IpcResponse.Success(
+                request.Id,
+                await SetStartupAsync(Required<StartupSetRequest>(request), ct).ConfigureAwait(false)),
             _ => IpcResponse.Failure(request.Id, $"unknown command '{request.Command}'"),
         };
     }
@@ -182,7 +186,8 @@ public sealed class OptimizerDaemon
         var m = tweak.Metadata;
         return new TweakSummary(
             m.Id, m.Title, m.Summary, m.Category, m.Scope, m.Lifetime,
-            m.Risk, m.Evidence, m.RequiresReboot, m.RequiresElevation, m.Choices);
+            m.Risk, m.Evidence, m.RequiresReboot, m.RequiresElevation, m.Choices,
+            m.TakesTargetProcess, m.Tags);
     }
 
     private async Task<List<TweakStatusSummary>> StatusAsync(ChangeRequest? request, CancellationToken ct)
@@ -199,12 +204,15 @@ public sealed class OptimizerDaemon
             new TweakSummary(
                 s.Metadata.Id, s.Metadata.Title, s.Metadata.Summary, s.Metadata.Category,
                 s.Metadata.Scope, s.Metadata.Lifetime, s.Metadata.Risk, s.Metadata.Evidence,
-                s.Metadata.RequiresReboot, s.Metadata.RequiresElevation, s.Metadata.Choices),
+                s.Metadata.RequiresReboot, s.Metadata.RequiresElevation, s.Metadata.Choices,
+                s.Metadata.TakesTargetProcess, s.Metadata.Tags),
             s.State.IsApplied,
             s.IsManagedByUs,
             s.State.Description,
             s.Applicability.IsApplicable,
-            s.Applicability.Reason)).ToList();
+            s.Applicability.Reason,
+            s.Applicability.ReasonKey,
+            s.Applicability.ReasonArgs)).ToList();
     }
 
     private async Task<List<ChangeResult>> ApplyAsync(ChangeRequest request, CancellationToken ct)
@@ -217,7 +225,7 @@ public sealed class OptimizerDaemon
 
         var results = selections.Count == 0
             ? []
-            : await _engine.ApplyManyAsync(selections, ToContext(request), request.Origin, ct)
+            : await _engine.ApplyManyAsync(selections, ToContext(request), request.Origin, ct: ct)
                 .ConfigureAwait(false);
 
         return [.. refusals, .. Flatten(results)];
@@ -296,7 +304,7 @@ public sealed class OptimizerDaemon
 
         var results = selections.Count == 0
             ? []
-            : await _engine.ApplyManyAsync(selections, ToContext(change), change.Origin, ct)
+            : await _engine.ApplyManyAsync(selections, ToContext(change), change.Origin, ct: ct)
                 .ConfigureAwait(false);
 
         return [.. refusals, .. Flatten(results)];
@@ -315,8 +323,54 @@ public sealed class OptimizerDaemon
 
     private List<ProfileSummary> ListProfiles()
         => ProfileLoader.LoadDirectory(AppPaths.ProfilesDirectory)
-            .Select(p => new ProfileSummary(p.Name, p.Description, p.Tweaks.Count))
+            .Select(p => new ProfileSummary(
+                p.Name, p.Description, p.Tweaks.Count, [.. p.Tweaks.Select(t => t.TweakId)]))
             .ToList();
+
+    /// <summary>
+    /// Switches one machine-wide startup entry.
+    ///
+    /// The id is resolved against the live machine rather than trusted: the service goes and
+    /// finds the entry itself, so the pipe carries "switch the thing called X" and never "write
+    /// these bytes to this key". An unprivileged caller therefore cannot use this to reach any
+    /// part of the registry that is not already a startup entry.
+    ///
+    /// Per-user entries are refused for the same reason user-scoped tweaks are: this process is
+    /// LocalSystem, and HKCU here is SYSTEM's own hive. The write would appear to succeed and
+    /// change nothing the signed-in user would ever see. The app does those itself.
+    /// </summary>
+    private async Task<StartupSetResult> SetStartupAsync(StartupSetRequest request, CancellationToken ct)
+    {
+        if (StartupWire.Find(request.Id) is not { } item)
+        {
+            return new StartupSetResult(request.Id, false,
+                "no startup entry with that id; it may have been uninstalled since the list was read");
+        }
+
+        if (!item.IsMachineWide && RunningAsSystem)
+        {
+            return new StartupSetResult(request.Id, false,
+                "per-user startup entries cannot be switched by the LocalSystem service; "
+                + "the app does those itself");
+        }
+
+        try
+        {
+            StartupItems.SetEnabled(item, request.Enabled);
+            _log.Info($"startup: {item.Id} -> {(request.Enabled ? "enabled" : "disabled")}");
+
+            await StartupJournal
+                .RecordAsync(_journal, item.Id, item.Name, request.Enabled, ct)
+                .ConfigureAwait(false);
+
+            return new StartupSetResult(request.Id, true,
+                request.Enabled ? "enabled" : "disabled");
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or IOException or InvalidOperationException)
+        {
+            return new StartupSetResult(request.Id, false, e.Message);
+        }
+    }
 
     private TweakContext ToContext(ChangeRequest? request) => new()
     {

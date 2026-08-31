@@ -1,0 +1,148 @@
+{
+  "name": "intermediate",
+  "description": "Everything in Basic, plus the changes whose cost is a reboot or a trade-off worth naming: the kernel stays in RAM, the network card stops batching packets, Windows Update stops replacing your drivers, and the telemetry and advertising identifiers are turned off. Still nothing that switches a Windows feature off outright.",
+  "order": 1,
+  "tweaks": [
+    {
+      "tweakId": "gamedvr.policy-off"
+    },
+    {
+      "tweakId": "gamedvr.user-capture-off"
+    },
+    {
+      "tweakId": "mmcss.games-task-priority"
+    },
+    {
+      "tweakId": "mmcss.system-responsiveness",
+      "options": {
+        "reserve": "balanced"
+      }
+    },
+    {
+      "tweakId": "power.throttling-off"
+    },
+    {
+      "tweakId": "shell.background-apps-off"
+    },
+    {
+      "tweakId": "shell.game-mode",
+      "options": {
+        "state": "on"
+      }
+    },
+    {
+      "tweakId": "shell.transparency-off"
+    },
+    {
+      "tweakId": "shell.visual-effects"
+    },
+    {
+      "tweakId": "graphics.fullscreen-optimizations-off"
+    },
+    {
+      "tweakId": "input.mouse-acceleration-off"
+    },
+    {
+      "tweakId": "shell.menu-show-delay",
+      "options": {
+        "delay": "instant"
+      }
+    },
+    {
+      "tweakId": "mmcss.network-throttling-off"
+    },
+    {
+      "tweakId": "network.qos-reserved-bandwidth"
+    },
+    {
+      "tweakId": "update.delivery-optimization-off",
+      "options": {
+        "mode": "off"
+      }
+    },
+    {
+      "tweakId": "input.accessibility-shortcuts-off"
+    },
+    {
+      "tweakId": "shell.notifications-off"
+    },
+    {
+      "tweakId": "shell.search-highlights-off"
+    },
+    {
+      "tweakId": "shell.suggestions-off"
+    },
+    {
+      "tweakId": "shell.widgets-off"
+    },
+    {
+      "tweakId": "update.no-auto-restart"
+    },
+    {
+      "tweakId": "cpu.priority-separation",
+      "options": {
+        "policy": "short-variable"
+      }
+    },
+    {
+      "tweakId": "memory.paging-executive"
+    },
+    {
+      "tweakId": "graphics.hags"
+    },
+    {
+      "tweakId": "input.usb-selective-suspend-off"
+    },
+    {
+      "tweakId": "power.ultimate-performance"
+    },
+    {
+      "tweakId": "network.interrupt-moderation-off"
+    },
+    {
+      "tweakId": "network.receive-coalescing-off"
+    },
+    {
+      "tweakId": "network.energy-efficient-ethernet-off"
+    },
+    {
+      "tweakId": "network.flow-control-off"
+    },
+    {
+      "tweakId": "network.tcp-latency"
+    },
+    {
+      "tweakId": "services.delivery-optimization"
+    },
+    {
+      "tweakId": "power.fast-startup-off"
+    },
+    {
+      "tweakId": "stability.driver-search-off"
+    },
+    {
+      "tweakId": "privacy.activity-history-off"
+    },
+    {
+      "tweakId": "privacy.advertising-id-off"
+    },
+    {
+      "tweakId": "privacy.telemetry-policy"
+    },
+    {
+      "tweakId": "services.diagnostic-policy"
+    },
+    {
+      "tweakId": "services.geolocation"
+    },
+    {
+      "tweakId": "services.telemetry"
+    },
+    {
+      "tweakId": "shell.startup-delay-off"
+    },
+    {
+      "tweakId": "update.notify-before-download"
+    }
+  ]
+}

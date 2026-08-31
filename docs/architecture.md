@@ -400,17 +400,43 @@ Neither has been started.
 
 ## Categories are claims, not folders
 
-A tweak's `category` names the thing a person would notice if it worked. There are six, they
+A tweak's `category` names the thing a person would notice if it worked. There are ten, they
 live in `TweakCategories`, the set is closed, and each one sits in one of two **groups**:
 
 | Group | Id | Shown as | What filing a tweak here claims |
 | --- | --- | --- | --- |
-| Gaming | `performance` | Performance | Raises the framerate *and* evens out frametimes, by freeing CPU, GPU or memory Windows was spending elsewhere |
+| Gaming | `performance` | Performance | Raises the FPS *and* evens out frametimes, by freeing CPU, GPU or memory Windows was spending elsewhere |
 | Gaming | `input-lag` | Input Lag & Aim | Shortens or steadies the path from mouse and keyboard to screen |
 | Gaming | `ping` | Ping | Cuts round-trip network latency, or stops Windows adding delay of its own |
 | Gaming | `stability` | Crashes & Freezes | Fixes a specific fault that shows up while playing, rather than making a working machine faster |
+| Windows | `telemetry` | Telemetry & Privacy | Stops Windows collecting, identifying and uploading what you do. **Not about speed.** |
+| Windows | `startup` | Startup & Boot | Shortens the gap between signing in and a machine that is actually ready |
 | Windows | `interruptions` | Interruptions | Stops things appearing over what you are doing, stealing focus, or restarting the machine |
-| Windows | `background` | Background & Cleanup | Stops Windows running services and features you do not use. **Does not promise frames.** |
+| Windows | `unused` | Unused Features | Turns off a feature you can recognise and do not use — Bluetooth, printing, Xbox, Fax. **Does not promise frames.** |
+| Windows | `services` | Background Services | Stops a service with no user-visible feature attached, where the reader has no basis for an opinion. **Does not promise frames.** |
+| Windows | `storage` | Disk & Filesystem | Removes NTFS bookkeeping done for software that is no longer here |
+
+`unused` and `services` are worth a paragraph, because the pair replaced a category that was
+not one. `unused` held twenty tweaks and every one of them was a service, so "Unused Features"
+described nothing: there was no distinction being drawn, only a name implying one. The line
+between them now is **who is qualified to decide**. Everything in `unused` names something the
+reader recognises — Bluetooth, printing, Xbox, Fax — and can settle in a second, from facts
+about their own life this program has no access to. Everything in `services` names something
+almost nobody has heard of, where the reader has no basis for an opinion and the tweak has to
+supply one. That is a real difference in how the two lists get read, which is what a category is
+for; "is it a service?" would not have been, because they are all services.
+
+The Xbox services sit in `unused` rather than in a category of their own. They were separated
+on the argument that they are one decision rather than four — true, and equally true of
+printing, of Bluetooth and of Fax. "Do you use Game Pass?" is the same shape of question as
+"do you have a printer?", so it belongs in the same list, not in a fourth sidebar entry.
+
+The five Windows categories were one bucket, `background`, until it held 38 of the 84 tweaks —
+nearly half the catalog under a single heading, thirty of them the same sentence with a
+different service name in it. A bucket that large is not a category, it is the absence of one:
+nothing in it could be found except by reading all of it, and its promise had to stay vague
+enough to cover the Fax service and NTFS timestamps at once. Splitting it is the same move as
+the Gaming/Windows split, one level down.
 
 **The group is the more important half of the split.** `fps` and `stutter` used to be separate
 and nobody was choosing between them: a tweak that frees CPU raises the average *and* fills in

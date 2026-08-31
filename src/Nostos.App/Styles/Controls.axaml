@@ -1,0 +1,381 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ================================================================= control themes ===
+
+       Templates for the controls the window leans on, replacing Fluent's.
+
+       Written out rather than tuned through Fluent's own resource keys, for a reason worth
+       recording: Avalonia 12 reworked the Fluent theme and the WinUI style brush keys that
+       older guides tell you to override are not in the assembly any more. Overriding a key
+       that does not exist fails silently and leaves the control looking untouched, which is
+       the worst possible failure for styling work. A template that names a property wrongly
+       fails the build instead.
+
+       These live in Application.Resources rather than in a Styles file because that is the
+       first place a control theme lookup looks, so these win over Fluent's without depending
+       on the order two entries in Application.Styles happen to be merged in.
+
+       Everything animates through Transitions rather than keyframes: a transition interpolates
+       from wherever the property currently is, so a pointer crossing three rows quickly leaves
+       three partly faded rows rather than three that snap back and restart.                  -->
+
+  <!-- ======================================================================= button ==
+
+       One base look with four variants, by class:
+
+         (none)    a quiet surface button, which most of them are
+         .accent   the one obvious next action on a screen, filled with the gradient
+         .danger   reverts and removals, tinted red, never filled: a red block reads as a
+                   warning banner and gets clicked to dismiss it
+         .ghost    borderless, for anything that only needs to be findable once
+         .icon     square, for a glyph and nothing else                                       -->
+
+  <ControlTheme x:Key="{x:Type Button}" TargetType="Button">
+    <Setter Property="Background" Value="{DynamicResource SurfaceFlat}" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Stroke}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="{DynamicResource CornerControl}" />
+    <Setter Property="Padding" Value="15,8" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="RenderTransform" Value="scale(1)" />
+
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.16" Easing="CubicEaseOut" />
+        <BrushTransition Property="BorderBrush" Duration="0:0:0.16" Easing="CubicEaseOut" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.16" Easing="CubicEaseOut" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.13"
+                                       Easing="CubicEaseOut" />
+        <DoubleTransition Property="Opacity" Duration="0:0:0.16" />
+      </Transitions>
+    </Setter>
+
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="Root"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}">
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Padding="{TemplateBinding Padding}"
+                            Foreground="{TemplateBinding Foreground}"
+                            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource StrokeStrong}" />
+    </Style>
+
+    <!-- A press is 30ms of shrink. Long enough to feel like the surface gave way, short
+         enough that a fast double press does not look like a wobble. -->
+    <Style Selector="^:pressed">
+      <Setter Property="RenderTransform" Value="scale(0.975)" />
+      <Setter Property="Background" Value="{DynamicResource SurfacePressed}" />
+    </Style>
+
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.4" />
+    </Style>
+
+    <!-- =================================================================== accent -->
+    <Style Selector="^.accent">
+      <Setter Property="Background" Value="{DynamicResource AccentFill}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+    <Style Selector="^.accent:pointerover">
+      <Setter Property="Background" Value="{DynamicResource AccentFillHover}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="^.accent:pressed">
+      <Setter Property="Background" Value="{DynamicResource AccentFill}" />
+    </Style>
+    <!-- The glow belongs to the shape, not to the control, so it goes on the template's
+         border where it can sit under the fill rather than over the text. -->
+    <Style Selector="^.accent /template/ Border#Root">
+      <Setter Property="BoxShadow" Value="0 6 18 -8 #B37C6CFF" />
+    </Style>
+
+    <!-- =================================================================== danger -->
+    <Style Selector="^.danger">
+      <Setter Property="Background" Value="{DynamicResource DangerTint}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource DangerStroke}" />
+      <Setter Property="Foreground" Value="{DynamicResource DangerText}" />
+    </Style>
+    <Style Selector="^.danger:pointerover">
+      <Setter Property="Background" Value="{DynamicResource DangerTint}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Danger}" />
+      <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+
+    <!-- ==================================================================== ghost -->
+    <Style Selector="^.ghost">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource Muted}" />
+    </Style>
+    <Style Selector="^.ghost:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+
+    <!-- ===================================================================== icon -->
+    <Style Selector="^.icon">
+      <Setter Property="Width" Value="38" />
+      <Setter Property="Height" Value="38" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerCard}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- ========================================================================= tabs ==
+
+       A segmented control: the three tabs share one recessed strip and the selected one is a
+       filled pill inside it. Fluent's underline puts the only mark of what is selected on a
+       two pixel line at the bottom of the word, which is the least visible part of it.       -->
+
+  <ControlTheme x:Key="{x:Type TabControl}" TargetType="TabControl">
+    <Setter Property="Template">
+      <ControlTemplate>
+        <DockPanel>
+          <Border DockPanel.Dock="Top"
+                  HorizontalAlignment="Left"
+                  Margin="0,0,0,14"
+                  Padding="4"
+                  Background="{DynamicResource SurfaceInset}"
+                  BorderBrush="{DynamicResource StrokeSoft}"
+                  BorderThickness="1"
+                  CornerRadius="{DynamicResource CornerCard}">
+            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+          </Border>
+          <ContentPresenter Name="PART_SelectedContentHost"
+                            Content="{TemplateBinding SelectedContent}"
+                            ContentTemplate="{TemplateBinding SelectedContentTemplate}" />
+        </DockPanel>
+      </ControlTemplate>
+    </Setter>
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <StackPanel Orientation="Horizontal" Spacing="3" />
+      </ItemsPanelTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <ControlTheme x:Key="{x:Type TabItem}" TargetType="TabItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource Muted}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Padding" Value="20,8" />
+    <Setter Property="CornerRadius" Value="9" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <BrushTransition Property="Background" Duration="0:0:0.2" Easing="CubicEaseOut" />
+        <BrushTransition Property="Foreground" Duration="0:0:0.2" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="Root"
+                Background="{TemplateBinding Background}"
+                CornerRadius="{TemplateBinding CornerRadius}">
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Content="{TemplateBinding Header}"
+                            ContentTemplate="{TemplateBinding HeaderTemplate}"
+                            Padding="{TemplateBinding Padding}"
+                            Foreground="{TemplateBinding Foreground}"
+                            HorizontalContentAlignment="Center"
+                            VerticalContentAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+
+    <Style Selector="^:pointerover">
+      <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
+      <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    </Style>
+    <Style Selector="^:selected">
+      <Setter Property="Background" Value="{DynamicResource AccentFill}" />
+      <Setter Property="Foreground" Value="#FFFFFF" />
+    </Style>
+  </ControlTheme>
+
+  <!-- ==================================================================== list rows ==
+
+       The default row is invisible on purpose. Two of the three lists in this window draw
+       their own row surface, because a row that carries a section heading inside it must not
+       have the heading swept up in the selection highlight. The one list that wants an
+       ordinary highlight asks for it by name, below.                                        -->
+
+  <ControlTheme x:Key="{x:Type ListBoxItem}" TargetType="ListBoxItem">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource CornerCard}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="Root"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}">
+          <ContentPresenter Name="PART_ContentPresenter"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Padding="{TemplateBinding Padding}"
+                            HorizontalContentAlignment="Stretch"
+                            VerticalContentAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+  </ControlTheme>
+
+  <!-- ===================================================================== checkbox ==
+
+       Its own template, so the tick is the project's own geometry and the box animates from
+       empty to filled instead of swapping one glyph for another.                            -->
+
+  <ControlTheme x:Key="{x:Type CheckBox}" TargetType="CheckBox">
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Name="Box" Grid.Column="0"
+                  Width="20" Height="20" CornerRadius="6"
+                  Background="{DynamicResource SurfaceInset}"
+                  BorderBrush="{DynamicResource StrokeStrong}"
+                  BorderThickness="1"
+                  VerticalAlignment="Center">
+            <Path Name="Tick"
+                  Data="{DynamicResource CheckIcon}" Stretch="Uniform"
+                  Width="12" Height="12" Fill="#FFFFFF" Opacity="0"
+                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ContentPresenter Name="PART_ContentPresenter" Grid.Column="1"
+                            Margin="11,0,0,0"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            VerticalAlignment="Center" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+
+    <Style Selector="^ /template/ Border#Box">
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.16" Easing="CubicEaseOut" />
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.16" Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^ /template/ Path#Tick">
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.16" Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="^:pointerover /template/ Border#Box">
+      <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+    </Style>
+    <Style Selector="^:checked /template/ Border#Box">
+      <Setter Property="Background" Value="{DynamicResource AccentFill}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+    </Style>
+    <Style Selector="^:checked /template/ Path#Tick">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.45" />
+    </Style>
+  </ControlTheme>
+
+  <!-- ================================================================== radiobutton ==
+
+       Used for the either/or choices a tweak offers. The dot scales in rather than appearing,
+       which is what makes a set of options feel like one control rather than several.        -->
+
+  <ControlTheme x:Key="{x:Type RadioButton}" TargetType="RadioButton">
+    <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Name="Ring" Grid.Column="0"
+                  Width="20" Height="20" CornerRadius="10"
+                  Background="{DynamicResource SurfaceInset}"
+                  BorderBrush="{DynamicResource StrokeStrong}"
+                  BorderThickness="1"
+                  VerticalAlignment="Center">
+            <Border Name="Dot"
+                    Width="10" Height="10" CornerRadius="5"
+                    Background="{DynamicResource AccentBright}"
+                    RenderTransformOrigin="50%,50%"
+                    RenderTransform="scale(0)"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ContentPresenter Name="PART_ContentPresenter" Grid.Column="1"
+                            Margin="11,0,0,0"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            Foreground="{TemplateBinding Foreground}"
+                            VerticalAlignment="Center" />
+        </Grid>
+      </ControlTemplate>
+    </Setter>
+
+    <Style Selector="^ /template/ Border#Ring">
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.16" Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^ /template/ Border#Dot">
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18"
+                                         Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="^:pointerover /template/ Border#Ring">
+      <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+    </Style>
+    <Style Selector="^:checked /template/ Border#Ring">
+      <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+    </Style>
+    <Style Selector="^:checked /template/ Border#Dot">
+      <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.45" />
+    </Style>
+  </ControlTheme>
+
+</ResourceDictionary>

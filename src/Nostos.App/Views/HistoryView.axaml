@@ -1,0 +1,113 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nostos.App.ViewModels"
+             xmlns:views="using:Nostos.App.Views"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             xmlns:loc="using:Nostos.App.Localization"
+             x:Class="Nostos.App.Views.HistoryView"
+             x:DataType="vm:MainWindowViewModel">
+
+  <!-- Everything this program has changed on this PC. -->
+
+  <Border Classes="panel" Padding="10,14,10,10">
+    <DockPanel>
+
+      <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="14,2,14,16">
+        <TextBlock Classes="title"
+                   Text="{loc:Tr history.title}" />
+        <TextBlock Classes="muted" TextWrapping="Wrap"
+                   Text="{loc:Tr history.intro}" />
+      </StackPanel>
+
+      <!-- An interrupted change is the one entry that asks the reader to do something, so it
+           gets a banner instead of being a differently coloured row halfway down. -->
+      <Border DockPanel.Dock="Top" Classes="banner warn" Margin="14,0,14,14"
+              IsVisible="{Binding HasUnfinished}">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Grid.Column="0" Width="3" CornerRadius="2" Margin="0,1,15,1"
+                  Background="{DynamicResource WarningText}" />
+          <StackPanel Grid.Column="1" Spacing="3">
+            <TextBlock Text="{loc:Tr history.interrupted.title}" FontWeight="SemiBold"
+                       Foreground="{DynamicResource WarningText}" />
+            <TextBlock Classes="muted" TextWrapping="Wrap"
+                       Text="{loc:Tr history.interrupted.detail}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- The list and its empty state share the last slot in the DockPanel, stacked. A
+           DockPanel gives the remaining space to its last child only, so two siblings here
+           would have put the empty state in a column down the left. -->
+      <Panel>
+        <StackPanel Spacing="12" Margin="0,70,0,0" VerticalAlignment="Top"
+                    IsVisible="{Binding !HasJournal}">
+          <Border Width="52" Height="52" CornerRadius="16"
+                  Background="{DynamicResource SurfaceInset}"
+                  BorderBrush="{DynamicResource StrokeSoft}" BorderThickness="1"
+                  HorizontalAlignment="Center">
+            <Path Data="{DynamicResource CheckIcon}" Stretch="Uniform"
+                  Width="20" Height="20" Fill="{DynamicResource Success}"
+                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Classes="muted" TextAlignment="Center" TextWrapping="Wrap"
+                     Text="{loc:Tr history.empty}" />
+        </StackPanel>
+
+        <ListBox ItemsSource="{Binding Journal}" Background="Transparent"
+                 BorderThickness="0" Padding="0">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:JournalEntryViewModel">
+            <StackPanel>
+
+              <!-- "Today" / "Yesterday" / "Tuesday 5 August". A bare 21:50 on every row is
+                   what made the old list read like a log file. -->
+              <TextBlock Classes="section" Text="{Binding DayHeader}"
+                         IsVisible="{Binding HasDayHeader}"
+                         Margin="14,16,0,6"
+                         Foreground="{DynamicResource AccentBright}" />
+
+              <Border Classes="row" Margin="2,1">
+                <Grid ColumnDefinitions="Auto,Auto,*">
+
+                  <!-- The outcome, as a tinted disc rather than a bare character. At this size
+                       a glyph on its own is a smudge; a disc is a shape the eye can scan down
+                       the left edge of the list without reading anything. -->
+                  <Border Grid.Column="0" Width="28" Height="28" CornerRadius="14"
+                          VerticalAlignment="Top" Margin="0,1,13,0"
+                          Background="{Binding GlyphBrushKey,
+                                               Converter={StaticResource BrushFromKey},
+                                               ConverterParameter=Tint}">
+                    <TextBlock Text="{Binding Glyph}" FontSize="13"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Foreground="{Binding GlyphBrushKey,
+                                                    Converter={StaticResource BrushFromKey}}" />
+                  </Border>
+
+                  <TextBlock Grid.Column="1" Text="{Binding Time}" Classes="faint"
+                             Width="48" VerticalAlignment="Top" Margin="0,7,10,0" />
+
+                  <StackPanel Grid.Column="2" Spacing="3">
+                    <TextBlock Text="{Binding Headline}" TextWrapping="Wrap"
+                               FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Explanation}" Classes="muted"
+                               TextWrapping="Wrap" />
+
+                    <!-- The exact values, kept but demoted. A tool whose whole claim is that
+                         it can prove what it changed does not get to hide the proof. -->
+                    <TextBlock Classes="mono" Text="{Binding Detail}" TextWrapping="Wrap"
+                               Foreground="{DynamicResource TextFaint}"
+                               IsVisible="{Binding Detail, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                    <TextBlock Text="{Binding Error}" Classes="muted"
+                               Foreground="{DynamicResource Danger}" TextWrapping="Wrap"
+                               IsVisible="{Binding Error, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                  </StackPanel>
+                </Grid>
+              </Border>
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+        </ListBox>
+      </Panel>
+    </DockPanel>
+  </Border>
+</UserControl>

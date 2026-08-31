@@ -73,7 +73,9 @@ public sealed class TcpLatencyTweak : ITweak
         var interfaces = InterfacePaths();
 
         return Task.FromResult(interfaces.Count == 0
-            ? Applicability.No("no network interfaces are registered on this machine")
+            ? Applicability.No(
+                "notapplicable.nointerfaces",
+                "no network interfaces are registered on this machine")
             : Applicability.Applicable);
     }
 

@@ -1,3 +1,5 @@
+using Nostos.Core.Localization;
+using Nostos.Core.Engine;
 using Nostos.Ipc;
 
 namespace Nostos.App.Backends;
@@ -16,10 +18,12 @@ public sealed class ServiceBackend : IOptimizerBackend
     private ServiceBackend(OptimizerClient client, PingResult ping)
     {
         _client = client;
-        Description = $"service v{ping.ServiceVersion}";
+        _serviceVersion = ping.ServiceVersion;
     }
 
-    public string Description { get; }
+    private readonly string _serviceVersion;
+
+    public string Description => Strings.Format("connection.service", _serviceVersion);
 
     public bool IsService => true;
 
@@ -47,12 +51,15 @@ public sealed class ServiceBackend : IOptimizerBackend
     public async Task<TweakStatusSummary?> GetStatusAsync(
         string tweakId,
         IReadOnlyDictionary<string, string>? options,
+        TweakTarget? target = null,
         CancellationToken ct = default)
     {
         var statuses = await _client.StatusAsync(new ChangeRequest
         {
             TweakIds = [tweakId],
             Options = options ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+            TargetProcessId = target?.ProcessId,
+            TargetProcessName = target?.ProcessName,
         }, ct).ConfigureAwait(false);
 
         return statuses.FirstOrDefault();
@@ -62,12 +69,15 @@ public sealed class ServiceBackend : IOptimizerBackend
         string tweakId,
         IReadOnlyDictionary<string, string>? options = null,
         bool dryRun = false,
+        TweakTarget? target = null,
         CancellationToken ct = default)
         => await _client.ApplyAsync(new ChangeRequest
         {
             TweakIds = [tweakId],
             Options = options ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
             DryRun = dryRun,
+            TargetProcessId = target?.ProcessId,
+            TargetProcessName = target?.ProcessName,
             Origin = "gui",
         }, ct).ConfigureAwait(false);
 
@@ -85,8 +95,24 @@ public sealed class ServiceBackend : IOptimizerBackend
     public async Task<IReadOnlyList<ProfileSummary>> GetProfilesAsync(CancellationToken ct = default)
         => await _client.ProfilesAsync(ct).ConfigureAwait(false);
 
-    public async Task<IReadOnlyList<ChangeResult>> ApplyProfileAsync(string name, CancellationToken ct = default)
+    /// <summary>
+    /// The service applies the whole profile in one call, so there is nothing to report as it
+    /// goes: the pipe is one request and one response, and adding progress frames to it is a
+    /// change to a privilege boundary that a progress bar does not justify.
+    ///
+    /// <paramref name="onProgress"/> is therefore ignored here and the window shows an
+    /// indeterminate bar. In practice this is not the path the window takes -- the app wraps
+    /// this in <see cref="SplitBackend"/>, which applies a profile a tweak at a time and does
+    /// report -- but a backend that silently reported nothing while its caller believed it
+    /// would is worse than one that says so out loud here.
+    /// </summary>
+    public async Task<IReadOnlyList<ChangeResult>> ApplyProfileAsync(
+        string name, Func<BatchProgress, Task>? onProgress = null, CancellationToken ct = default)
         => await _client.ApplyProfileAsync(new ApplyProfileRequest(name), ct).ConfigureAwait(false);
+
+    public async Task<StartupSetResult> SetStartupEnabledAsync(
+        string id, bool enabled, CancellationToken ct = default)
+        => await _client.StartupSetAsync(new StartupSetRequest(id, enabled), ct).ConfigureAwait(false);
 
     public ValueTask DisposeAsync() => _client.DisposeAsync();
 }

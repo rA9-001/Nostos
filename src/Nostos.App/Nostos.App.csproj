@@ -1,8 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Nostos.App</RootNamespace>
     <AssemblyName>Nostos</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
@@ -14,7 +13,6 @@
     <ProjectReference Include="..\Nostos.Core\Nostos.Core.csproj" />
     <ProjectReference Include="..\Nostos.Win32\Nostos.Win32.csproj" />
     <ProjectReference Include="..\Nostos.Tweaks\Nostos.Tweaks.csproj" />
-    <ProjectReference Include="..\Nostos.Ipc\Nostos.Ipc.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -54,6 +52,33 @@
 
     <!-- The ahead-of-time compiler emits a 78 MB native .pdb that is of no use downstream. -->
     <NativeDebugSymbols>false</NativeDebugSymbols>
+
+    <!-- Compile for size rather than speed, and fold identical method bodies.
+
+         This is a desktop window, not a hot loop: the work it does is registry reads and a
+         named pipe, and nobody has ever waited on its codegen. The download is the thing
+         people actually pay for. -->
+    <OptimizationPreference>Size</OptimizationPreference>
+    <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+
+    <!-- Framework features nothing here uses. Each one otherwise keeps code alive that the
+         trimmer would happily delete. -->
+    <EventSourceSupport>false</EventSourceSupport>
+    <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
+    <NullabilityInfoContextSupport>false</NullabilityInfoContextSupport>
+    <HttpActivityPropagationSupport>false</HttpActivityPropagationSupport>
+    <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
+
+    <!-- Deliberately NOT set, though both would save megabytes:
+
+           UseSystemResourceKeys      turns every framework exception message into a resource
+                                      key, so "Access to the path is denied" becomes
+                                      "Arg_UnauthorizedAccess".
+           IlcGenerateStackTraceData  removes stack traces entirely.
+
+         This program shows e.Message to the user when a tweak, an update or a removal fails,
+         and asks for a stack trace in its bug report template. A smaller download that cannot
+         say what went wrong is a bad trade for a tool that edits the registry. -->
   </PropertyGroup>
 
   <Target Name="PackNativeAssets"

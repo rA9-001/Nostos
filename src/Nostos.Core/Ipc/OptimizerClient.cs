@@ -129,6 +129,18 @@ public sealed class OptimizerClient : IAsyncDisposable
         ApplyProfileRequest request, CancellationToken ct = default)
         => CallAsync<List<ChangeResult>>(IpcCommands.ApplyProfile, request, ct);
 
+    /// <summary>
+    /// Asks the service to switch a machine-wide startup entry.
+    ///
+    /// There is deliberately no client call for listing. The list is readable without any
+    /// privilege at all, so the app enumerates it in-process: a round trip over the pipe to be
+    /// told what a plain registry read would have said is latency for nothing, and it would
+    /// leave the startup tab empty on a machine where the service is not installed yet.
+    /// </summary>
+    public Task<StartupSetResult> StartupSetAsync(
+        StartupSetRequest request, CancellationToken ct = default)
+        => CallAsync<StartupSetResult>(IpcCommands.StartupSet, request, ct);
+
     public async ValueTask DisposeAsync()
     {
         _writer.Dispose();

@@ -20,6 +20,16 @@ public sealed record TweakProfile
 
     public string Description { get; init => field = value ?? ""; } = "";
 
+    /// <summary>
+    /// Where this profile sits in the list. Lower first; ties fall back to the name.
+    ///
+    /// The three shipped profiles are a ladder -- Basic, then Intermediate, then Expert -- and
+    /// a ladder read in file-name order is Basic, Expert, Intermediate, which says the opposite
+    /// of what the names mean. Absent on a profile somebody wrote themselves, which leaves it
+    /// at 0 and sorted by name among the others.
+    /// </summary>
+    public int Order { get; init; }
+
     /// <summary>The tweaks this profile applies, with any per-tweak choices already made.</summary>
     public IReadOnlyList<TweakSelection> Tweaks { get; init => field = value ?? []; } = [];
 }
@@ -62,7 +72,13 @@ public static class ProfileLoader
         var profiles = new List<TweakProfile>();
         foreach (var file in Directory.EnumerateFiles(directory, "*.json", SearchOption.TopDirectoryOnly))
             profiles.Add(Load(file));
-        return profiles;
+
+        // Sorted here rather than by each caller, so the window, the CLI and anything else
+        // reading this folder agree on the order. Directory enumeration order is the file
+        // system's business and is not the order anybody wants to read these in.
+        return [.. profiles
+            .OrderBy(p => p.Order)
+            .ThenBy(p => p.Name, StringComparer.OrdinalIgnoreCase)];
     }
 
     public static void Save(TweakProfile profile, string path)

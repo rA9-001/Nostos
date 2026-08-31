@@ -79,15 +79,22 @@ public sealed class TweakEngine
     public async Task<TweakOperationResult> ApplyAsync(
         string tweakId, TweakContext? context = null, string origin = "manual", CancellationToken ct = default)
     {
-        var results = await ApplyManyAsync([new TweakSelection(tweakId)], context, origin, ct)
+        var results = await ApplyManyAsync([new TweakSelection(tweakId)], context, origin, ct: ct)
             .ConfigureAwait(false);
         return results[0];
     }
 
+    /// <param name="onProgress">
+    /// Called as each tweak starts and again as it finishes, so a caller can show the batch
+    /// moving. Reported from inside the loop rather than estimated outside it: a progress
+    /// display that is not driven by the work it claims to describe is a lie, and this one
+    /// stops on the tweak that stops.
+    /// </param>
     public async Task<IReadOnlyList<TweakOperationResult>> ApplyManyAsync(
         IReadOnlyList<TweakSelection> selections,
         TweakContext? context = null,
         string origin = "manual",
+        Func<BatchProgress, Task>? onProgress = null,
         CancellationToken ct = default)
     {
         var baseContext = context ?? TweakContext.Default;
@@ -127,10 +134,21 @@ public sealed class TweakEngine
             return results;
         }
 
-        foreach (var (tweak, ctx) in resolved)
+        for (var i = 0; i < resolved.Count; i++)
         {
             ct.ThrowIfCancellationRequested();
-            results.Add(await ApplyOneAsync(tweak, ctx, origin, ct).ConfigureAwait(false));
+
+            var (tweak, ctx) = resolved[i];
+            var id = tweak.Metadata.Id;
+
+            if (onProgress is not null)
+                await onProgress(new BatchProgress(i + 1, resolved.Count, id)).ConfigureAwait(false);
+
+            var result = await ApplyOneAsync(tweak, ctx, origin, ct).ConfigureAwait(false);
+            results.Add(result);
+
+            if (onProgress is not null)
+                await onProgress(new BatchProgress(i + 1, resolved.Count, id, result.Outcome)).ConfigureAwait(false);
         }
 
         // Nothing runs after the batch. A change that landed is the user's to keep or to
@@ -347,7 +365,7 @@ public sealed class TweakEngine
 
         return drifted.Count == 0
             ? []
-            : await ApplyManyAsync(drifted, ctx, "reconcile", ct).ConfigureAwait(false);
+            : await ApplyManyAsync(drifted, ctx, "reconcile", ct: ct).ConfigureAwait(false);
     }
 
     private static string? FindConflict(IReadOnlyList<TweakMetadata> batch)

@@ -6,6 +6,13 @@
     <RootNamespace>Nostos.Core</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <!-- The interface's text. Embedded rather than left beside the executable: a single-file
+         build has no folder to put them in, and a language file that could be edited on disk
+         would be a way to change what the confirmation before a destructive action says. -->
+    <EmbeddedResource Include="Localization\*.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- RateLimitProblem is internal: it is a detail of how one HTTP response is explained, not
          API. It still needs a test, because the state it describes is one real users reach and
          cannot diagnose themselves. -->

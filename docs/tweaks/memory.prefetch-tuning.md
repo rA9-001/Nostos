@@ -2,7 +2,7 @@
 
 **Group:** Gaming · **Improves:** Performance · **Risk:** Moderate · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** yes
 
-> Raises the framerate and evens out frametimes, by giving the game CPU, GPU or memory that Windows was spending on something else.
+> Raises the FPS and evens out frametimes, by giving the game CPU, GPU or memory that Windows was spending on something else.
 ## What it changes
 
 `HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management\PrefetchParameters`

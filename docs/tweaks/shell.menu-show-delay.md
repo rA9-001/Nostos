@@ -1,8 +1,9 @@
 # shell.menu-show-delay
 
-**Group:** Windows · **Improves:** Background & Cleanup · **Risk:** Safe · **Evidence:** Measured · **Scope:** User · **Reboot:** no
+**Group:** Gaming · **Improves:** Input Lag & Aim · **Risk:** Safe · **Evidence:** Measured · **Scope:** User · **Reboot:** no
 
-> Stops Windows running services and features you do not use. Frees some memory and boot time; does not, on its own, promise you frames.
+> Shortens or steadies the path from your mouse and keyboard to the screen, so the same movement always produces the same result.
+
 ## What it changes
 
 `HKCU\Control Panel\Desktop`

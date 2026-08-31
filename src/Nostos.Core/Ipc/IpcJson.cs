@@ -37,6 +37,10 @@ namespace Nostos.Ipc;
 [JsonSerializable(typeof(List<TweakStatusSummary>))]
 [JsonSerializable(typeof(List<JournalLine>))]
 [JsonSerializable(typeof(List<ProfileSummary>))]
+[JsonSerializable(typeof(StartupEntry))]
+[JsonSerializable(typeof(StartupSetRequest))]
+[JsonSerializable(typeof(StartupSetResult))]
+[JsonSerializable(typeof(List<StartupEntry>))]
 [JsonSerializable(typeof(string))]
 public sealed partial class IpcJsonContext : JsonSerializerContext;
 

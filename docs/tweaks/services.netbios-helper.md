@@ -1,8 +1,8 @@
 # services.netbios-helper
 
-**Group:** Windows · **Improves:** Background & Cleanup · **Risk:** Moderate · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** no
+**Group:** Windows · **Improves:** Background Services · **Risk:** Moderate · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** no
 
-> Stops Windows running services and features you do not use. Frees some memory and boot time; does not, on its own, promise you frames.
+> Stops Windows services that run for nothing you use. Unlike the features above, these have no name you would recognise, so each one says what it is actually for. Frees a little memory and boot time; does not, on its own, promise you frames.
 
 ## What it changes
 

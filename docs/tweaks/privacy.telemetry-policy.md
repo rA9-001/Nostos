@@ -1,8 +1,8 @@
 # privacy.telemetry-policy
 
-**Group:** Windows · **Improves:** Background & Cleanup · **Risk:** Safe · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** no
+**Group:** Windows · **Improves:** Telemetry & Privacy · **Risk:** Safe · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** no
 
-> Stops Windows running services and features you do not use. Frees some memory and boot time; does not, on its own, promise you frames.
+> Stops Windows collecting, identifying and uploading what you do. Nothing here is about speed, and none of it is a substitute for the privacy settings Windows already offers.
 
 ## What it changes
 

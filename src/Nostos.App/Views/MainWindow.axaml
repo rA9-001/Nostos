@@ -4,583 +4,506 @@
         xmlns:views="using:Nostos.App.Views"
         xmlns:ipc="using:Nostos.Ipc"
         xmlns:conv="using:Avalonia.Data.Converters"
+        xmlns:loc="using:Nostos.App.Localization"
         xmlns:startup="using:Nostos.App.Startup"
         x:Class="Nostos.App.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Nostos"
         WindowState="Maximized"
         Width="1180" Height="780"
-        MinWidth="900" MinHeight="600"
-        Background="#14171d">
+        MinWidth="960" MinHeight="640"
+        FontFamily="Segoe UI Variable Text, Segoe UI"
+        Foreground="{DynamicResource TextPrimary}"
+        Background="{DynamicResource WindowBackground}"
+        WindowDecorations="BorderOnly"
+        ExtendClientAreaToDecorationsHint="True">
 
-  <Window.Resources>
-    <views:ResourceBrushConverter x:Key="BrushFromKey" />
-    <views:CategoryNameConverter x:Key="CategoryName" />
-    <views:CategoryGroupHeaderConverter x:Key="CategoryGroupHeader" />
-    <views:CategoryHasGroupHeaderConverter x:Key="CategoryHasGroupHeader" />
-    <views:BoolOpacityConverter x:Key="OpacityWhenTrue" />
-    <views:InverseBoolOpacityConverter x:Key="OpacityWhenFalse" />
-  </Window.Resources>
+  <!-- The window keeps its frame, loses its title bar, and draws its own.
 
-  <Window.Styles>
+       Windows' bar is a strip in somebody else's colours across the top of a window that is
+       otherwise all one piece, and no amount of theming reaches it. The strip at the bottom of
+       this file replaces the three things it was doing: a place to grab the window, somewhere
+       for its name, and the minimise, maximise and close buttons.
 
-    <!-- A dashed ring on a continuous rotation. Avalonia has no ring-progress control, and a
-         straight indeterminate bar reads as "the whole window is busy", which is exactly the
-         wrong message for one row out of twenty-two. Small enough to sit in a 46px column. -->
-    <Style Selector="Ellipse.spinner">
-      <Setter Property="Width" Value="16" />
-      <Setter Property="Height" Value="16" />
-      <Setter Property="StrokeThickness" Value="2" />
-      <Setter Property="StrokeDashArray" Value="3.2,2.2" />
-      <Setter Property="Stroke" Value="{DynamicResource Accent}" />
-      <Setter Property="RenderTransformOrigin" Value="50%,50%" />
-      <Style.Animations>
-        <Animation Duration="0:0:0.9" IterationCount="INFINITE" Easing="LinearEasing">
-          <KeyFrame Cue="0%">
-            <Setter Property="RotateTransform.Angle" Value="0" />
-          </KeyFrame>
-          <KeyFrame Cue="100%">
-            <Setter Property="RotateTransform.Angle" Value="360" />
-          </KeyFrame>
-        </Animation>
-      </Style.Animations>
-    </Style>
+       It takes both settings, and each one alone was tried and was wrong:
 
-    <!-- The live indicator: a slow breath rather than a spin, so a healthy idle window is calm
-         and it is the *absence* of the pulse that draws the eye. -->
-    <Style Selector="Ellipse.pulse">
-      <Setter Property="Width" Value="7" />
-      <Setter Property="Height" Value="7" />
-      <Setter Property="Fill" Value="#4ade80" />
-      <Style.Animations>
-        <Animation Duration="0:0:2.4" IterationCount="INFINITE" Easing="SineEaseInOut">
-          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.25" /></KeyFrame>
-          <KeyFrame Cue="50%"><Setter Property="Opacity" Value="1.0" /></KeyFrame>
-          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="0.25" /></KeyFrame>
-        </Animation>
-      </Style.Animations>
-    </Style>
+         BorderOnly alone removes the title bar but leaves the top edge of the frame showing as
+         a grey strip across the whole width of the window.
 
-    <Style Selector="Border.panel">
-      <Setter Property="Background" Value="{DynamicResource PanelBackground}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource PanelBorder}" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="8" />
-    </Style>
-    <Style Selector="Border.banner">
-      <Setter Property="CornerRadius" Value="6" />
-      <Setter Property="Padding" Value="12,9" />
-      <Setter Property="Margin" Value="0,0,0,8" />
-    </Style>
-    <Style Selector="TextBlock.badge">
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
-    <Style Selector="TextBlock.muted">
-      <Setter Property="Foreground" Value="{DynamicResource Muted}" />
-      <Setter Property="FontSize" Value="12" />
-    </Style>
-  </Window.Styles>
+         ExtendClientAreaToDecorationsHint alone covers that strip, but leaves the title bar
+         nominally present, so Avalonia draws caption buttons of its own and there are two sets
+         in the corner.
 
-  <Panel>
-  <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="16">
+       Together: no title bar for Avalonia to decorate, and the client area covers the frame.
 
-    <!-- ============================================================ header -->
-    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
-      <StackPanel Grid.Column="0" Spacing="3">
-        <TextBlock Text="Nostos" FontSize="21" FontWeight="SemiBold" />
-        <StackPanel Orientation="Horizontal" Spacing="10">
-          <TextBlock Classes="muted" Text="{Binding ConnectionText}" />
-          <TextBlock Classes="muted" Text="·" />
-          <TextBlock Classes="muted" Text="{Binding OutstandingText}" />
+       The frame itself is deliberately kept rather than turned off with WindowDecorations
+       "None". That was measured, not assumed: "None" clears WS_THICKFRAME, and a window without
+       that bit cannot be resized by dragging any of its edges. Snapping, the drop shadow and
+       Windows 11's rounded corners go with it.
+
+       OffScreenMargin is the last piece. A maximised window with an extended client area is
+       deliberately a few pixels larger than the screen on every side so its borders fall out of
+       view, and anything drawn at the very edge is cut off by exactly that much until the
+       margin is allowed for. The title bar is drawn at the very edge.                         -->
+  <Panel Margin="{Binding $parent[Window].OffScreenMargin}">
+
+    <!-- ==================================================================== backdrop ==
+
+         Two soft lights, violet at the top left and cyan at the top right, sitting behind
+         everything at a few percent opacity. They are the reason the header does not look
+         like text on a flat rectangle. Clipped and untouchable: this is scenery, and a
+         pointer must never find it.                                                        -->
+    <Panel ClipToBounds="True" IsHitTestVisible="False">
+      <Border Width="1700" Height="1700" Background="{DynamicResource GlowViolet}"
+              HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-720,-1000,0,0" />
+      <Border Width="1500" Height="1500" Background="{DynamicResource GlowCyan}"
+              HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-1020,-560,0" />
+    </Panel>
+
+    <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="22,46,22,18">
+
+      <!-- ================================================================== header ==
+
+           The mark and the wordmark moved up into the title bar, where an app's identity
+           belongs, so this row is now just the two facts that are true of the whole window
+           and the three things that act on all of it.                                       -->
+      <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="2,0,2,14">
+
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7"
+                    VerticalAlignment="Center">
+          <Border Classes="chip">
+            <TextBlock Classes="muted" FontSize="11" Text="{Binding ConnectionText}" />
+          </Border>
+          <Border Classes="chip">
+            <TextBlock Classes="muted" FontSize="11" Text="{Binding OutstandingText}" />
+          </Border>
         </StackPanel>
-      </StackPanel>
 
-      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-        <Button Content="Refresh" Command="{Binding RefreshCommand}" />
-        <Button Content="Revert everything"
-                Command="{Binding RevertAllCommand}"
-                Foreground="#fecaca" />
-      </StackPanel>
-    </Grid>
-
-    <!-- =========================================================== banners -->
-    <!-- =========================================================== activity -->
-    <!-- Always here, always the same height. Nothing about this panel appears or disappears;
-         only its contents change, and they cross-fade. A progress indicator that pops in and
-         out shoves every panel below it down and back, and for work that finishes in 40ms that
-         reads as a glitch rather than as progress. So the space is paid for once, up front,
-         and it earns its keep when idle by holding the last result and the freshness clock. -->
-    <Border Grid.Row="1" Classes="panel" Padding="14,11,14,9" Margin="0,0,0,10">
-      <DockPanel>
-
-        <!-- Fixed slot shared by the spinner and the idle dot, so neither moves the text. -->
-        <Panel DockPanel.Dock="Left" Width="20" Height="20" Margin="0,0,13,0"
-               VerticalAlignment="Center">
-          <Ellipse Classes="spinner" Width="20" Height="20"
-                   Opacity="{Binding IsWorking, Converter={StaticResource OpacityWhenTrue}}">
-            <Ellipse.Transitions>
-              <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /></Transitions>
-            </Ellipse.Transitions>
-          </Ellipse>
-          <Ellipse Classes="pulse" Width="9" Height="9"
-                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                   Opacity="{Binding IsWorking, Converter={StaticResource OpacityWhenFalse}}">
-            <Ellipse.Transitions>
-              <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /></Transitions>
-            </Ellipse.Transitions>
-          </Ellipse>
-        </Panel>
-
-        <TextBlock DockPanel.Dock="Right" Text="{Binding LastUpdatedText}" Classes="muted"
-                   FontSize="11" VerticalAlignment="Center" Margin="14,0,0,0"
-                   IsVisible="{Binding IsLive}" />
-
-        <StackPanel Spacing="3">
-          <TextBlock Text="{Binding ActivityTitle}" FontWeight="SemiBold" FontSize="13"
-                     TextTrimming="CharacterEllipsis"
-                     Foreground="{Binding StatusIsError, Converter={x:Static views:BoolBrushes.ErrorNormal}}" />
-          <TextBlock Text="{Binding ActivityDetail}" Classes="muted" FontSize="11"
-                     TextTrimming="CharacterEllipsis" />
-
-          <!-- Always present at a fixed height, so its arrival never resizes anything. It only
-               animates while it is being looked at. -->
-          <ProgressBar Height="3" Margin="0,3,0,0"
-                       IsIndeterminate="{Binding IsWorking}"
-                       Opacity="{Binding IsWorking, Converter={StaticResource OpacityWhenTrue}}">
-            <ProgressBar.Transitions>
-              <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /></Transitions>
-            </ProgressBar.Transitions>
-          </ProgressBar>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                    VerticalAlignment="Center">
+          <Button Content="{loc:Tr app.refresh}" Command="{Binding RefreshCommand}" />
+          <Button Classes="danger" Content="{loc:Tr app.revert.all}"
+                  Command="{Binding RevertAllCommand}" />
+          <Button Classes="icon ghost" Command="{Binding OpenSettingsCommand}"
+                  ToolTip.Tip="{loc:Tr app.settings.tip}">
+            <Path Data="{DynamicResource GearIcon}" Stretch="Uniform"
+                  Width="18" Height="18" />
+          </Button>
         </StackPanel>
-      </DockPanel>
-    </Border>
+      </Grid>
 
-    <StackPanel Grid.Row="2">
+      <!-- ================================================================ activity ==
 
-      <!-- Update first: it is the only banner that offers something new, and it is the one a
-           user is most likely to want to act on the moment they see it. -->
-      <Border Classes="banner" Background="#12243a" BorderBrush="#2563eb" BorderThickness="1"
-              IsVisible="{Binding UpdateAvailable}">
-        <Grid ColumnDefinitions="*,Auto">
-          <StackPanel Grid.Column="0" Spacing="2">
-            <TextBlock Text="{Binding UpdateTitle}" FontWeight="SemiBold" Foreground="#93c5fd" />
-            <TextBlock Text="{Binding UpdateDetail}" TextWrapping="Wrap" FontSize="12" />
-          </StackPanel>
-          <Button Grid.Column="1" Content="Update" VerticalAlignment="Center"
-                  Command="{Binding InstallUpdateCommand}" />
-        </Grid>
-      </Border>
+           Always here, always the same height. Nothing about this panel appears or
+           disappears; only its contents change, and they cross fade. A progress indicator
+           that pops in and out shoves every panel below it down and back, and for work that
+           finishes in 40ms that reads as a glitch rather than as progress. So the space is
+           paid for once, up front, and it earns its keep when idle by holding the last
+           result and the freshness clock.                                                  -->
+      <Border Grid.Row="1" Classes="panel" Padding="16,13" Margin="0,0,0,12">
+        <DockPanel>
 
-      <Border Classes="banner" Background="#2a2118" BorderBrush="#92400e" BorderThickness="1"
-              IsVisible="{Binding ShowSetupBanner}">
-        <Grid ColumnDefinitions="*,Auto">
-          <StackPanel Grid.Column="0" Spacing="2">
-            <TextBlock Text="{Binding SetupBannerTitle}" FontWeight="SemiBold" Foreground="#fdba74" />
-            <TextBlock TextWrapping="Wrap" FontSize="12" IsVisible="{Binding ShowServiceExplanation}"
-                       Text="Machine-wide tweaks are unavailable without it. Enabling the service takes one administrator approval, once." />
-            <TextBlock Classes="muted" Text="{Binding SetupNotice}" TextWrapping="Wrap"
-                       IsVisible="{Binding HasSetupNotice}" />
-          </StackPanel>
-          <Button Grid.Column="1" Content="{Binding SetupActionLabel}" VerticalAlignment="Center"
-                  IsVisible="{Binding CanOfferServiceSetup}"
-                  Command="{Binding EnableServiceCommand}" />
-        </Grid>
-      </Border>
-    </StackPanel>
+          <!-- One fixed slot shared by the spinner and the idle dot, so neither moves the
+               text beside it. -->
+          <Panel DockPanel.Dock="Left" Width="22" Height="22" Margin="0,0,14,0"
+                 VerticalAlignment="Center">
+            <Ellipse Classes="spinner" Width="22" Height="22"
+                     Opacity="{Binding IsWorking, Converter={StaticResource OpacityWhenTrue}}">
+              <Ellipse.Transitions>
+                <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /></Transitions>
+              </Ellipse.Transitions>
+            </Ellipse>
+            <Ellipse Classes="pulse" Width="9" Height="9"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                     Opacity="{Binding IsWorking, Converter={StaticResource OpacityWhenFalse}}">
+              <Ellipse.Transitions>
+                <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /></Transitions>
+              </Ellipse.Transitions>
+            </Ellipse>
+          </Panel>
 
-    <!-- =========================================================== content -->
-    <TabControl Grid.Row="3">
-
-      <!-- ======================================================= tweaks -->
-      <TabItem Header="Tweaks">
-        <Grid ColumnDefinitions="220,*,340" Margin="0,8,0,0">
-
-          <!-- filters -->
-          <Border Grid.Column="0" Classes="panel" Padding="12" Margin="0,0,10,0">
-            <StackPanel Spacing="12">
-              <TextBox PlaceholderText="Search…" Text="{Binding SearchText}" />
-
-              <StackPanel Spacing="6">
-                <TextBlock Classes="muted" Text="CATEGORY" />
-                <!-- SelectedIndex seeds the highlight on "all" at startup; the SelectedItem
-                     binding takes over from the first click onwards.
-
-                     MaxHeight fits all seven rows: "All tweaks" plus the six categories. The
-                     set is closed, so the list cannot outgrow it. At 260 the last row was cut
-                     in half, which reads as a rendering fault rather than as a list that
-                     scrolls. -->
-                <ListBox ItemsSource="{Binding Categories}"
-                         SelectedItem="{Binding SelectedCategory}"
-                         SelectedIndex="0"
-                         Background="Transparent"
-                         BorderThickness="0"
-                         MaxHeight="420">
-                  <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="x:String">
-                      <StackPanel>
-                        <TextBlock Classes="muted" FontSize="10" FontWeight="Bold"
-                                   Margin="0,10,0,4" Opacity="0.75"
-                                   Text="{Binding Converter={StaticResource CategoryGroupHeader}}"
-                                   IsVisible="{Binding Converter={StaticResource CategoryHasGroupHeader}}" />
-                        <TextBlock Text="{Binding Converter={StaticResource CategoryName}}" />
-                      </StackPanel>
-                    </DataTemplate>
-                  </ListBox.ItemTemplate>
-                </ListBox>
-
-                <!-- The category is a claim about the tweaks inside it, so it says out loud
-                     what that claim is instead of leaving a two-word heading to imply it. -->
-                <TextBlock Classes="muted" TextWrapping="Wrap"
-                           Text="{Binding SelectedCategoryPromise}"
-                           IsVisible="{Binding SelectedCategoryPromise,
-                                               Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-              </StackPanel>
-
-            </StackPanel>
+          <Border DockPanel.Dock="Right" Classes="chip" VerticalAlignment="Center"
+                  Margin="14,0,0,0" IsVisible="{Binding IsLive}">
+            <TextBlock Classes="faint" Text="{Binding LastUpdatedText}" />
           </Border>
 
-          <!-- catalog -->
-          <Border Grid.Column="1" Classes="panel" Margin="0,0,10,0">
-            <DockPanel>
+          <StackPanel Spacing="3">
+            <TextBlock Text="{Binding ActivityTitle}" FontWeight="SemiBold" FontSize="14"
+                       TextTrimming="CharacterEllipsis"
+                       Foreground="{Binding StatusIsError, Converter={x:Static views:BoolBrushes.ErrorNormal}}" />
+            <TextBlock Text="{Binding ActivityDetail}" Classes="muted" FontSize="12"
+                       TextTrimming="CharacterEllipsis" />
 
-            <!-- Batch work gets a bar here as well as in the activity panel: applying a preset
-                 touches rows all over the list, so no single row's spinner represents it.
-
-                 Bound to IsWorking, not IsBusy, so it obeys the same show-delay as everything
-                 else. Bound to the raw flag it flashed for 40ms on every refresh, which is the
-                 exact thing the activity panel was rebuilt to stop doing. Faded rather than
-                 collapsed, so the list below it never shifts. -->
-            <ProgressBar DockPanel.Dock="Top" Height="2" Margin="0,0,0,4"
+            <!-- Always present at a fixed height, so its arrival never resizes anything. It
+                 only animates while it is being looked at. -->
+            <ProgressBar Height="3" Margin="0,5,0,0"
                          IsIndeterminate="{Binding IsWorking}"
                          Opacity="{Binding IsWorking, Converter={StaticResource OpacityWhenTrue}}">
               <ProgressBar.Transitions>
                 <Transitions><DoubleTransition Property="Opacity" Duration="0:0:0.18" /></Transitions>
               </ProgressBar.Transitions>
             </ProgressBar>
+          </StackPanel>
+        </DockPanel>
+      </Border>
 
-            <ListBox ItemsSource="{Binding Tweaks}"
-                     SelectedItem="{Binding SelectedTweak}"
-                     Background="Transparent"
-                     BorderThickness="0">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:TweakItemViewModel">
-                 <StackPanel>
+      <!-- ================================================================= banners -->
+      <StackPanel Grid.Row="2">
 
-                  <!-- Set on the first row of each group by ApplyFilter. Inside the row rather
-                       than as a separate list item, so the ListBox stays a flat list of tweaks
-                       and its selection cannot land on a heading. -->
-                  <StackPanel IsVisible="{Binding HasGroupHeader}" Margin="0,10,0,6" Spacing="1">
-                    <TextBlock Text="{Binding GroupHeader}" FontSize="11" FontWeight="Bold"
-                               Foreground="{DynamicResource Accent}" />
-                    <TextBlock Classes="muted" Text="{Binding GroupDescription}" FontSize="11"
-                               TextWrapping="Wrap" />
-                    <Border Height="1" Background="#2a3140" Margin="0,5,0,0" />
-                  </StackPanel>
+        <!-- Update first: it is the only banner that offers something new, and it is the one
+             a user is most likely to want to act on the moment they see it. -->
+        <Border Classes="banner info" IsVisible="{Binding UpdateAvailable}">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Grid.Column="0" Width="3" CornerRadius="2" Margin="0,1,15,1"
+                    Background="{DynamicResource InfoText}" />
+            <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+              <TextBlock Text="{Binding UpdateTitle}" FontWeight="SemiBold"
+                         Foreground="{DynamicResource InfoText}" />
+              <TextBlock Text="{Binding UpdateDetail}" TextWrapping="Wrap" Classes="muted" />
+            </StackPanel>
+            <Button Grid.Column="2" Classes="accent" Content="{loc:Tr banner.update.install}"
+                    VerticalAlignment="Center" Margin="14,0,0,0"
+                    Command="{Binding InstallUpdateCommand}" />
+          </Grid>
+        </Border>
 
-                  <Grid ColumnDefinitions="46,*,Auto" Margin="2,6">
+        <Border Classes="banner warn" IsVisible="{Binding ShowSetupBanner}">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Border Grid.Column="0" Width="3" CornerRadius="2" Margin="0,1,15,1"
+                    Background="{DynamicResource WarningText}" />
+            <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+              <TextBlock Text="{Binding SetupBannerTitle}" FontWeight="SemiBold"
+                         Foreground="{DynamicResource WarningText}" />
+              <TextBlock Classes="muted" TextWrapping="Wrap"
+                         IsVisible="{Binding ShowServiceExplanation}"
+                         Text="{loc:Tr banner.service.explain}" />
+              <TextBlock Classes="muted" Text="{Binding SetupNotice}" TextWrapping="Wrap"
+                         IsVisible="{Binding HasSetupNotice}" />
+            </StackPanel>
+            <Button Grid.Column="2" Content="{Binding SetupActionLabel}"
+                    VerticalAlignment="Center" Margin="14,0,0,0"
+                    IsVisible="{Binding CanOfferServiceSetup}"
+                    Command="{Binding EnableServiceCommand}" />
+          </Grid>
+        </Border>
+      </StackPanel>
 
-                    <!-- The ON/OFF badge and the spinner occupy the same cell: while a row is
-                         working its state is not knowable, and showing a stale ON next to a
-                         spinner invites the reader to believe it. -->
-                    <Panel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,10,0">
-                      <Border CornerRadius="4" Padding="6,3" Background="#1f2937"
-                              IsVisible="{Binding !IsBusy}">
-                        <TextBlock Text="{Binding StateLabel}" FontSize="10" FontWeight="Bold"
-                                   HorizontalAlignment="Center"
-                                   Foreground="{Binding ShowsAsApplied, Converter={x:Static views:BoolBrushes.OnOff}}" />
-                      </Border>
-                      <Ellipse Classes="spinner" IsVisible="{Binding IsBusy}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                    </Panel>
+      <!-- ================================================================= content -->
+      <TabControl Grid.Row="3">
 
-                    <StackPanel Grid.Column="1" Spacing="2">
-                      <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                      <TextBlock Classes="muted" Text="{Binding Id}" FontFamily="Consolas,monospace" FontSize="11" />
-                      <TextBlock Classes="muted" Text="{Binding Facets}" FontSize="11" />
-                      <TextBlock Classes="muted" Text="{Binding NotApplicableReason}"
-                                 FontSize="11" Foreground="#fbbf24" TextWrapping="Wrap"
-                                 IsVisible="{Binding !IsApplicable}" />
-                    </StackPanel>
+        <TabItem Header="{loc:Tr tab.tweaks}">
+          <views:TweaksView Classes="page" />
+        </TabItem>
 
-                    <StackPanel Grid.Column="2" Spacing="3" VerticalAlignment="Center"
-                                HorizontalAlignment="Right" Margin="10,0,4,0">
-                      <TextBlock Classes="badge" Text="{Binding RiskText}"
-                                 HorizontalAlignment="Right"
-                                 Foreground="{Binding RiskBrushKey, Converter={StaticResource BrushFromKey}}" />
-                      <TextBlock Classes="badge" Text="{Binding EvidenceText}"
-                                 HorizontalAlignment="Right"
-                                 Foreground="{Binding EvidenceBrushKey, Converter={StaticResource BrushFromKey}}" />
-                      <TextBlock Classes="badge" Text="managed" HorizontalAlignment="Right"
-                                 Foreground="{DynamicResource Accent}"
-                                 IsVisible="{Binding IsManaged}" />
-                    </StackPanel>
-                  </Grid>
-                 </StackPanel>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-            </DockPanel>
-          </Border>
+        <TabItem Header="{loc:Tr tab.profiles}">
+          <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding Profiles}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:ProfileViewModel">
+                  <Border Classes="panel" Padding="20" Margin="0,0,0,10">
+                    <StackPanel Spacing="0">
+                      <Grid ColumnDefinitions="*,Auto">
 
-          <!-- detail -->
-          <Border Grid.Column="2" Classes="panel" Padding="14">
-            <ScrollViewer>
-              <StackPanel Spacing="12">
+                        <!-- The whole header strip opens the card, not just the arrow: a
+                             nine-pixel chevron is a fiddly hit target, and the card is what
+                             the reader is looking at. A Button rather than a tapped handler so
+                             it is reachable from the keyboard like everything else. -->
+                        <Button Grid.Column="0" Classes="ghost" Padding="0"
+                                HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                IsEnabled="{Binding CanExpand}"
+                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleProfileCommand}"
+                                CommandParameter="{Binding}">
 
-                <TextBlock Classes="muted" Text="Select a tweak to see what it changes."
-                           TextWrapping="Wrap" IsVisible="{Binding !HasSelection}" />
+                          <!-- Capped rather than left to fill the window. These descriptions
+                               are three or four lines of prose, and a line of prose 1,800
+                               pixels wide is one the eye loses its place in on the way back
+                               to the left. -->
+                          <StackPanel Spacing="7" MaxWidth="900" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal" Spacing="10">
+                              <Path Width="9" Height="9" Stretch="Uniform"
+                                    VerticalAlignment="Center"
+                                    IsVisible="{Binding CanExpand}"
+                                    Fill="{DynamicResource Muted}"
+                                    Data="{Binding ToggleGlyphKey,
+                                                   Converter={StaticResource GeometryFromKey}}" />
+                              <TextBlock Text="{Binding DisplayName}" Classes="title"
+                                         VerticalAlignment="Center" />
+                              <Border Classes="chip" VerticalAlignment="Center">
+                                <TextBlock Classes="chiptext" Text="{Binding CountText}"
+                                           Foreground="{DynamicResource Muted}" />
+                              </Border>
 
-                <!-- A ContentControl with its own template, rather than a panel whose
-                     DataContext is rebound in place: setting DataContext and x:DataType on the
-                     same element makes its other bindings resolve against the NEW type, so
-                     IsVisible="{Binding HasSelection}" would look for HasSelection on the
-                     tweak. This shape keeps each scope unambiguous. -->
-                <ContentControl Content="{Binding SelectedTweak}">
-                  <ContentControl.ContentTemplate>
-                    <DataTemplate x:DataType="vm:TweakItemViewModel">
-                      <StackPanel Spacing="12">
-
-                        <StackPanel Spacing="4">
-                          <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap" />
-                          <TextBlock Text="{Binding Id}" FontFamily="Consolas,monospace" FontSize="11"
-                                     Foreground="{DynamicResource Muted}" />
-                        </StackPanel>
-
-                        <StackPanel Orientation="Horizontal" Spacing="14">
-                          <StackPanel Spacing="2">
-                            <TextBlock Classes="muted" Text="RISK" FontSize="10" />
-                            <TextBlock Classes="badge" Text="{Binding RiskText}"
-                                       Foreground="{Binding RiskBrushKey, Converter={StaticResource BrushFromKey}}" />
+                              <!-- How much of it this machine already matches. On the header
+                                   rather than inside the card, because it changes what the
+                                   Apply button is offering: "42 tweaks" and "38 of 42 already
+                                   applied" are very different propositions. -->
+                              <Border Classes="chip" VerticalAlignment="Center"
+                                      IsVisible="{Binding HasAppliedText}"
+                                      Background="{DynamicResource RiskSafeTint}">
+                                <TextBlock Classes="chiptext" Text="{Binding AppliedText}"
+                                           Foreground="{DynamicResource RiskSafe}" />
+                              </Border>
+                            </StackPanel>
+                            <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
+                                       Classes="muted" LineHeight="19" />
                           </StackPanel>
-                          <StackPanel Spacing="2">
-                            <TextBlock Classes="muted" Text="EVIDENCE" FontSize="10" />
-                            <TextBlock Classes="badge" Text="{Binding EvidenceText}"
-                                       Foreground="{Binding EvidenceBrushKey, Converter={StaticResource BrushFromKey}}" />
-                          </StackPanel>
-                          <StackPanel Spacing="2">
-                            <TextBlock Classes="muted" Text="SCOPE" FontSize="10" />
-                            <TextBlock Classes="badge" Text="{Binding ScopeText}" />
-                          </StackPanel>
-                        </StackPanel>
+                        </Button>
 
-                        <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" FontSize="13" LineHeight="19" />
 
-                        <StackPanel Spacing="3">
-                          <TextBlock Classes="muted" Text="CURRENT VALUE" FontSize="10" />
-                          <Border Background="#11141a" CornerRadius="5" Padding="9">
-                            <TextBlock Text="{Binding StateDescription}" TextWrapping="Wrap"
-                                       FontFamily="Consolas,monospace" FontSize="11" />
-                          </Border>
-                        </StackPanel>
+                        <!-- Not the accent fill: three profiles are three equal choices, and a
+                             screen with three primary buttons has none. -->
+                        <Button Grid.Column="1" Content="{loc:Tr profiles.apply}"
+                                VerticalAlignment="Center" Margin="20,0,0,0"
+                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ApplyProfileCommand}"
+                                CommandParameter="{Binding}" />
+                      </Grid>
 
-                        <!-- ============================================ choices -->
-                        <ItemsControl ItemsSource="{Binding Choices}" IsVisible="{Binding HasChoices}">
-                          <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:TweakChoiceViewModel">
-                              <StackPanel Spacing="6" Margin="0,0,0,8">
-                                <TextBlock Classes="muted" FontSize="10"
-                                           Text="{Binding TitleUpper}" />
-                                <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
-                                           FontSize="12" Foreground="{DynamicResource Muted}" />
+                      <!-- Only while this card is being applied, and below the header rather
+                           than inside it: laid over the header it painted a line straight
+                           through the description, because the header is one row of a grid and
+                           a bar bottom-aligned in that row lands on the prose.
 
-                                <ItemsControl ItemsSource="{Binding Options}">
-                                  <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:TweakChoiceOptionViewModel">
-                                      <Border Background="#11141a" CornerRadius="5" Padding="9,7"
-                                              Margin="0,0,0,5">
-                                        <StackPanel Spacing="3">
-                                          <RadioButton GroupName="{Binding GroupName}"
-                                                       IsChecked="{Binding IsChecked, Mode=TwoWay}">
-                                            <StackPanel Orientation="Horizontal" Spacing="7">
-                                              <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
-                                                         FontSize="12" TextWrapping="Wrap" />
-                                              <Border Background="#14352a" CornerRadius="3"
-                                                      Padding="5,1" VerticalAlignment="Center"
-                                                      IsVisible="{Binding Recommended}">
-                                                <TextBlock Text="recommended" FontSize="9"
-                                                           Foreground="#4ade80" />
-                                              </Border>
-                                            </StackPanel>
-                                          </RadioButton>
-                                          <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
-                                                     FontSize="11" Margin="24,0,0,0"
-                                                     Foreground="{DynamicResource Muted}" />
-                                        </StackPanel>
-                                      </Border>
-                                    </DataTemplate>
-                                  </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                              </StackPanel>
-                            </DataTemplate>
-                          </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-
-                        <StackPanel Spacing="3" IsVisible="{Binding !IsApplicable}">
-                          <TextBlock Classes="muted" Text="NOT APPLICABLE HERE" FontSize="10" />
-                          <TextBlock Text="{Binding NotApplicableReason}" TextWrapping="Wrap"
-                                     FontSize="12" Foreground="#fbbf24" />
-                        </StackPanel>
-
-                        <StackPanel Spacing="3">
-                          <TextBlock Classes="muted" Text="DOCUMENTATION" FontSize="10" />
-                          <TextBlock Text="{Binding DocsPath}" FontFamily="Consolas,monospace" FontSize="11"
-                                     Foreground="{DynamicResource Accent}" TextWrapping="Wrap" />
-                        </StackPanel>
+                           Indeterminate until a real report arrives, and indeterminate for good
+                           on a backend that cannot send one. A determinate bar that is never fed
+                           reads "0 of 42" for the whole run and then jumps, which is a worse lie
+                           than admitting to not knowing where it has got to. -->
+                      <StackPanel Margin="0,14,0,0" Spacing="6" IsVisible="{Binding IsApplying}">
+                        <ProgressBar Height="3" Minimum="0" Maximum="1"
+                                     Value="{Binding ProgressFraction}"
+                                     IsIndeterminate="{Binding !HasCountedProgress}" />
+                        <TextBlock Classes="faint" FontSize="11"
+                                   Text="{Binding ProgressText}"
+                                   IsVisible="{Binding HasCountedProgress}" />
                       </StackPanel>
-                    </DataTemplate>
-                  </ContentControl.ContentTemplate>
-                </ContentControl>
 
-                <StackPanel Spacing="7" IsVisible="{Binding HasSelection}">
-                  <Button Content="Apply" HorizontalAlignment="Stretch"
-                          HorizontalContentAlignment="Center"
-                          Command="{Binding ApplyCommand}"
-                          CommandParameter="{Binding SelectedTweak}" />
-                  <Button Content="Dry run" HorizontalAlignment="Stretch"
-                          HorizontalContentAlignment="Center"
-                          Command="{Binding DryRunCommand}"
-                          CommandParameter="{Binding SelectedTweak}" />
-                  <Button Content="Revert" HorizontalAlignment="Stretch"
-                          HorizontalContentAlignment="Center"
-                          Command="{Binding RevertCommand}"
-                          CommandParameter="{Binding SelectedTweak}" />
-                  <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="11"
-                             Text="Revert restores the exact value captured before this app first changed it." />
-                </StackPanel>
-              </StackPanel>
-            </ScrollViewer>
-          </Border>
-        </Grid>
-      </TabItem>
+                      <!-- What it would apply. Inside the card rather than in a dialog: the
+                           question it answers is "what am I agreeing to", and the Apply button
+                           that asks it has to stay on screen while the answer is read. -->
+                      <StackPanel IsVisible="{Binding IsExpanded}" Margin="0,16,0,0" Spacing="0">
+                        <Border Classes="inset" Padding="4,8,14,10">
 
-      <!-- ===================================================== profiles -->
-      <TabItem Header="Profiles">
-        <ScrollViewer Margin="0,8,0,0">
-          <ItemsControl ItemsSource="{Binding Profiles}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="ipc:ProfileSummary">
-                <Border Classes="panel" Padding="14" Margin="0,0,0,10">
-                  <Grid ColumnDefinitions="*,Auto">
-                    <StackPanel Grid.Column="0" Spacing="4">
-                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="15" />
-                      <TextBlock Text="{Binding Description}" TextWrapping="Wrap" Classes="muted" />
-                      <TextBlock Classes="muted" FontSize="11"
-                                 Text="{Binding TweakCount, StringFormat='{}{0} tweak(s)'}" />
+                          <!-- Grouped by category rather than listed flat. The flat version
+                               repeated the category as a word on every one of forty-two rows,
+                               which is a heading pretending to be a column: it said the same
+                               thing four times running and gave the list no shape at all. -->
+                          <ItemsControl ItemsSource="{Binding Groups}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="vm:ProfileCategoryGroup">
+                                <StackPanel Margin="0,0,0,12" Spacing="1">
+
+                                  <Grid ColumnDefinitions="*,Auto" Margin="14,0,0,6">
+                                    <TextBlock Grid.Column="0" Classes="section"
+                                               Text="{Binding Name}" />
+                                    <TextBlock Grid.Column="1" Classes="faint" FontSize="10"
+                                               VerticalAlignment="Center"
+                                               Text="{Binding CountText}" />
+                                  </Grid>
+
+                                  <ItemsControl ItemsSource="{Binding Tweaks}">
+                                    <ItemsControl.ItemTemplate>
+                                      <DataTemplate x:DataType="vm:ProfileTweakViewModel">
+                                        <Grid ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,3"
+                                              Opacity="{Binding RowOpacity}">
+                                          <Grid.Transitions>
+                                            <Transitions>
+                                              <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+                                            </Transitions>
+                                          </Grid.Transitions>
+
+                                          <!-- Marks the row being worked on right now. A bar
+                                               rather than a highlight: forty rows going past
+                                               is something the eye should be able to follow
+                                               without reading any of them. -->
+                                          <Border Grid.Column="0" Width="2" Height="16"
+                                                  CornerRadius="1" Margin="0,0,4,0"
+                                                  VerticalAlignment="Center"
+                                                  IsVisible="{Binding IsRunning}"
+                                                  Background="{DynamicResource AccentBright}" />
+
+                                          <!-- The glyph and the spinner share a cell. While a
+                                               row is being applied its state is not knowable,
+                                               and a stale tick beside a spinner invites the
+                                               reader to believe it. -->
+                                          <Panel Grid.Column="1" Width="26"
+                                                 VerticalAlignment="Center">
+                                            <TextBlock FontSize="12"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       IsVisible="{Binding HasGlyph}"
+                                                       Text="{Binding StateGlyph}"
+                                                       Foreground="{Binding StateBrushKey,
+                                                                            Converter={StaticResource BrushFromKey}}" />
+                                            <Ellipse Classes="spinner" IsVisible="{Binding IsRunning}"
+                                                     HorizontalAlignment="Center"
+                                                     VerticalAlignment="Center" />
+                                          </Panel>
+
+                                          <TextBlock Grid.Column="2" Text="{Binding Title}"
+                                                     TextTrimming="CharacterEllipsis"
+                                                     VerticalAlignment="Center" />
+
+                                          <Border Grid.Column="3" Classes="chip"
+                                                  VerticalAlignment="Center" Margin="10,0,0,0"
+                                                  Background="{Binding RiskBrushKey,
+                                                                       Converter={StaticResource BrushFromKey},
+                                                                       ConverterParameter=Tint}">
+                                            <TextBlock Classes="chiptext" Text="{Binding RiskText}"
+                                                       Foreground="{Binding RiskBrushKey,
+                                                                            Converter={StaticResource BrushFromKey}}" />
+                                          </Border>
+                                        </Grid>
+                                      </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                  </ItemsControl>
+                                </StackPanel>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                        </Border>
+                      </StackPanel>
                     </StackPanel>
-                    <Button Grid.Column="1" Content="Apply"
-                            VerticalAlignment="Center"
-                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ApplyProfileCommand}"
-                            CommandParameter="{Binding}" />
-                  </Grid>
-                </Border>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </TabItem>
+
+        <TabItem Header="{loc:Tr tab.startup}">
+          <views:StartupView Classes="page" />
+        </TabItem>
+
+        <!-- After Startup, because both are pages about what Windows does on its own rather
+             than pages of catalog. Its rows are the same view models the Tweaks tab holds, so
+             switching one here shows there too. -->
+        <TabItem Header="{loc:Tr tab.updates}">
+          <views:UpdatesView Classes="page" />
+        </TabItem>
+
+        <TabItem Header="{loc:Tr tab.history}">
+          <views:HistoryView Classes="page" />
+        </TabItem>
+      </TabControl>
+
+    </Grid>
+
+    <!-- ============================================================ setup overlay ==
+
+         Everything the user would otherwise have had to do by hand happens behind this
+         panel: folders, default profiles, service install, connection.                     -->
+    <Border Classes="scrim" IsVisible="{Binding IsSettingUp}">
+      <Border Classes="dialog" Padding="30" Width="460"
+              HorizontalAlignment="Center" VerticalAlignment="Center">
+        <StackPanel Spacing="18">
+          <StackPanel Spacing="5">
+            <TextBlock Text="{loc:Tr setup.title}" FontSize="20" FontWeight="Bold" />
+            <TextBlock Classes="muted" TextWrapping="Wrap"
+                       Text="{loc:Tr setup.detail}" />
+          </StackPanel>
+
+          <ItemsControl ItemsSource="{Binding SetupSteps}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="startup:StartupStep">
+                <Grid ColumnDefinitions="26,*" Margin="0,5">
+                  <TextBlock Grid.Column="0" Text="{Binding Glyph}" FontSize="14"
+                             VerticalAlignment="Center"
+                             Foreground="{Binding Status, Converter={x:Static views:StepBrushes.ForStatus}}" />
+                  <StackPanel Grid.Column="1" Spacing="2">
+                    <TextBlock Text="{Binding Title}" />
+                    <TextBlock Text="{Binding Detail}" Classes="faint" TextWrapping="Wrap"
+                               IsVisible="{Binding Detail, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
+                  </StackPanel>
+                </Grid>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
-        </ScrollViewer>
-      </TabItem>
 
-      <!-- ====================================================== journal -->
-      <TabItem Header="History">
-        <Border Classes="panel" Margin="0,8,0,0" Padding="6,4">
-          <DockPanel>
+          <ProgressBar IsIndeterminate="True" Height="3" />
+        </StackPanel>
+      </Border>
+    </Border>
 
-            <StackPanel DockPanel.Dock="Top" Spacing="2" Margin="10,8,10,10">
-              <TextBlock Text="Everything this program has changed on this PC"
-                         FontWeight="SemiBold" FontSize="14" />
-              <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="12"
-                         Text="Newest first. Every change saved your previous setting before touching anything, so any of it can be undone with Revert everything." />
-            </StackPanel>
+    <!-- ========================================================= settings overlay ==
 
-            <!-- An interrupted change is the one entry that asks the reader to do something,
-                 so it gets a banner instead of being a differently coloured row halfway down. -->
-            <Border DockPanel.Dock="Top" Classes="banner" Margin="10,0,10,10"
-                    Background="#2a2118" BorderBrush="#92400e" BorderThickness="1"
-                    IsVisible="{Binding HasUnfinished}">
-              <StackPanel Spacing="2">
-                <TextBlock Text="Some changes were interrupted" FontWeight="SemiBold" Foreground="#fdba74" />
-                <TextBlock Classes="muted" TextWrapping="Wrap" FontSize="12"
-                           Text="They were started but never confirmed finished, usually because the PC shut down partway through. Your old settings were saved first, so Revert everything will still put them back." />
-              </StackPanel>
+         An overlay rather than a fourth tab. Everything in the tab strip is about the
+         machine; these two things are about the program, and one of them deletes it.       -->
+    <Border Classes="scrim" IsVisible="{Binding ShowSettings}">
+      <Border Classes="dialog" Width="700" MaxHeight="760" Margin="0,26"
+              HorizontalAlignment="Center" VerticalAlignment="Center"
+              ClipToBounds="True">
+        <DockPanel>
+
+          <Grid DockPanel.Dock="Top" ColumnDefinitions="Auto,*,Auto" Margin="24,20,16,14">
+            <Border Grid.Column="0" Width="34" Height="34" CornerRadius="11"
+                    Background="{DynamicResource AccentTint}" VerticalAlignment="Center"
+                    Margin="0,0,13,0">
+              <Path Data="{DynamicResource GearIcon}" Stretch="Uniform"
+                    Width="17" Height="17" Fill="{DynamicResource AccentBright}"
+                    HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
+            <TextBlock Grid.Column="1" Text="{loc:Tr settings.title}" FontSize="18" FontWeight="Bold"
+                       VerticalAlignment="Center" />
+            <Button Grid.Column="2" Classes="icon ghost" Content="✕"
+                    FontSize="14" Command="{Binding CloseSettingsCommand}" />
+          </Grid>
 
-            <ListBox ItemsSource="{Binding Journal}" Background="Transparent" BorderThickness="0">
-              <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="vm:JournalEntryViewModel">
-                  <StackPanel Spacing="6" Margin="2,3">
+          <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource Stroke}" />
 
-                    <!-- "Today" / "Yesterday" / "Tuesday 5 August". A bare 21:50 on every row
-                         is what made the old list read like a log file. -->
-                    <TextBlock Text="{Binding DayHeader}" IsVisible="{Binding HasDayHeader}"
-                               FontWeight="SemiBold" FontSize="12" Margin="0,8,0,2"
-                               Foreground="{DynamicResource Accent}" />
+          <ScrollViewer>
+            <views:SettingsView DataContext="{Binding Settings}" />
+          </ScrollViewer>
+        </DockPanel>
+      </Border>
+    </Border>
+    <!-- =================================================================== title bar ==
 
-                    <Grid ColumnDefinitions="26,52,*">
-                      <TextBlock Grid.Column="0" Text="{Binding Glyph}" FontSize="15"
-                                 VerticalAlignment="Top" HorizontalAlignment="Center"
-                                 Foreground="{Binding GlyphBrushKey, Converter={StaticResource BrushFromKey}}" />
+         Last in the panel, so it draws over both overlays.
 
-                      <TextBlock Grid.Column="1" Text="{Binding Time}" Classes="muted"
-                                 FontSize="12" VerticalAlignment="Top" />
+         That ordering is the point. A modal covers the window with a scrim, and if the caption
+         buttons went under it there would be a state in which the program cannot be closed
+         except through Alt+F4 or Task Manager. The window's own controls outrank anything the
+         app has to say.                                                                       -->
+    <Border Height="40" VerticalAlignment="Top"
+            Background="Transparent"
+            PointerPressed="TitleBarPressed"
+            DoubleTapped="TitleBarDoubleTapped">
+      <Grid ColumnDefinitions="Auto,*,Auto">
 
-                      <StackPanel Grid.Column="2" Spacing="2">
-                        <TextBlock Text="{Binding Headline}" FontSize="13" TextWrapping="Wrap" />
-                        <TextBlock Text="{Binding Explanation}" Classes="muted" FontSize="12"
-                                   TextWrapping="Wrap" />
-
-                        <!-- The exact values, kept but demoted. A tool whose whole claim is that
-                             it can prove what it changed does not get to hide the proof. -->
-                        <TextBlock Text="{Binding Detail}" FontSize="11" TextWrapping="Wrap"
-                                   FontFamily="Consolas,monospace" Foreground="#64748b"
-                                   IsVisible="{Binding Detail, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                        <TextBlock Text="{Binding Error}" FontSize="12" Foreground="#f87171"
-                                   TextWrapping="Wrap"
-                                   IsVisible="{Binding Error, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                      </StackPanel>
-                    </Grid>
-                  </StackPanel>
-                </DataTemplate>
-              </ListBox.ItemTemplate>
-            </ListBox>
-          </DockPanel>
-        </Border>
-      </TabItem>
-    </TabControl>
-
-  </Grid>
-
-  <!-- Setup overlay. Everything the user would otherwise have had to do by hand happens
-       behind this panel: folders, default profiles, service install, connection. -->
-  <Border IsVisible="{Binding IsSettingUp}" Background="#f214171d">
-    <Border Classes="panel" Padding="28" Width="440"
-            HorizontalAlignment="Center" VerticalAlignment="Center">
-      <StackPanel Spacing="16">
-        <StackPanel Spacing="4">
-          <TextBlock Text="Getting ready" FontSize="19" FontWeight="SemiBold" />
-          <TextBlock Classes="muted" TextWrapping="Wrap"
-                     Text="Setting up everything this needs. You may see one administrator prompt." />
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10"
+                    Margin="16,0,0,0" VerticalAlignment="Center">
+          <Border Width="22" Height="22" CornerRadius="7"
+                  Background="{DynamicResource AccentFill}">
+            <Path Data="{DynamicResource MarkIcon}" Stretch="Uniform"
+                  Width="9" Height="9" Fill="#FFFFFF"
+                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <TextBlock Text="Nostos" FontSize="13" FontWeight="Bold"
+                     Foreground="{DynamicResource WordmarkFill}"
+                     VerticalAlignment="Center" />
         </StackPanel>
 
-        <ItemsControl ItemsSource="{Binding SetupSteps}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="startup:StartupStep">
-              <Grid ColumnDefinitions="24,*" Margin="0,5">
-                <TextBlock Grid.Column="0" Text="{Binding Glyph}" FontSize="14"
-                           VerticalAlignment="Center"
-                           Foreground="{Binding Status, Converter={x:Static views:StepBrushes.ForStatus}}" />
-                <StackPanel Grid.Column="1" Spacing="1">
-                  <TextBlock Text="{Binding Title}" FontSize="13" />
-                  <TextBlock Text="{Binding Detail}" Classes="muted" FontSize="11" TextWrapping="Wrap"
-                             IsVisible="{Binding Detail, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" />
-                </StackPanel>
-              </Grid>
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="2"
+                    Margin="0,0,8,0" VerticalAlignment="Center">
+          <Button Classes="caption" Click="MinimiseClicked" ToolTip.Tip="{loc:Tr window.minimise}">
+            <!-- 1.2 high, not 10: the bar has to fill its element or Uniform pins it to
+                 the top and the glyph sits above the other two. -->
+            <Path Data="{DynamicResource MinimiseIcon}" Stretch="Uniform"
+                  Width="10" Height="1.2" />
+          </Button>
 
-        <ProgressBar IsIndeterminate="True" Height="3" />
-      </StackPanel>
+          <!-- Its glyph and its tooltip are set from the window state in code behind, so the
+               button says which of the two things it will do. -->
+          <Button Name="MaximiseButton" Classes="caption" Click="MaximiseClicked">
+            <Path Name="MaximiseGlyph" Data="{DynamicResource MaximiseIcon}"
+                  Stretch="Uniform" Width="10" Height="10" />
+          </Button>
+
+          <Button Classes="caption close" Click="CloseClicked" ToolTip.Tip="{loc:Tr window.close}">
+            <Path Data="{DynamicResource CloseIcon}" Stretch="Uniform"
+                  Width="10" Height="10" />
+          </Button>
+        </StackPanel>
+      </Grid>
     </Border>
-  </Border>
   </Panel>
 </Window>

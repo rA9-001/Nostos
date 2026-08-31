@@ -1,0 +1,766 @@
+// Der Katalog auf Deutsch.
+//
+// Nach Tweak-Id geschlüsselt. Jedes Feld ist optional: Fehlt eine Übersetzung, zeigt die App
+// den englischen Originaltext. Ein neuer Tweak muss hier also nicht am selben Tag eingetragen
+// werden, und ein fehlender Eintrag macht nie ein Fenster kaputt -- er macht eine Zeile
+// englisch.
+//
+// Uebersetzt wird nur Prosa. Registrierungspfade, Dienstnamen, Ids und Wertnamen stehen in
+// registry.json, services.json und adapters.json und gehören dorthin; sie sind keine Sprache,
+// sondern Namen, die Windows selbst benutzt.
+//
+// Ton: derselbe wie im Englischen. Sachlich, ohne Superlative, und ehrlich darüber, was ein
+// Tweak nicht kann. CatalogParityTests prüft, dass jede Id hier auch im Katalog existiert.
+{
+
+  // ============================================================ Netzwerkkarte (adapters.json)
+
+  "network.interrupt-moderation-off": {
+    "title": "Interrupt-Bündelung der Netzwerkkarte abschalten",
+    "summary": "Die Netzwerkkarte hält eintreffende Pakete den Bruchteil einer Millisekunde zurück, um einen Interrupt statt mehrerer auszulösen. Genau diese Verzögerung ist der Zweck der Funktion, und sie trifft jedes Paket, das ein Spiel empfängt."
+  },
+
+  "network.receive-coalescing-off": {
+    "title": "Zusammenfassen empfangener Pakete durch die Netzwerkkarte abschalten",
+    "summary": "Receive Segment Coalescing wartet auf mehrere TCP-Segmente und reicht sie als eines nach oben. Es spart CPU-Zeit, indem es Verzögerung hinzufügt, und Microsofts eigene Empfehlung lautet, es für latenzempfindlichen Datenverkehr abzuschalten."
+  },
+
+  "network.energy-efficient-ethernet-off": {
+    "title": "Abschalten der Netzwerkverbindung zwischen Paketen verhindern",
+    "summary": "Energy Efficient Ethernet legt die PHY schlafen, wenn die Verbindung im Leerlauf ist, und weckt sie, wenn ein Paket eintrifft. Das Aufwachen dauert Mikro- bis Millisekunden, und auf mehreren Realtek-Chipsätzen ist es eine bekannte Ursache für Verbindungsabbrüche."
+  },
+
+  "network.flow-control-off": {
+    "title": "Senden von Pause-Frames durch die Netzwerkkarte abschalten",
+    "summary": "802.3x-Flusssteuerung erlaubt der Karte, dem Switch zu sagen, er solle eine Weile nicht mehr senden, wenn ihr Puffer voll läuft. Sie pausiert die gesamte Verbindung, nicht die eine Verbindung, die es verursacht hat, sodass ein großer Download die Pakete eines Spiels ins Stocken bringen kann."
+  },
+
+  // ================================================================ Dienste (services.json)
+
+  "services.search-indexer": {
+    "title": "Windows-Suchindizierung nicht mehr beim Systemstart starten",
+    "summary": "Die Windows-Suche baut ihren Inhaltsindex im Hintergrund neu auf, und das ist echte Festplatten- und CPU-Arbeit, die ohne Vorwarnung kommt. Die Suche im Startmenü funktioniert weiter; Treffer in Dateiinhalten werden langsamer."
+  },
+
+  "services.sysmain": {
+    "title": "SysMain (Superfetch) nicht mehr beim Systemstart starten",
+    "summary": "SysMain lädt im Voraus, was Sie vermutlich als Nächstes starten. Auf einer Festplatte war das ein echter Gewinn; auf einer SSD ist die Vorhersage deutlich weniger wert, als sie kostet — wie viel weniger, hat für Spiele allerdings niemand gemessen."
+  },
+
+  "services.telemetry": {
+    "title": "Telemetrie-Sammeldienst nicht mehr beim Systemstart starten",
+    "summary": "„Benutzererfahrung und Telemetrie im verbundenen Modus“ bündelt Diagnosedaten und lädt sie hoch. Die Arbeit ist gering und fällt überwiegend im Leerlauf an; die Behauptung, das koste FPS, kann dieses Projekt nicht belegen."
+  },
+
+  "services.error-reporting": {
+    "title": "Windows-Fehlerberichterstattung nicht mehr beim Systemstart starten",
+    "summary": "Der Dienst hinter dem Dialog „Es wird nach einer Lösung gesucht“. Stürzt ein Spiel ab, sammelt er einen Speicherauszug und lädt ihn hoch — Festplatten- und Netzwerkarbeit genau in dem Moment, in dem Sie zurück in die Runde wollen."
+  },
+
+  "services.diagnostic-policy": {
+    "title": "Diagnoserichtliniendienst nicht mehr beim Systemstart starten",
+    "summary": "Führt die Problembehandlungen und die Maschinerie hinter „Netzwerkprobleme diagnostizieren“ aus. Fast immer im Leerlauf; wenn er läuft, führt er Skripte aus."
+  },
+
+  "services.program-compatibility": {
+    "title": "Programmkompatibilitäts-Assistenten nicht mehr beim Systemstart starten",
+    "summary": "Beobachtet, was Sie starten, auf bekannte Problemmuster und bietet an, Kompatibilitätskorrekturen anzuwenden. Der Dialog, den er erzeugt, nimmt den Fokus — deshalb steht er hier und nicht unter Leistung."
+  },
+
+  "services.delivery-optimization": {
+    "title": "Peer-to-Peer-Updatedienst nicht mehr beim Systemstart starten",
+    "summary": "Die Übermittlungsoptimierung ist der Prozess, der Update-Teile tatsächlich an andere Rechner hochlädt. Eine ausgelastete Upload-Leitung ist eines der wenigen Dinge auf dieser Liste mit direkter, offensichtlicher Wirkung auf den Ping."
+  },
+
+  "services.remote-registry": {
+    "title": "Dienst „Remote-Registrierung“ nicht mehr beim Systemstart starten",
+    "summary": "Erlaubt einem anderen Rechner im Netzwerk, die Registrierung dieses Rechners zu lesen und zu schreiben. Auf einer Standardinstallation von Windows 11 bereits deaktiviert; dies legt es fest, damit es nichts unbemerkt wieder einschaltet."
+  },
+
+  "services.print-spooler": {
+    "title": "Druckwarteschlange nicht mehr beim Systemstart starten",
+    "summary": "Läuft unabhängig davon, ob je ein Drucker angeschlossen war. Der ehrliche Grund, sie abzuschalten, ist ihre lange Geschichte von Sicherheitslücken zur Codeausführung aus der Ferne, nicht dass sie FPS kostet — sie liegt im Leerlauf."
+  },
+
+  "services.fax": {
+    "title": "Faxdienst nicht mehr beim Systemstart starten",
+    "summary": "Sendet und empfängt Faxe über ein Modem. Wenn dieser Satz nichts beschreibt, was an Ihrem PC hängt, hat dieser Dienst nichts zu tun."
+  },
+
+  "services.bluetooth": {
+    "title": "Bluetooth-Unterstützungsdienst nicht mehr beim Systemstart starten",
+    "summary": "Findet und koppelt Bluetooth-Geräte. Schalten Sie das nur auf einem Rechner ohne Bluetooth-Maus, -Headset oder -Controller ab — der Fehlerfall ist ein Gerät, das sich stillschweigend nicht mehr koppeln lässt."
+  },
+
+  "services.touch-keyboard": {
+    "title": "Touch-Tastatur und Handschriftbereich nicht mehr beim Systemstart starten",
+    "summary": "Zeichnet die Bildschirmtastatur und den Handschriftbereich. Auf einem Desktop ohne Touchscreen und ohne Stift gibt es nichts zu zeichnen, und es ist eines der Dinge, die ein Fenster über ein Vollbildspiel legen können."
+  },
+
+  "services.payments-nfc": {
+    "title": "Zahlungs- und NFC-Dienst nicht mehr beim Systemstart starten",
+    "summary": "Verwaltet das sichere Element für kontaktloses Bezahlen. Desktop-PCs haben keines, auf einem Desktop ist dies also ein Dienst ohne Hardware, die er verwalten könnte."
+  },
+
+  "services.geolocation": {
+    "title": "Geolocation-Dienst nicht mehr beim Systemstart starten",
+    "summary": "Ermittelt für Apps, die danach fragen, wo der Rechner steht, und fragt Sie dabei um Erlaubnis. Ein Desktop ohne GPS bekommt seine Antwort aus WLAN und IP-Adresse — ungenau genug, um Ihnen wenig zu nützen, und genau genug, um für andere etwas wert zu sein."
+  },
+
+  "services.downloaded-maps": {
+    "title": "Manager für heruntergeladene Karten nicht mehr beim Systemstart starten",
+    "summary": "Lädt Offline-Karten für die Karten-App im Hintergrund herunter und aktualisiert sie. Echte Festplatten- und Netzwerkarbeit nach einem Zeitplan, den Sie nicht gewählt haben, für eine Funktion, die die meisten nie geöffnet haben."
+  },
+
+  "services.retail-demo": {
+    "title": "Einzelhandelsdemo-Dienst nicht mehr beim Systemstart starten",
+    "summary": "Steuert den Demomodus auf Geräten im Ladenregal. Auf einem PC, der jemandem gehört, gibt es keinen Grund dafür."
+  },
+
+  "services.windows-insider": {
+    "title": "Windows-Insider-Dienst nicht mehr beim Systemstart starten",
+    "summary": "Meldet den Rechner für Vorabversionen an und meldet sich dazu zurück. Tut überhaupt nichts, solange Sie dem Insider-Programm nicht beigetreten sind."
+  },
+
+  "services.xbox-accessory": {
+    "title": "Xbox-Zubehörverwaltung nicht mehr beim Systemstart starten",
+    "summary": "Dies ist der Dienst, der einen Xbox-Controller zum Laufen bringt. Schalten Sie ihn nur ab, wenn Sie keinen benutzen — er ist der mit Abstand häufigste Weg, auf dem Werkzeuge wie dieses genau das kaputt machen, wofür sie gestartet wurden."
+  },
+
+  "services.xbox-live-auth": {
+    "title": "Xbox Live Auth Manager nicht mehr beim Systemstart starten",
+    "summary": "Meldet Sie bei Xbox Live an. Game-Pass- und Microsoft-Store-Spiele starten ohne ihn nicht; eine reine Steam-Bibliothek ruft ihn nie auf."
+  },
+
+  "services.xbox-game-save": {
+    "title": "Xbox Live-Spielspeicherung nicht mehr beim Systemstart starten",
+    "summary": "Synchronisiert Cloud-Spielstände für Xbox- und Store-Titel. Der Fehlerfall, wenn Sie diese doch nutzen, ist ein Spielstand, der still nicht mehr synchronisiert wird — schlimmer als einer, der laut scheitert."
+  },
+
+  "services.xbox-networking": {
+    "title": "Xbox Live-Netzwerkdienst nicht mehr beim Systemstart starten",
+    "summary": "Kümmert sich um NAT-Traversal und Mehrspieler-Verbindungen für Microsoft-Store-Titel. Außerhalb dieses Ökosystems nutzt ihn nichts."
+  },
+
+  "services.push-notifications": {
+    "title": "Plattform für Pushbenachrichtigungen nicht mehr beim Systemstart starten",
+    "summary": "Empfängt Benachrichtigungen von Microsofts Servern und gibt sie an die Oberfläche weiter. Das ist die Leitung, über die die Einblendungen ankommen — im Unterschied zu der Einstellung, die entscheidet, ob sie angezeigt werden."
+  },
+
+  "services.printer-notifications": {
+    "title": "Druckererweiterungen und -benachrichtigungen nicht mehr beim Systemstart starten",
+    "summary": "Zeigt die Dialoge des Druckers selbst an: kein Papier, wenig Toner, Auftrag fertig. Getrennt von der Druckwarteschlange, und die Hälfte, die tatsächlich etwas auf Ihren Bildschirm bringt."
+  },
+
+  "services.smart-card": {
+    "title": "Smartcard-Dienst nicht mehr beim Systemstart starten",
+    "summary": "Spricht mit Smartcard-Lesegeräten, wie sie für die Anmeldung per Firmenausweis benutzt werden. Privatrechner haben keines; Rechner, die eines haben, werden meist zentral verwaltet, und dafür ist dieses Werkzeug nicht gedacht."
+  },
+
+  "services.sensors": {
+    "title": "Sensordienst nicht mehr beim Systemstart starten",
+    "summary": "Verwaltet Helligkeits-, Beschleunigungs- und Bildschirmdrehungssensoren. Ein Desktop-Tower hat keinen davon, dies ist also ein Dienst, der auf nie eingebaute Hardware wartet."
+  },
+
+  "services.phone": {
+    "title": "Telefoniestatusdienst nicht mehr beim Systemstart starten",
+    "summary": "Verwaltet den Telefoniestatus des Geräts selbst — Mobilfunkanrufe auf einem Windows-Tablet mit Modem. Nicht „Phone Link“; das ist eine eigene App und funktioniert weiter."
+  },
+
+  "services.wallet": {
+    "title": "Wallet-Dienst nicht mehr beim Systemstart starten",
+    "summary": "Stützt die Microsoft-Wallet-App, die Karten und Tickets gespeichert hat. Die App erschien, wurde eingestellt, und der Dienst blieb."
+  },
+
+  "services.parental-controls": {
+    "title": "Jugendschutzdienst nicht mehr beim Systemstart starten",
+    "summary": "Setzt Microsoft Family Safety durch: Bildschirmzeit, Inhaltsfilter, Aktivitätsberichte. Tut nichts, solange keine Familiengruppe diesen Rechner umfasst — und wenn doch, ist genau das der Sinn davon, ihn nicht abzuschalten."
+  },
+
+  "services.offline-files": {
+    "title": "Dienst für Offlinedateien nicht mehr beim Systemstart starten",
+    "summary": "Speichert Netzwerkfreigaben zwischen, damit sie lesbar bleiben, wenn das Netzwerk es nicht ist. Eine Domänenfunktion; auf einem Heimrechner ohne umgeleitete Ordner hat sie nichts zwischenzuspeichern."
+  },
+
+  "services.windows-backup": {
+    "title": "Windows-Sicherungsdienst nicht mehr beim Systemstart starten",
+    "summary": "Führt die alte Sicherungs- und Wiederherstellungs-Engine (Windows 7) aus. Echte Festplatten- und CPU-Arbeit, wenn sie anläuft, und sie läuft nach einem Zeitplan an, den Sie einmal gesetzt und vergessen haben — oder nie gesetzt haben, dann tut sie gar nichts."
+  },
+
+  "services.wmp-network-sharing": {
+    "title": "Windows Media Player-Netzwerkfreigabe nicht mehr beim Systemstart starten",
+    "summary": "Kündigt Ihre Medienbibliothek DLNA-Geräten im lokalen Netz an und streamt an sie. Den Windows Media Player selbst gibt es in einem Standard-Windows-11 nicht mehr; der Freigabedienst ist oft trotzdem noch registriert."
+  },
+
+  "services.internet-sharing": {
+    "title": "Gemeinsame Internetnutzung nicht mehr beim Systemstart starten",
+    "summary": "Macht diesen PC zum Router für andere Geräte und ist die Grundlage des mobilen Hotspots. Wenn Sie die Verbindung dieses Rechners nie geteilt haben, gibt es nichts zu teilen."
+  },
+
+  "services.netbios-helper": {
+    "title": "TCP/IP-NetBIOS-Hilfsdienst nicht mehr beim Systemstart starten",
+    "summary": "Löst Namen über NetBIOS auf, ein Protokoll, das älter ist als die meisten, die es abschalten. Wird noch von mancher Dateifreigabe genutzt und von allem, was die alte Netzwerkumgebung durchsucht."
+  },
+
+  "services.link-tracking": {
+    "title": "Verteilte Verknüpfungsverfolgung nicht mehr beim Systemstart starten",
+    "summary": "Hält Verknüpfungen funktionsfähig, wenn ihre Zieldatei verschoben oder umbenannt wird, indem sie NTFS-Objekt-Ids mitschreibt. Günstig, aber echte Buchführung pro Datei für eine Funktion, die kaum jemand so oder so bemerkt."
+  },
+
+  "services.alljoyn-router": {
+    "title": "AllJoyn-Routerdienst nicht mehr beim Systemstart starten",
+    "summary": "Leitet Nachrichten für AllJoyn weiter, ein Internet-der-Dinge-Protokoll, das Microsoft unterstützt und dann nicht mehr unterstützt hat. Fast nichts spricht es, und nichts, was Sie spielen."
+  },
+
+  // ============================================================ Registrierung (registry.json)
+
+  "mmcss.system-responsiveness": {
+    "title": "MMCSS-CPU-Reservierung für Hintergrundarbeit senken",
+    "summary": "Legt fest, welchen CPU-Anteil der Multimedia Class Scheduler für Nicht-Multimedia-Arbeit reserviert. Windows liefert 20 % aus; Sie entscheiden, wie viel davon zurückgegeben wird.",
+    "choices": {
+      "reserve": {
+        "title": "CPU-Reservierung für Hintergrundarbeit",
+        "description": "Der Anteil an CPU-Zeit, den der Multimedia Class Scheduler Arbeit garantiert, die NICHT als Multimedia registriert ist. Ihn zu senken lässt mehr Luft für die MMCSS-Threads eines Spiels, auf Kosten von allem anderen auf dem Rechner.",
+        "options": {
+          "windows-default": {
+            "title": "Windows-Standard – 20 %",
+            "description": "Schreibt den Wert, mit dem Windows Client ausgeliefert wird. Damit legen Sie die Einstellung ausdrücklich fest, sodass ein künftiges Windows-Update, das den Standard ändert, vom Abgleich erkannt wird."
+          },
+          "balanced": {
+            "title": "Ausgewogen – 10 %",
+            "description": "Halbiert die Reservierung. Lässt genug für die Audio-Engine und Hintergrundarbeit und gibt MMCSS-registrierten Spiel-Threads mehr Raum. Das ist die Wahl, wenn Sie unsicher sind."
+          },
+          "none": {
+            "title": "Keine Reservierung – 0 %",
+            "description": "Reserviert nichts für Nicht-Multimedia-Arbeit. Viel empfohlen und viel bereut: Es hungert die Audio-Engine aus, was sich unter Last als Knacken oder Aussetzer zeigt. Angeboten, weil Leute es ohnehin setzen — und hier wird es protokolliert und ist rücknehmbar."
+          }
+        }
+      }
+    }
+  },
+
+  "mmcss.network-throttling-off": {
+    "title": "Netzwerkdrosselung für Multimedia abschalten",
+    "summary": "Verhindert, dass Windows den Rechner auf etwa 10 Pakete/ms begrenzt, während eine Multimedia-Aufgabe läuft. Relevant bei Shootern mit hoher Tickrate und beim Streaming mit hoher Bildwiederholrate."
+  },
+
+  "mmcss.games-task-priority": {
+    "title": "Priorität der MMCSS-Aufgabe „Games“ anheben",
+    "summary": "Hebt die Scheduling-Priorität für Threads an, die sich bei MMCSS unter der Aufgabe „Games“ registrieren. Die meisten Spiele registrieren sich nie, auf den meisten Systemen ändert dies also überhaupt nichts."
+  },
+
+  "gamedvr.policy-off": {
+    "title": "Game-DVR-Hintergrundaufzeichnung abschalten (Systemrichtlinie)",
+    "summary": "Schaltet den dauerhaft laufenden Hintergrundrekorder ab, der die letzten 30 Sekunden Spiel aufzeichnet. Kostet fortlaufend CPU, GPU-Encoder-Zeit und Festplattenbandbreite, solange ein Spiel läuft."
+  },
+
+  "gamedvr.user-capture-off": {
+    "title": "Game-DVR-Aufzeichnung für den aktuellen Benutzer abschalten",
+    "summary": "Die benutzerbezogene Hälfte des Game-DVR-Schalters. Gilt nur für den angemeldeten Benutzer und braucht keine erhöhten Rechte."
+  },
+
+  "graphics.hags": {
+    "title": "Hardwarebeschleunigte GPU-Planung aktivieren",
+    "summary": "Verlagert die Planung der GPU-Arbeitsübergabe auf die GPU selbst. Verringert bei unterstützten Treibern die Übergabelatenz; bei nicht unterstützten oder fehlerhaften Treibern kann es Stabilität kosten, daher ist ein Neustart nötig und vorher wird ein Wiederherstellungspunkt angelegt."
+  },
+
+  "gpu.tdr-delay": {
+    "title": "Zeitlimit für die GPU-Timeout-Erkennung verlängern",
+    "summary": "Legt fest, wie lange Windows wartet, bevor es einen nicht reagierenden Grafiktreiber zurücksetzt. Ändert nichts an der Geschwindigkeit; ändert, wie sich ein hängender Treiber verhält.",
+    "choices": {
+      "delay": {
+        "title": "Zeitlimit bei hängendem Treiber",
+        "description": "Wie lange Windows auf einen nicht reagierenden Grafiktreiber wartet, bevor es ihn zurücksetzt. Das macht nichts schneller; es ändert, wie lange der Bildschirm bei einem Hänger eingefroren bleibt und wie tolerant der Rechner gegenüber einer berechtigt langsamen GPU-Aufgabe ist.",
+        "options": {
+          "windows-default": {
+            "title": "Windows-Standard – 2 Sekunden",
+            "description": "Das ausgelieferte Zeitlimit. Ein hängender Treiber wird schnell zurückgesetzt, ein echter Fehler zeigt sich also als kurzes Flackern statt als langes Einfrieren."
+          },
+          "extended": {
+            "title": "Verlängert – 8 Sekunden",
+            "description": "Verträgt lange Shader-Kompilierung und schwere GPU-Arbeit ohne fälschliches Zurücksetzen. Der Preis: Ein echter Treiberhänger lässt Sie acht statt zwei Sekunden auf ein eingefrorenes Bild schauen."
+          },
+          "compute": {
+            "title": "Rechenlasten – 60 Sekunden",
+            "description": "Für Rechner, die GPU-Compute-Kernel ausführen, die berechtigt eine Minute dauern. Falsch fürs Spielen: Ein Hänger wird zum minutenlangen Einfrieren, und wenn Sie beim Spielen ins Zeitlimit laufen, liegt der Fehler an Übertaktung, Karte oder Treiber — ihn zu verstecken behebt ihn nicht."
+          }
+        }
+      }
+    }
+  },
+
+  "input.mouse-acceleration-off": {
+    "title": "Mausbeschleunigung abschalten",
+    "summary": "Macht die Zeigerbewegung zu einem festen Vielfachen der Mausbewegung, sodass dieselbe physische Bewegung Sie immer gleich weit dreht. Das ist das Kontrollkästchen „Zeigerbeschleunigung verbessern“."
+  },
+
+  "power.throttling-off": {
+    "title": "Energiedrosselung von Hintergrundprozessen abschalten",
+    "summary": "Deaktiviert Power Throttling (EcoQoS) systemweit, sodass Windows Prozesse, die es für Hintergrundarbeit hält, nicht mehr mit gedrosseltem Takt auf Effizienzkerne parkt."
+  },
+
+  "gpu.mpo-off": {
+    "title": "Multi-Plane Overlay deaktivieren",
+    "summary": "Schaltet den Hardware-Overlay-Pfad des DWM ab. Ein dokumentierter Workaround für die Flacker-, Schwarzbild- und Ruckelfehler, die MPO bei manchen Treiber- und Monitorkombinationen verursacht. Tut überhaupt nichts, wenn Sie dieses Problem nicht haben."
+  },
+
+  "shell.background-apps-off": {
+    "title": "Store-Apps nicht im Hintergrund laufen lassen",
+    "summary": "Hindert paketierte Apps (Store/UWP) daran, für diesen Benutzer Hintergrundaufgaben auszuführen. Derselbe Schalter wie unter Einstellungen, Datenschutz, Hintergrund-Apps."
+  },
+
+  "shell.notifications-off": {
+    "title": "Benachrichtigungseinblendungen abschalten",
+    "summary": "Verhindert, dass Benachrichtigungen eingeblendet werden. Eine Einblendung über einem exklusiven Vollbildspiel kann einen Moduswechsel kosten, und bestenfalls ist sie ein Popup mitten in der Runde."
+  },
+
+  "shell.game-mode": {
+    "title": "Windows-Spielmodus",
+    "summary": "Der Windows-Spielmodus weist Scheduler und Windows Update an, sich herauszuhalten, solange ein Spiel im Vordergrund ist. Microsoft liefert ihn eingeschaltet aus; dies legt die Einstellung ausdrücklich fest, so oder so.",
+    "choices": {
+      "state": {
+        "title": "Spielmodus",
+        "description": "Ob Windows seine eigene spielspezifische Behandlung anwendet: Es hält Treiberinstallationen und Neustarts durch Windows Update zurück und gibt dem Spiel im Vordergrund gleichmäßigeren Zugriff auf CPU- und GPU-Ressourcen.",
+        "options": {
+          "on": {
+            "title": "Ein",
+            "description": "Der Windows-Standard und Microsofts eigene Empfehlung. Hält Windows Update davon ab, den Rechner mitten in der Runde neu zu starten — der Teil, den niemand bestreitet."
+          },
+          "off": {
+            "title": "Aus",
+            "description": "Schaltet ihn ab. Nur einen Versuch wert, wenn Sie einem konkreten Ruckeln nachgehen, das Sie tatsächlich auf den Spielmodus zurückgeführt haben; eine Handvoll Titel hat sich damit historisch schlechter verhalten."
+          }
+        }
+      }
+    }
+  },
+
+  "input.usb-selective-suspend-off": {
+    "title": "Windows daran hindern, ungenutzte USB-Geräte schlafen zu legen",
+    "summary": "Der selektive USB-Energiesparmodus schaltet Geräte ab, die Windows für untätig hält. Eine Maus oder ein Controller, der so schlafen gelegt wurde, muss vor dem nächsten Bericht erst aufwachen — das spürt man als Ruckler oder verlorene Eingabe, statt es als Einstellung zu sehen."
+  },
+
+  "graphics.fullscreen-optimizations-off": {
+    "title": "Vollbildoptimierungen abschalten",
+    "summary": "Vollbildoptimierungen führen ein Spiel, das exklusives Vollbild anfordert, stattdessen als randloses Fenster aus, sodass der Desktop-Compositor im Darstellungspfad bleibt. Sie abzuschalten gibt diesen Spielen ein echtes exklusives Vollbild zurück."
+  },
+
+  "shell.transparency-off": {
+    "title": "Transparenzeffekte für Fenster abschalten",
+    "summary": "Die Acryl-Unschärfe hinter Taskleiste, Startmenü und Fensterrahmen ist echte GPU-Arbeit pro Bild, die der Compositor leistet. Sie abzuschalten gibt diese Arbeit zurück — spürbar bei integrierter Grafik, kaum messbar auf einer dedizierten Karte."
+  },
+
+  "shell.visual-effects": {
+    "title": "Desktop-Animationen abschalten",
+    "summary": "Verhindert, dass Windows Fenster, Taskleiste und Menüs animiert. Desktop-Arbeit statt Spielarbeit, aber Arbeit, die dieselbe GPU in dem Moment leistet, in dem Sie mit Alt+Tab wechseln."
+  },
+
+  "shell.menu-show-delay": {
+    "title": "Verzögerung beim Öffnen von Menüs entfernen",
+    "summary": "Windows wartet, bevor es ein Menü öffnet, über dem der Zeiger steht. Die Wartezeit beträgt ab Werk 400 ms und misst nichts — sie ist einfach eine Pause.",
+    "choices": {
+      "delay": {
+        "title": "Verzögerung beim Öffnen von Menüs",
+        "description": "Wie lange Windows wartet, nachdem der Zeiger über einem Menü steht, bevor es öffnet. Eine feste Pause, keine Messung, das Verkürzen kostet also nichts außer dem Gefühl des Desktops.",
+        "options": {
+          "instant": {
+            "title": "Sofort – 0 ms",
+            "description": "Menüs öffnen beim Überfahren ohne jede Wartezeit. Der einzige Nachteil: Wenn Sie den Zeiger über eine Menüleiste ziehen, öffnet sich nun jedes Menü unterwegs, was manche als unruhig empfinden."
+          },
+          "short": {
+            "title": "Kurz – 100 ms",
+            "description": "Schnell genug, um unmittelbar zu wirken, lang genug, dass das Ziehen des Zeigers über eine Menüleiste nicht alles unterwegs öffnet. Der Kompromiss, falls „sofort“ zu nervös wirkt."
+          },
+          "windows-default": {
+            "title": "Windows-Standard – 400 ms",
+            "description": "Schreibt den ausgelieferten Wert. Damit legen Sie die Einstellung ausdrücklich fest, statt sie ungesetzt zu lassen, sodass der Abgleich etwas zum Vergleichen hat."
+          }
+        }
+      }
+    }
+  },
+
+  "shell.widgets-off": {
+    "title": "Widgets-Bereich aus der Taskleiste entfernen",
+    "summary": "Widgets stellt Nachrichten und Wetter in einem WebView2-Browserprozess im Hintergrund dar. Schon das Streifen der Taskleiste mit der Maus weckt ihn auf."
+  },
+
+  "shell.search-highlights-off": {
+    "title": "Suchhighlights abschalten",
+    "summary": "Verhindert, dass das Suchfeld bebilderte „Highlights“ aus dem Internet lädt und in der Taskleiste animiert."
+  },
+
+  "shell.suggestions-off": {
+    "title": "Vorschläge und automatische App-Installationen von Windows unterbinden",
+    "summary": "Schaltet Startmenü-Vorschläge, „Wissenswertes“ auf dem Sperrbildschirm, Einstellungstipps und die stille Installation beworbener Apps ab."
+  },
+
+  "update.no-auto-restart": {
+    "title": "Nie für Updates neu starten, solange Sie angemeldet sind",
+    "summary": "Windows Update kann den Rechner nach eigenem Zeitplan neu starten. Dies ist der Schalter, der das unterbindet, solange jemand angemeldet ist."
+  },
+
+  "update.delivery-optimization-off": {
+    "title": "Verhindern, dass dieser PC Windows-Updates an Fremde hochlädt",
+    "summary": "Die Übermittlungsoptimierung verteilt Update-Teile über Ihre Leitung an andere Rechner. Eine ausgelastete Upload-Leitung ist genau das, woraus ein Ping-Ausschlag gemacht ist.",
+    "choices": {
+      "mode": {
+        "title": "Mit wem dieser PC Updates teilt",
+        "description": "Die Übermittlungsoptimierung lädt Update-Teile von anderen Rechnern und gibt sie wieder weiter. Die Download-Seite ist harmlos; die Upload-Seite konkurriert mit Ihrem Spiel um dieselbe Upload-Leitung.",
+        "options": {
+          "off": {
+            "title": "Mit niemandem – direkt von Microsoft laden",
+            "description": "Updates kommen per einfachem HTTP von Microsoft, und dieser PC lädt nie zu jemandem hoch. Auf einer langsamen Leitung dauern Downloads länger — ein Preis, der einmal pro Update anfällt statt jeden Abend."
+          },
+          "lan-only": {
+            "title": "Nur mit PCs im lokalen Netzwerk",
+            "description": "Hält die Weitergabe innerhalb Ihres eigenen Netzes, was mit mehreren Windows-Rechnern zu Hause wirklich nützlich ist, und verhindert, dass der Upload je Ihren Router verlässt."
+          }
+        }
+      }
+    }
+  },
+
+  "network.qos-reserved-bandwidth": {
+    "title": "Reservierbare QoS-Bandbreite auf null setzen",
+    "summary": "Die berühmte Einstellung „20 % Ihrer Bandbreite sind reserviert“. Sie tut nicht, was die Forenbeiträge behaupten, und dieser Eintrag existiert vor allem, um zu erklären, warum."
+  },
+
+  "memory.paging-executive": {
+    "title": "Kernel dauerhaft im Arbeitsspeicher halten",
+    "summary": "Verhindert, dass Windows Kernelcode und Treiber auf die Festplatte auslagert. Mit reichlich Arbeitsspeicher beseitigt das eine Ruckelquelle; ohne ihn schafft es eine."
+  },
+
+  "memory.prefetch-tuning": {
+    "title": "Ändern, was Windows vorab liest",
+    "summary": "Der Prefetcher merkt sich, was jedes Programm beim Start liest, und liest es beim nächsten Mal vorab. Dies ist der Schalter hinter den meisten Ratschlägen „Prefetch abschalten“.",
+    "choices": {
+      "mode": {
+        "title": "Was vorab gelesen wird",
+        "description": "Der Prefetcher beobachtet, welche Dateien beim Systemstart und in den ersten Sekunden einer Anwendung gelesen werden, und liest sie beim nächsten Mal vorab. Er gibt Hintergrund-Festplattenzugriffe aus, um später mehr davon zu sparen.",
+        "options": {
+          "windows-default": {
+            "title": "Start und Anwendungen – Windows-Standard",
+            "description": "Die Einstellung, mit der Windows ausgeliefert wird. Sie ausdrücklich festzulegen bedeutet, dass der Abgleich Ihnen meldet, wenn etwas anderes sie hinter Ihrem Rücken ändert — wie es Tweak-Pakete tun."
+          },
+          "boot-only": {
+            "title": "Nur Systemstart",
+            "description": "Behält den Start-Prefetch, der den Systemstart messbar verkürzt, und lässt den pro Anwendung weg. Das ist die mittlere Einstellung, die die meisten meinen, wenn sie „Prefetch aus“ sagen."
+          },
+          "off": {
+            "title": "Nichts",
+            "description": "Überhaupt kein Vorablesen. Anwendungen starten langsamer, das Spiel eingeschlossen, und auf einer NVMe-SSD haben die eingesparten Hintergrundzugriffe ohnehin wenig gekostet."
+          }
+        }
+      }
+    }
+  },
+
+  "input.device-queue-size": {
+    "title": "Eingabepuffer für Maus und Tastatur verkleinern",
+    "summary": "Der Kernel puffert Eingabepakete, bevor sie jemand liest. Diesen Puffer zu verkleinern ist ein sehr verbreiteter Latenz-Tweak, hinter dem nichts steckt.",
+    "choices": {
+      "size": {
+        "title": "Größe des Eingabepuffers",
+        "description": "Wie viele Eingabepakete die Klassentreiber für Maus und Tastatur halten, bevor etwas sie liest. Windows verwendet je 100. Der Puffer füllt sich nur, wenn ein Programm aufhört zu lesen — ein kleinerer verwirft Eingaben also, statt sie früher zuzustellen.",
+        "options": {
+          "smaller": {
+            "title": "Kleiner – 50 Pakete",
+            "description": "Die Hälfte des Standards, der am häufigsten empfohlene Wert und immer noch weit mehr Reserve, als ein reaktionsfähiger Rechner je nutzt. Weiter zu gehen lohnt nicht."
+          },
+          "smallest": {
+            "title": "Am kleinsten – 20 Pakete",
+            "description": "Der aggressive Wert aus den Tweaking-Foren. Bei 1000 Hz Abtastrate sind das 20 ms Puffer, alles, was länger stockt, verliert Mausbewegung also ganz, statt sie verspätet zu bekommen."
+          },
+          "windows-default": {
+            "title": "Windows-Standard – 100 Pakete",
+            "description": "Schreibt den ausgelieferten Wert ausdrücklich. Nützlich, um einen Rechner zurückzusetzen, nachdem ein anderes Werkzeug daran war — diese beiden sind Lieblinge der Registry-Tweak-Pakete."
+          }
+        }
+      }
+    }
+  },
+
+  "stability.no-restart-on-bluescreen": {
+    "title": "Beim Bluescreen stehen bleiben, statt sofort neu zu starten",
+    "summary": "Standardmäßig startet Windows in dem Moment neu, in dem es abstürzt, sodass der Stopcode weg ist, bevor Sie ihn lesen können. Dies lässt ihn stehen."
+  },
+
+  "cpu.priority-separation": {
+    "title": "Ändern, wie der Scheduler das Vordergrundfenster bevorzugt",
+    "summary": "Legt die Länge des Zeitquantums und den Bonus fest, den der Vordergrundprozess erhält. Dies ist die Einstellung hinter jeder „26 gegen 38“-Diskussion in den Tweaking-Foren, und die Diskussionen drehen sich meist um eine Zahl, die niemand darin entschlüsselt hat.",
+    "choices": {
+      "policy": {
+        "title": "Quantumlänge und Vordergrund-Bonus",
+        "description": "Sechs Bits, gepackt in eine Zahl. Die obersten zwei wählen ein langes oder kurzes Zeitquantum, die mittleren zwei, ob das Quantum mit dem Fokus schwankt oder fest bleibt, und die untersten zwei, wie viel zusätzliches Quantum der Vordergrundprozess bekommt. Windows Client liefert „2“ aus, was „benutze die Client-Standards“ bedeutet und nicht eines davon.",
+        "options": {
+          "windows-default": {
+            "title": "Windows-Standard – 2",
+            "description": "Der Wert einer sauberen Windows-Client-Installation. Weniger eine Einstellung als die Anweisung, die Standards der jeweiligen Edition zu benutzen — auf Client sind das kurzes Quantum, variabel, 3:1-Vordergrundbonus. Hier festlegen, damit der Abgleich ein Tweak-Paket erwischt, das ihn hinter Ihrem Rücken geändert hat."
+          },
+          "short-variable": {
+            "title": "Kurz, variabel, 3:1-Bonus – 38 (0x26)",
+            "description": "Schreibt den Client-Standard ausdrücklich aus, statt sich darauf zu verlassen, dass die Edition ihn liefert. Das Verhalten ist auf einer Desktop-Installation dasselbe wie bei „2“ — deshalb konnte nie jemand einen Unterschied messen. Nur deshalb lohnend, weil ein ausdrücklicher Wert von einem künftigen Build nicht neu ausgelegt werden kann."
+          },
+          "short-fixed": {
+            "title": "Kurz, fest, kein Bonus – 40 (0x28)",
+            "description": "Jeder Thread bekommt dasselbe kurze Quantum, egal ob sein Fenster den Fokus hat. Tauscht Spitzenleistung im Vordergrund gegen einen Scheduler, der sich immer gleich verhält — das ist das Argument, das man dafür bei der Frametime-Gleichmäßigkeit anführt. Es ist ein Argument, keine Messung."
+          },
+          "background-services": {
+            "title": "Hintergrunddienste – 24 (0x18)",
+            "description": "Was die Systemsteuerung schreibt, wenn Sie „Optimale Leistung für: Hintergrunddienste“ wählen. Langes festes Quantum, kein Vordergrundbonus. Die richtige Wahl, wenn der Rechner beim Spielen zusätzlich streamt, encodiert oder einen Server hostet, und die falsche, wenn er nur spielt."
+          }
+        }
+      }
+    }
+  },
+
+  "memory.svchost-split-threshold": {
+    "title": "Dienste wieder in gemeinsame svchost-Prozesse gruppieren",
+    "summary": "Windows trennt auf Rechnern mit mehr als 3,5 GB Arbeitsspeicher jeden Dienst in eine eigene svchost.exe. Dies ist der Schwellenwert, der das entscheidet — über Ihren Arbeitsspeicher gesetzt, stellt er die Gruppierung wieder her.",
+    "choices": {
+      "mode": {
+        "title": "Diensthosting",
+        "description": "Windows vergleicht diese Zahl mit dem physischen Arbeitsspeicher des Rechners in Kilobyte. Unterhalb des Schwellenwerts teilen sich Dienste svchost.exe-Prozesse, oberhalb bekommt jeder Dienst einen eigenen. Der Standard 0x380000 entspricht genau 3,5 GB, jeder moderne Desktop liegt also darüber.",
+        "options": {
+          "windows-default": {
+            "title": "Windows-Standard – 3,5 GB, ein Prozess je Dienst",
+            "description": "Der ausgelieferte Schwellenwert. Auf jedem Rechner mit mehr als 3,5 GB Arbeitsspeicher läuft damit jeder Dienst isoliert — deshalb zeigt der Task-Manager Dutzende svchost.exe-Einträge. Die Isolation ist der Sinn: Ein abstürzender Dienst kann keine unbeteiligten mitreißen."
+          },
+          "grouped": {
+            "title": "Dienste gruppieren – Schwellenwert über jedem echten Rechner",
+            "description": "Setzt den Schwellenwert höher als jede Menge Arbeitsspeicher, die Sie haben könnten, sodass Windows den Rechner als speicherarm behandelt und Dienste in gemeinsame Prozesse packt. Spart einige hundert Megabyte Prozess-Overhead und verkürzt die Prozessliste. Kostet die Isolation: Ein Absturz in einem gruppierten Dienst reißt jetzt seine Nachbarn mit."
+          }
+        }
+      }
+    }
+  },
+
+  "shell.startup-delay-off": {
+    "title": "Verzögerung des Explorers für Autostart-Einträge entfernen",
+    "summary": "Der Explorer wartet absichtlich etwa zehn Sekunden nach dem Erscheinen des Desktops, bevor er Ihre Autostart-Programme startet, damit der Desktop früher bereit wirkt. Dies entfernt die Wartezeit."
+  },
+
+  "storage.ntfs-last-access-off": {
+    "title": "NTFS nicht mehr aufzeichnen lassen, wann Dateien zuletzt gelesen wurden",
+    "summary": "NTFS schreibt bei jedem Öffnen einer Datei einen Zeitstempel, auch bei Dateien, die niemand verändert hat. Das abzuschalten entfernt einen Metadaten-Schreibvorgang von jedem Lesezugriff auf dem Datenträger.",
+    "choices": {
+      "mode": {
+        "title": "Zeitstempel des letzten Zugriffs",
+        "description": "Das oberste Bit sagt, ob Windows die Einstellung verwaltet oder Sie; die unteren Bits, ob die Zeitstempel geschrieben werden. Windows liefert 0x80000002 aus: systemverwaltet, Aktualisierung an. Windows schaltet sie in manchen Konfigurationen selbst ab — deshalb ist der Wert, den Sie auf einem Rechner vorfinden, nicht immer der, den Sie gesetzt haben.",
+        "options": {
+          "windows-default": {
+            "title": "Systemverwaltet, Zeitstempel an – 0x80000002",
+            "description": "Der ausgelieferte Wert. Windows entscheidet und behält sich vor, in einem künftigen Build anders zu entscheiden. Hier festlegen, wenn der Abgleich bemerken soll, dass etwas anderes an diesem Schlüssel war."
+          },
+          "off": {
+            "title": "Benutzerverwaltet, Zeitstempel aus – 0x80000001",
+            "description": "Stoppt den Schreibvorgang und nimmt die Einstellung aus Windows' Hand, sodass sie gestoppt bleibt. Sicherungswerkzeuge, die Dateien nach dem letzten Zugriff auswählen, sowie einige Forensik- und Archivierungswerkzeuge verlieren Informationen, auf die sie sich verlassen haben. Kein Spiel liest sie."
+          }
+        }
+      }
+    }
+  },
+
+  "storage.ntfs-8dot3-off": {
+    "title": "NTFS keine MS-DOS-Kurznamen mehr erzeugen lassen",
+    "summary": "Jede Datei mit langem Namen bekommt zusätzlich einen versteckten Alias im Stil PROGRA~1, was pro Erstellung einen Verzeichniszugriff und einen zusätzlichen Indexeintrag kostet. Seit 16-Bit-Software nicht mehr ausgeliefert wird, braucht sie fast nichts mehr."
+  },
+
+  "power.fast-startup-off": {
+    "title": "Schnellstart abschalten, damit Herunterfahren wirklich herunterfährt",
+    "summary": "„Herunterfahren“ fährt Windows nicht herunter: Es versetzt Kernel und Treiber in den Ruhezustand auf die Festplatte und stellt sie beim nächsten Start wieder her. Treiber behalten dadurch den Zustand, in dem sie waren — manchmal wochenlang."
+  },
+
+  "power.modern-standby-off": {
+    "title": "Echten S3-Schlafmodus statt Modern Standby erzwingen",
+    "summary": "Modern Standby hält den Rechner teilweise wach, damit er im „Schlaf“ E-Mails abrufen kann. Auf einem Desktop heißt das drehende Lüfter um drei Uhr nachts und ein PC, der sich selbst weckt. Dies fordert von der Firmware echten S3-Schlaf an."
+  },
+
+  "stability.driver-search-off": {
+    "title": "Windows Update daran hindern, Ihre Treiber zu ersetzen",
+    "summary": "Windows Update liefert eigene Grafik-, Audio- und Chipsatztreiber und installiert sie über die, die Sie gewählt haben. Ein Treiber, den Sie nicht ausgesucht haben und der über Nacht eintrifft, ist eine der häufigeren Ursachen für „gestern ging es noch“."
+  },
+
+  "input.accessibility-shortcuts-off": {
+    "title": "Tastenkombinationen für Einrast-, Anschlagverzögerungs- und Umschalttasten deaktivieren",
+    "summary": "Fünfmal Umschalt tippen oder die Taste gedrückt halten öffnet einen Dialog über allem, was Sie gerade tun, und nimmt den Fokus mit. Geducktes Laufen in einem Shooter ist genau das Eingabemuster, das ihn auslöst."
+  },
+
+  "network.ipv6-components": {
+    "title": "IPv6-Komponenten abschalten oder ihre Reihenfolge ändern",
+    "summary": "Eine einzige Bitmaske steuert Teredo, 6to4, ISATAP und ob zuerst IPv6 oder IPv4 versucht wird. Jede Anleitung „IPv6 für niedrigeren Ping abschalten“ setzt hier einen Wert, meist den falschen.",
+    "choices": {
+      "components": {
+        "title": "Welche IPv6-Komponenten abgeschaltet werden",
+        "description": "Eine Bitmaske, kein Schalter: Bit 0 deaktiviert die Tunnelschnittstellen, Bit 4 lässt den Resolver IPv4 gegenüber IPv6 bevorzugen, und 0xFF deaktiviert alles außer der Loopback-Schnittstelle. Microsoft unterstützt 0x00, 0x20 und 0xFF und warnt vor dem Rest.",
+        "options": {
+          "windows-default": {
+            "title": "Windows-Standard – alles aktiviert",
+            "description": "IPv6 vollständig an mit normaler Rangfolge, was eine saubere Installation dadurch erreicht, dass dieser Wert gar nicht existiert. Eine 0 zu schreiben ist gleichwertig und macht den Zustand ausdrücklich, sodass der Abgleich ihn sehen kann."
+          },
+          "prefer-ipv4": {
+            "title": "IPv4 gegenüber IPv6 bevorzugen – 0x20",
+            "description": "Lässt IPv6 funktionsfähig, versucht aber IPv4 zuerst, wenn ein Name auf beides auflöst. Das ist die Variante, die einen Versuch wert ist: Sie beseitigt die Wartezeit beim Verbindungsaufbau, wenn ein Host IPv6 anbietet, das nicht wirklich geroutet wird, ohne etwas zu zerstören, das IPv6 braucht."
+          },
+          "tunnels-off": {
+            "title": "Tunnelschnittstellen deaktivieren – 0x01",
+            "description": "Schaltet Teredo, 6to4 und ISATAP ab und lässt natives IPv6 unberührt. Teredo ist das, was Xbox-Mehrspieler und manche Peer-to-Peer-Vermittlung nutzen, um durch NAT zu kommen — es abzuschalten kann dazu führen, dass Sie keiner Gruppe mehr beitreten können."
+          },
+          "ipv6-off": {
+            "title": "IPv6 vollständig deaktivieren – 0xFF",
+            "description": "Das, was die Anleitungen mit „IPv6 abschalten“ meinen. Microsoft rät ausdrücklich davon ab und testet Windows mit eingeschaltetem IPv6. Rechnen Sie damit, dass Xbox- und Store-Mehrspieler, manche VPNs und die native Anbindung mancher Anbieter aufhören zu funktionieren — und damit, dass die Ursache später extrem schwer zu finden ist."
+          }
+        }
+      }
+    }
+  },
+
+  "privacy.activity-history-off": {
+    "title": "Sammeln und Hochladen des Aktivitätsverlaufs unterbinden",
+    "summary": "Die Zeitachse: was Sie geöffnet haben, wann und auf welchem Gerät, veröffentlicht an Ihr Microsoft-Konto. Die Oberfläche der Funktion wurde vor Jahren entfernt; die Sammelrichtlinie nicht."
+  },
+
+  "privacy.advertising-id-off": {
+    "title": "Werbe-ID pro Benutzer abschalten",
+    "summary": "Windows gibt Apps eine gleichbleibende Kennung, damit sie Sie über Apps hinweg profilieren können. Sie abzuschalten kostet nichts und bringt in einem Spiel nichts Messbares; sie steht hier, weil es eine einzeilige Richtlinie ist und Leute danach fragen."
+  },
+
+  "privacy.telemetry-policy": {
+    "title": "Richtlinie für Diagnosedaten auf die niedrigste zulässige Stufe setzen",
+    "summary": "Die Richtlinie hinter „AllowTelemetry=0“. Auf Home und Pro bleibt die Untergrenze „Erforderlich“, egal was Sie hier schreiben — der Teil, den die Tweak-Anleitungen weglassen."
+  },
+
+  "update.notify-before-download": {
+    "title": "Windows Update vor dem Herunterladen nachfragen lassen",
+    "summary": "Verhindert, dass Windows mitten in der Runde einen mehrere Gigabyte großen Download startet. Sie bekommen stattdessen eine Benachrichtigung und entscheiden, wann er läuft."
+  },
+
+  // ================================================ In C# beschriebene Tweaks (Native/*.cs)
+
+  "power.ultimate-performance": {
+    "title": "Energiesparplan „Ultimative Leistung“ verwenden",
+    "summary": "„Höchstleistung“ mit abgeschaltetem Core-Parking und abgeschalteter Latenztoleranz im Leerlauf. Beseitigt die Anlaufverzögerung, wenn ein Bild einen geparkten Kern braucht, auf Kosten der Leistungsaufnahme im Leerlauf."
+  },
+
+  "network.tcp-latency": {
+    "title": "Kleine TCP-Pakete sofort senden",
+    "summary": "Schaltet verzögerte Bestätigungen und Nagle-Zusammenfassung auf jedem Netzwerkadapter ab, sodass die kleinen, häufigen TCP-Schreibvorgänge eines Spiels sofort hinausgehen, statt auf eine Bündelung zu warten."
+  },
+
+  "process.game-tuning": {
+    "title": "Ein laufendes Spiel bevorzugt behandeln",
+    "summary": "Hebt die Prioritätsklasse des Prozesses an und nimmt ihn aus EcoQoS heraus, sodass der Scheduler ihn nicht länger als energiesparende Hintergrundarbeit behandelt.",
+    "choices": {
+      "priority": {
+        "title": "Scheduling-Priorität",
+        "description": "Wo das Spiel in der Warteschlange des Schedulers steht, verglichen mit allem anderen, was läuft. Höher heißt, es wird zuerst bedient, wenn Threads um einen Kern konkurrieren.",
+        "options": {
+          "abovenormal": {
+            "title": "Höher als normal",
+            "description": "Ein sanfter Vorsprung vor gewöhnlicher Hintergrundarbeit. Auf jedem Rechner unbedenklich, auch auf einem, an dem Sie weiterarbeiten, während ein Spiel läuft."
+          },
+          "high": {
+            "title": "Hoch",
+            "description": "Vor praktisch allem außer dem System selbst. Die richtige Wahl auf einem Rechner, der zum Spielen da ist, und die übliche Empfehlung."
+          }
+        }
+      },
+      "qos": {
+        "title": "Energiedrosselung",
+        "description": "Ob Windows das Spiel zum Stromsparen auf Effizienzkernen und mit gedrosseltem Takt laufen lassen darf. Modernes Windows wendet das automatisch auf Prozesse an, die es für Hintergrundarbeit hält.",
+        "options": {
+          "high": {
+            "title": "Nie drosseln",
+            "description": "Nimmt den Prozess vollständig aus EcoQoS heraus, sodass er vollen Takt und Leistungskerne behält. Das, was Sie auf einem Desktop und am Netzteil wollen."
+          },
+          "system": {
+            "title": "Windows entscheiden lassen",
+            "description": "Überlässt die Drosselung der Kontrolle des Systems. Sinnvoll auf einem Notebook im Akkubetrieb, wo ein ungedrosseltes Spiel Laufzeit und Wärme kostet."
+          },
+          "efficiency": {
+            "title": "Immer drosseln",
+            "description": "Zwingt den Prozess auf Effizienzkerne und gedrosselten Takt. Das macht Spiele absichtlich langsamer. Nur nützlich, um einen Hintergrundprozess aus dem Weg zu heften."
+          }
+        }
+      }
+    }
+  },
+
+  "process.persistent-priority": {
+    "title": "Ein Spiel immer mit höherer Priorität starten",
+    "summary": "Hinterlegt eine CPU-Priorität für die EXE des Spiels, die Windows bei jedem Start anwendet, sodass sie nach einem Neustart nicht erneut gesetzt werden muss.",
+    "choices": {
+      "priority": {
+        "title": "Scheduling-Priorität",
+        "description": "Wo das Spiel vom Start an in der Warteschlange des Schedulers steht, verglichen mit allem anderen, was läuft.",
+        "options": {
+          "abovenormal": {
+            "title": "Höher als normal",
+            "description": "Ein sanfter Vorsprung vor gewöhnlicher Hintergrundarbeit. Die sicherere Wahl für eine dauerhafte Einstellung und für einen Rechner, an dem Sie auch arbeiten."
+          },
+          "high": {
+            "title": "Hoch",
+            "description": "Vor praktisch allem außer dem System selbst. Beachten Sie: Ein Spiel, das sich bei „Hoch“ aufhängt, lässt sich schwerer wegklicken als eines bei „Höher als normal“ — und diese Einstellung gilt bei jedem Start."
+          }
+        }
+      }
+    }
+  },
+
+  "update.active-hours": {
+    "title": "Windows sagen, wann Sie diesen PC tatsächlich benutzen",
+    "summary": "Die Nutzungszeit ist das Zeitfenster, in dem Windows Update nicht neu startet und nicht stört. Windows rät sie aus Ihren Anmeldezeiten und rät schlecht, wenn der PC durchläuft.",
+    "choices": {
+      "hours": {
+        "title": "Die Stunden, in denen Ruhe herrschen soll",
+        "description": "Windows erlaubt höchstens ein Fenster von 18 Stunden, der ganze Tag geht also nicht. Wählen Sie den Block, in dem Ihre Spielabende liegen; die Stunden außerhalb sind die, in denen ein Neustart erlaubt ist.",
+        "options": {
+          "wide": {
+            "title": "08:00 bis 02:00 – das längste von Windows erlaubte Fenster",
+            "description": "Achtzehn Stunden, das Maximum. Updates dürfen den Rechner zwischen zwei und acht Uhr morgens neu starten – bei einem Desktop, der durchläuft, genau dann, wann man es will."
+          },
+          "evenings": {
+            "title": "15:00 bis 02:00 – Nachmittage und Nächte",
+            "description": "Lässt den Arbeitstag für Neustarts offen, was zu einem Rechner passt, der bis zum Nachmittag wirklich ungenutzt ist. Kürzer als nötig, wenn Sie den PC auch morgens benutzen."
+          },
+          "daytime": {
+            "title": "06:00 bis 22:00 – ein normaler Wachtag",
+            "description": "Sechzehn Stunden, endet um zehn Uhr abends. Nur wählen, wenn Sie zuverlässig bis dahin fertig sind – ein Neustart um halb elf ist genau das, was dieser Tweak verhindern soll."
+          }
+        }
+      }
+    }
+  },
+
+  "update.no-restart-notifications": {
+    "title": "Die Benachrichtigung „Neustart erforderlich“ stummschalten",
+    "summary": "Die Meldung, dass der PC neu gestartet werden muss, zieht beim Erscheinen den Fokus. In einem Vollbildspiel ist ein Fokuswechsel bestenfalls ein verlorenes Bild und schlimmstenfalls ein minimiertes Fenster."
+  },
+
+  "update.pin-windows-version": {
+    "title": "Auf dieser Windows-Version bleiben statt aktualisiert zu werden",
+    "summary": "Funktionsupdates sind ein Download von mehreren Gigabyte und ein langer Neustart, und sie setzen Einstellungen zurück, auf die andere Tweaks hier bauen. Sicherheits- und Qualitätsupdates kommen weiterhin normal.",
+    "choices": {
+      "version": {
+        "title": "Die Version, auf der geblieben werden soll",
+        "description": "Wählen Sie die Version, die dieser Rechner jetzt hat. Eine neuere zu nennen hält den Rechner nicht zurück – es weist Windows an, auf diese Version zu aktualisieren und dann stehen zu bleiben, also genau das Upgrade, das Sie nicht wollten. Einstellungen, System, Info zeigt, was Sie haben.",
+        "options": {
+          "25h2": {
+            "title": "Windows 11 25H2",
+            "description": "Die zum Redaktionsschluss aktuelle Ausgabe. Für Pro bis Ende 2027 mit Updates versorgt; danach muss diese Festlegung weiterwandern, sonst bekommt der Rechner keine Sicherheitsupdates mehr."
+          },
+          "24h2": {
+            "title": "Windows 11 24H2",
+            "description": "Die vorherige Ausgabe. Nur wählen, wenn der Rechner sie tatsächlich hat, und vorher prüfen, wie lange sie noch mit Updates versorgt wird."
+          }
+        }
+      }
+    }
+  },
+
+  "update.store-auto-download-off": {
+    "title": "Verhindern, dass der Microsoft Store Apps von sich aus aktualisiert",
+    "summary": "Der Store ist ein zweiter Downloader mit eigenem Zeitplan, den die Einstellungen von Windows Update nicht berühren. Er zieht bereitwillig mitten im Match ein paar Gigabyte herunter."
+  }
+}

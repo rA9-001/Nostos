@@ -89,6 +89,23 @@ public sealed record TweakMetadata
 
     public required TweakScope Scope { get; init; }
 
+    /// <summary>
+    /// Whether this tweak needs to be told which program it is about.
+    ///
+    /// Defaults to true for <see cref="TweakScope.Process"/>, which is the obvious case and the
+    /// only one there used to be. It is settable because scope and target turn out to be
+    /// different questions: <c>process.persistent-priority</c> writes HKLM and outlives every
+    /// process it affects, so it is machine-scoped, yet it still has to be pointed at an
+    /// executable. Deciding from the scope alone left it with no way to be told which one.
+    /// </summary>
+    public bool TakesTargetProcess
+    {
+        get => _takesTargetProcess ?? Scope == TweakScope.Process;
+        init => _takesTargetProcess = value;
+    }
+
+    private readonly bool? _takesTargetProcess;
+
     public required TweakLifetime Lifetime { get; init; }
 
     public required Risk Risk { get; init; }

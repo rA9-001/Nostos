@@ -1,0 +1,208 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nostos.App.ViewModels"
+             xmlns:views="using:Nostos.App.Views"
+             xmlns:loc="using:Nostos.App.Localization"
+             x:Class="Nostos.App.Views.UpdatesView"
+             x:DataType="vm:MainWindowViewModel">
+
+  <!-- Everything this program can do about Windows Update.
+
+       Drawn from the "windows-update" tag rather than a category, because these tweaks sit in
+       three different categories on purpose: stopping a driver swap is Crashes and Freezes, a
+       restart toast is Interruptions, and a background download competing for the line is Ping.
+       A category is a claim about what a tweak does for the player, and "which part of Windows
+       it writes to" is not one of those. So the categories stay as they are, and this is a
+       second way in for a reader who arrived thinking "Windows Update".
+
+       The rows are the same view models the Tweaks tab shows, not copies, so the two pages can
+       never disagree about whether something is on. -->
+
+  <UserControl.Styles>
+
+    <!-- Same interaction as a Startup row: the whole card is the button, it lifts under the
+         pointer, and a click switches it. Opaque hover colours, deliberately not SurfaceHover,
+         which is a translucent white meant to sit on top of something rather than replace a
+         card's own background. -->
+    <Style Selector="Button.updaterow">
+      <Setter Property="Background" Value="{DynamicResource SurfaceFlat}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerCard}" />
+      <Setter Property="Padding" Value="14,11" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="FontWeight" Value="Normal" />
+      <Setter Property="FontSize" Value="13" />
+
+      <!-- The base Button theme shrinks on press, which is right for a 90px button and wrong
+           for one the width of the window: the whole list appears to flinch. -->
+      <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
+    <Style Selector="Button.updaterow:pointerover">
+      <Setter Property="Background" Value="#1E2537" />
+      <Setter Property="BorderBrush" Value="{DynamicResource StrokeStrong}" />
+    </Style>
+
+    <Style Selector="Button.updaterow:pressed">
+      <Setter Property="Background" Value="#252E44" />
+      <Setter Property="BorderBrush" Value="{DynamicResource StrokeStrong}" />
+      <Setter Property="RenderTransform" Value="scale(1)" />
+    </Style>
+
+    <!-- Both halves are always in the tree with one transparent, so a switched row crossfades
+         rather than blinking. -->
+    <Style Selector="Border.switch">
+      <Setter Property="Width" Value="46" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.18" Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+
+    <Style Selector="Border.switch.on">
+      <Setter Property="Background" Value="{DynamicResource RiskSafeTint}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource RiskSafe}" />
+    </Style>
+
+    <Style Selector="Border.switch.off">
+      <Setter Property="Background" Value="{DynamicResource SurfaceInset}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Stroke}" />
+    </Style>
+
+    <Style Selector="Button.updaterow:pointerover Border.switch.off">
+      <Setter Property="BorderBrush" Value="{DynamicResource StrokeStrong}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="panel" Padding="10,14,10,10">
+    <DockPanel>
+
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*" Margin="14,2,14,16">
+        <StackPanel Grid.Column="0" Spacing="4" MaxWidth="860" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Classes="title" VerticalAlignment="Center"
+                       Text="{loc:Tr updates.heading}" />
+            <Border Classes="chip" VerticalAlignment="Center">
+              <TextBlock Classes="chiptext" Text="{Binding UpdateSummary}"
+                         Foreground="{DynamicResource Muted}" />
+            </Border>
+          </StackPanel>
+          <TextBlock Classes="muted" TextWrapping="Wrap" LineHeight="19"
+                     Text="{loc:Tr updates.blurb}" />
+          <TextBlock Classes="faint" TextWrapping="Wrap" Margin="0,2,0,0"
+                     Text="{loc:Tr updates.hint}" />
+        </StackPanel>
+      </Grid>
+
+      <!-- The stance, at the bottom rather than the top. It is the answer to a question the
+           list raises rather than one the reader arrives with, and putting "here is what we
+           refuse to do" above the things we do would be leading with an apology. -->
+      <Border DockPanel.Dock="Bottom" Classes="inset" Margin="14,12,14,4">
+        <TextBlock Classes="faint" FontSize="11" TextWrapping="Wrap" LineHeight="17"
+                   Text="{loc:Tr updates.stance}" />
+      </Border>
+
+      <TextBlock DockPanel.Dock="Top" Classes="muted" Margin="14,20,14,0"
+                 HorizontalAlignment="Center"
+                 Text="{loc:Tr updates.empty}"
+                 IsVisible="{Binding !UpdateTweaks.Count}" />
+
+      <ScrollViewer>
+        <ItemsControl ItemsSource="{Binding UpdateTweaks}" Margin="4,0,4,4">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:TweakItemViewModel">
+
+              <Button Classes="updaterow" Margin="0,2"
+                      IsEnabled="{Binding IsInteractive}"
+                      ToolTip.Tip="{Binding ToggleHint}"
+                      Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleTweakCommand}"
+                      CommandParameter="{Binding}">
+
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="14">
+
+                  <!-- Reading down the left edge answers "what have I already changed here" in
+                       one movement, which is the question this page exists for. -->
+                  <Border Grid.Column="0" Width="3" Height="38" CornerRadius="2"
+                          VerticalAlignment="Center"
+                          IsVisible="{Binding ShowsAsApplied}"
+                          Background="{DynamicResource RiskSafe}" />
+
+                  <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center"
+                              Opacity="{Binding RowOpacity}">
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+
+                    <!-- The summary, not the id. On the Tweaks tab the id earns its place
+                         because that page is for reading a tweak before deciding; here the
+                         reader wants the sentence that says what it costs. -->
+                    <TextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                               LineHeight="17" MaxWidth="560" HorizontalAlignment="Left"
+                               Text="{Binding Summary}" />
+
+                    <TextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                               Foreground="{DynamicResource Warning}"
+                               Text="{Binding NotApplicableReason}"
+                               IsVisible="{Binding !IsApplicable}" />
+                  </StackPanel>
+
+                  <!-- Risk and evidence, because these are real tweaks with real trade-offs and
+                       hiding that on a friendlier-looking page would be the wrong kind of
+                       friendly. Pinning a Windows version is Moderate and should look it. -->
+                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="5"
+                              VerticalAlignment="Center" HorizontalAlignment="Right"
+                              Opacity="{Binding RowOpacity}">
+                    <Border Classes="chip"
+                            Background="{Binding RiskBrushKey,
+                                                 Converter={StaticResource BrushFromKey},
+                                                 ConverterParameter=Tint}">
+                      <TextBlock Classes="chiptext" Text="{Binding RiskText}"
+                                 Foreground="{Binding RiskBrushKey,
+                                                      Converter={StaticResource BrushFromKey}}" />
+                    </Border>
+                    <Border Classes="chip"
+                            Background="{Binding EvidenceBrushKey,
+                                                 Converter={StaticResource BrushFromKey},
+                                                 ConverterParameter=Tint}">
+                      <TextBlock Classes="chiptext" Text="{Binding EvidenceText}"
+                                 Foreground="{Binding EvidenceBrushKey,
+                                                      Converter={StaticResource BrushFromKey}}" />
+                    </Border>
+                  </StackPanel>
+
+                  <!-- The switch and the spinner share the cell: while a row is working its
+                       state is not knowable, and a switch still showing ON beside a spinner
+                       invites the reader to believe it. -->
+                  <Panel Grid.Column="3" Width="46" Height="24" VerticalAlignment="Center">
+
+                    <Border Classes="switch off" Opacity="{Binding OffOpacity}"
+                            IsVisible="{Binding !IsBusy}">
+                      <Ellipse Width="16" Height="16" Margin="3,0"
+                               HorizontalAlignment="Left" VerticalAlignment="Center"
+                               Fill="{DynamicResource Muted}" />
+                    </Border>
+
+                    <Border Classes="switch on" Opacity="{Binding OnOpacity}"
+                            IsVisible="{Binding !IsBusy}">
+                      <Ellipse Width="16" Height="16" Margin="3,0"
+                               HorizontalAlignment="Right" VerticalAlignment="Center"
+                               Fill="{DynamicResource RiskSafe}" />
+                    </Border>
+
+                    <Ellipse Classes="spinner" IsVisible="{Binding IsBusy}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Panel>
+                </Grid>
+              </Button>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </DockPanel>
+  </Border>
+</UserControl>

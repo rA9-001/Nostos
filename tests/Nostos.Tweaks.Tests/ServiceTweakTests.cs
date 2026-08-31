@@ -19,7 +19,7 @@ public sealed class ServiceTweakTests
             serviceName: serviceName,
             title: "Test",
             summary: "Test",
-            category: TweakCategories.Background,
+            category: TweakCategories.Unused,
             evidence: Evidence.Plausible);
 
     [Theory]

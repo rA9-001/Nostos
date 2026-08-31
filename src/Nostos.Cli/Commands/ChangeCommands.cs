@@ -24,7 +24,7 @@ public static class ChangeCommands
             return 1;
 
         var results = await host.Engine
-            .ApplyManyAsync(selections, context, commandLine.Get("origin") ?? "manual", ct)
+            .ApplyManyAsync(selections, context, commandLine.Get("origin") ?? "manual", ct: ct)
             .ConfigureAwait(false);
 
         return Report(results, "applied");
@@ -100,7 +100,7 @@ public static class ChangeCommands
                     return 1;
 
                 var results = await host.Engine
-                    .ApplyManyAsync(selections, context, $"profile:{profile.Name}", ct)
+                    .ApplyManyAsync(selections, context, $"profile:{profile.Name}", ct: ct)
                     .ConfigureAwait(false);
 
                 return Report(results, "applied");

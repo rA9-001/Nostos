@@ -30,14 +30,32 @@ public class FakeBackend : IOptimizerBackend
         bool applicable = true,
         string title = "Title",
         string summary = "Summary",
-        IReadOnlyList<TweakChoice>? choices = null)
+        IReadOnlyList<TweakChoice>? choices = null,
+        IReadOnlyList<string>? tags = null)
         => new(
             new TweakSummary(
                 id, title, summary, category,
                 TweakScope.Machine, TweakLifetime.Persistent, risk, evidence,
-                RequiresReboot: false, RequiresElevation: true, choices ?? []),
+                RequiresReboot: false, RequiresElevation: true, choices ?? [],
+                TakesTargetProcess: null, Tags: tags),
             applied, managed, $"{id} state", applicable,
             applicable ? null : "not applicable here");
+
+    /// <summary>Every startup switch asked for, so a test can assert what the window sent.</summary>
+    public List<(string Id, bool Enabled)> StartupSets { get; } = [];
+
+    /// <summary>Set to make the next switch come back refused, the way an unelevated one does.</summary>
+    public string? StartupRefusal { get; set; }
+
+    public virtual Task<StartupSetResult> SetStartupEnabledAsync(
+        string id, bool enabled, CancellationToken ct = default)
+    {
+        StartupSets.Add((id, enabled));
+
+        return Task.FromResult(StartupRefusal is { } refusal
+            ? new StartupSetResult(id, false, refusal)
+            : new StartupSetResult(id, true, enabled ? "enabled" : "disabled"));
+    }
 
     public virtual Task<IReadOnlyList<TweakStatusSummary>> GetStatusAsync(CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<TweakStatusSummary>>(Statuses.ToList());
@@ -51,12 +69,17 @@ public class FakeBackend : IOptimizerBackend
     /// <summary>Overrides keyed by "tweakId:optionId", so a test can make a selection change the state.</summary>
     public Dictionary<string, TweakStatusSummary> StatusBySelection { get; } = [];
 
+    /// <summary>Every target sent with a read or an apply, so a test can assert what was aimed at.</summary>
+    public List<(string TweakId, TweakTarget? Target)> Targets { get; } = [];
+
     public virtual Task<TweakStatusSummary?> GetStatusAsync(
         string tweakId,
         IReadOnlyDictionary<string, string>? options,
+        TweakTarget? target = null,
         CancellationToken ct = default)
     {
         StatusReads.Add((tweakId, options));
+        Targets.Add((tweakId, target));
 
         foreach (var (key, value) in options ?? new Dictionary<string, string>())
         {
@@ -74,8 +97,11 @@ public class FakeBackend : IOptimizerBackend
         string tweakId,
         IReadOnlyDictionary<string, string>? options = null,
         bool dryRun = false,
+        TweakTarget? target = null,
         CancellationToken ct = default)
     {
+        Targets.Add((tweakId, target));
+
         if (!dryRun)
         {
             Applied.Add(tweakId);
@@ -105,8 +131,45 @@ public class FakeBackend : IOptimizerBackend
     public Task<IReadOnlyList<ProfileSummary>> GetProfilesAsync(CancellationToken ct = default)
         => Task.FromResult<IReadOnlyList<ProfileSummary>>(ProfileList.ToList());
 
-    public Task<IReadOnlyList<ChangeResult>> ApplyProfileAsync(string name, CancellationToken ct = default)
-        => Task.FromResult<IReadOnlyList<ChangeResult>>([]);
+    /// <summary>What a profile apply should report and return, keyed by profile name.</summary>
+    public Dictionary<string, IReadOnlyList<ChangeResult>> ProfileResults { get; } = [];
+
+    /// <summary>Every profile applied, so a test can assert which card was acted on.</summary>
+    public List<string> ProfilesApplied { get; } = [];
+
+    /// <summary>
+    /// Runs between the "starting" and "finished" report for each tweak.
+    ///
+    /// A test's only chance to look at the card mid-run: the apply is one await, so without a
+    /// hook here the rows would be back to their finished state by the time it returned.
+    /// </summary>
+    public Func<BatchProgress, Task>? WhileRunning { get; set; }
+
+    public async Task<IReadOnlyList<ChangeResult>> ApplyProfileAsync(
+        string name, Func<BatchProgress, Task>? onProgress = null, CancellationToken ct = default)
+    {
+        ProfilesApplied.Add(name);
+
+        if (!ProfileResults.TryGetValue(name, out var results))
+            return [];
+
+        for (var i = 0; i < results.Count; i++)
+        {
+            var starting = new BatchProgress(i + 1, results.Count, results[i].TweakId);
+
+            if (onProgress is not null)
+                await onProgress(starting);
+
+            if (WhileRunning is not null)
+                await WhileRunning(starting);
+
+            if (onProgress is not null)
+                await onProgress(new BatchProgress(
+                    i + 1, results.Count, results[i].TweakId, results[i].Outcome));
+        }
+
+        return results;
+    }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

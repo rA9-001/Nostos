@@ -1,3 +1,4 @@
+using Nostos.Core.Localization;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Reflection;
@@ -39,10 +40,10 @@ public sealed class Bootstrapper
 
     public ObservableCollection<StartupStep> Steps { get; } = [];
 
-    private readonly StartupStep _storage = new("Preparing data folder");
-    private readonly StartupStep _profiles = new("Checking built-in profiles");
-    private readonly StartupStep _service = new("Setting up the background service");
-    private readonly StartupStep _connect = new("Connecting");
+    private readonly StartupStep _storage = new(Strings.Get("setup.step.data"));
+    private readonly StartupStep _profiles = new(Strings.Get("setup.step.profiles"));
+    private readonly StartupStep _service = new(Strings.Get("setup.step.service"));
+    private readonly StartupStep _connect = new(Strings.Get("setup.step.connect"));
 
     /// <summary>Set by the service step, reported by the connect step.</summary>
     private bool _needsRepair;
@@ -92,9 +93,11 @@ public sealed class Bootstrapper
     /// <summary>
     /// Writes the profiles shipped with the app into the data folder when it has none.
     ///
-    /// Only fills the gap once: a profile the user has edited is never overwritten, and one
-    /// they deleted on purpose does not come back, because this runs only while the folder is
-    /// entirely empty.
+    /// A profile the user has edited is never overwritten, and one they deleted on purpose does
+    /// not come back. Both of those used to fall out of running only while the folder was
+    /// entirely empty, which also meant a profile improved in a later release reached nobody
+    /// who had ever run the app -- so instead each file is decided on its own, against a record
+    /// of what was last written. See <see cref="ShippedState"/>.
     ///
     /// The defaults are embedded in the assembly rather than sitting in a folder next to the
     /// executable, so that a single-file build ships with them too.
@@ -107,13 +110,7 @@ public sealed class Bootstrapper
             var target = AppPaths.ProfilesDirectory;
             Directory.CreateDirectory(target);
 
-            var existing = Directory.EnumerateFiles(target, "*.json").Count();
-            if (existing > 0)
-            {
-                _profiles.Status = StepStatus.Ok;
-                _profiles.Detail = $"{existing} profile(s)";
-                return;
-            }
+            RetireSupersededProfiles(target);
 
             var assembly = Assembly.GetExecutingAssembly();
             var bundled = assembly.GetManifestResourceNames()
@@ -123,11 +120,13 @@ public sealed class Bootstrapper
             if (bundled.Count == 0)
             {
                 _profiles.Status = StepStatus.Skipped;
-                _profiles.Detail = "this build ships no default profiles";
+                _profiles.Detail = Strings.Get("setup.profiles.none.shipped");
                 return;
             }
 
+            var state = ShippedState.Load();
             var copied = 0;
+
             foreach (var name in bundled)
             {
                 using var stream = assembly.GetManifestResourceStream(name);
@@ -135,18 +134,102 @@ public sealed class Bootstrapper
                     continue;
 
                 var fileName = name[BundledProfilePrefix.Length..];
-                using var file = File.Create(Path.Combine(target, fileName));
-                stream.CopyTo(file);
+                var destination = Path.Combine(target, fileName);
+
+                using var buffer = new MemoryStream();
+                stream.CopyTo(buffer);
+                var bundledBytes = buffer.ToArray();
+                var bundledHash = ShippedState.HashOf(bundledBytes);
+
+                if (File.Exists(destination))
+                {
+                    // Three cases, and only one of them writes.
+                    //
+                    // The file is already what we ship: nothing to do. The file is what we last
+                    // wrote but we now ship something different: replace it, because that is a
+                    // profile improved in a release, and the alternative is that the improvement
+                    // reaches only people installing for the first time. The file is neither:
+                    // the user has edited it, and it is theirs.
+                    var currentHash = ShippedState.HashOf(File.ReadAllBytes(destination));
+                    if (currentHash == bundledHash)
+                    {
+                        state.Record(fileName, bundledHash);
+                        continue;
+                    }
+
+                    if (!state.WasWrittenByUs(fileName, currentHash))
+                        continue;
+                }
+
+                // Written to a temporary name and moved into place, so an interrupted first run
+                // cannot leave a half-written profile behind. It is worth the two extra lines:
+                // the file is only ever written when the folder is empty, so a zero-byte one
+                // survives forever, and every launch afterwards fails to parse it and reports
+                // "could not start" over a catalog that is actually fine. Found by killing the
+                // app mid-startup while timing launches.
+                var temporary = destination + ".tmp";
+
+                File.WriteAllBytes(temporary, bundledBytes);
+                File.Move(temporary, destination, overwrite: true);
+                state.Record(fileName, bundledHash);
                 copied++;
             }
 
-            _profiles.Status = copied > 0 ? StepStatus.Fixed : StepStatus.Ok;
-            _profiles.Detail = copied > 0 ? $"installed {copied} default profile(s)" : "none to install";
+            state.Save();
+
+            if (copied > 0)
+            {
+                _profiles.Status = StepStatus.Fixed;
+                _profiles.Detail = Strings.Format("setup.profiles.installed", copied);
+            }
+            else
+            {
+                _profiles.Status = StepStatus.Ok;
+                _profiles.Detail = Strings.Format(
+                    "setup.profiles.existing", Directory.EnumerateFiles(target, "*.json").Count());
+            }
         }
         catch (Exception e)
         {
             _profiles.Status = StepStatus.Failed;
             _profiles.Detail = e.Message;
+        }
+    }
+
+    /// <summary>
+    /// Profiles this program used to ship and no longer does.
+    ///
+    /// "conservative", "competitive" and "streaming" were three different goals; they are now
+    /// three rungs of one ladder, which is a different idea and not a rename. Leaving the old
+    /// files in place would show six profiles, three of them describing a scheme that no longer
+    /// exists.
+    /// </summary>
+    private static readonly string[] SupersededProfiles = ["conservative", "competitive", "streaming"];
+
+    /// <summary>
+    /// Moves a superseded profile aside rather than deleting it.
+    ///
+    /// They are ours and nobody is expected to miss them, but a profile is a file the user is
+    /// invited to read, copy and edit, and some of them will have been. Deleting somebody's
+    /// edited copy to tidy up after a rename is a larger act than this program is entitled to;
+    /// renaming it stops the loader seeing it -- it reads *.json -- and costs nothing to undo.
+    /// </summary>
+    private static void RetireSupersededProfiles(string directory)
+    {
+        foreach (var name in SupersededProfiles)
+        {
+            var path = Path.Combine(directory, name + ".json");
+            if (!File.Exists(path))
+                continue;
+
+            try
+            {
+                File.Move(path, path + ".superseded", overwrite: true);
+            }
+            catch (IOException)
+            {
+                // Not worth failing a launch over. The worst case is an extra row in the list.
+            }
         }
     }
 
@@ -157,9 +240,8 @@ public sealed class Bootstrapper
         if (AppPaths.IsPortable)
         {
             _service.Status = StepStatus.Skipped;
-            _service.Detail = "portable mode: running without the background service";
-            return "Portable mode. Machine-wide tweaks need an elevated launch; everything " +
-                   "user-scoped works as it is.";
+            _service.Detail = Strings.Get("setup.service.portable");
+            return Strings.Get("notice.portable");
         }
 
         var state = ServiceInstaller.QueryState();
@@ -173,9 +255,9 @@ public sealed class Bootstrapper
             _service.Status = StepStatus.Ok;
             _service.Detail = registration switch
             {
-                RegistrationHealth.Matches => "already running",
-                RegistrationHealth.OtherCopy => "running from another copy of the app",
-                _ => "running, but registered to a folder that is gone",
+                RegistrationHealth.Matches => Strings.Get("setup.service.running"),
+                RegistrationHealth.OtherCopy => Strings.Get("setup.service.othercopy"),
+                _ => Strings.Get("setup.service.orphaned"),
             };
             _needsRepair = registration == RegistrationHealth.Orphaned;
             return NoticeFor(registration);
@@ -184,18 +266,16 @@ public sealed class Bootstrapper
         if (!ForceServiceSetup && HasDeclined())
         {
             _service.Status = StepStatus.Skipped;
-            _service.Detail = "previously declined";
-            return "The background service is not installed, so machine-wide tweaks are " +
-                   "unavailable. You can enable it at any time.";
+            _service.Detail = Strings.Get("setup.service.declined");
+            return Strings.Get("notice.service.declined");
         }
 
         var executable = FindServiceExecutable();
         if (executable is null)
         {
             _service.Status = StepStatus.Failed;
-            _service.Detail = "Nostos.Service.exe is missing from this folder";
-            return "This copy is incomplete: the service executable is missing, so only " +
-                   "user-scope tweaks are available.";
+            _service.Detail = Strings.Get("setup.service.missingexe");
+            return Strings.Get("notice.service.incomplete");
         }
 
         // A single elevated invocation installs AND starts, so the user sees one prompt.
@@ -205,9 +285,8 @@ public sealed class Bootstrapper
         {
             RecordDecline();
             _service.Status = StepStatus.Skipped;
-            _service.Detail = "administrator approval declined";
-            return "Continuing without the background service. Machine-wide tweaks stay " +
-                   "unavailable until it is installed.";
+            _service.Detail = Strings.Get("setup.service.uacdeclined");
+            return Strings.Get("notice.service.uacdeclined");
         }
 
         // The SCM reports RUNNING before the daemon has necessarily opened its pipe.
@@ -217,10 +296,10 @@ public sealed class Bootstrapper
         var installed = ServiceInstaller.QueryState() == ServiceState.Running;
         _service.Status = installed ? StepStatus.Fixed : StepStatus.Failed;
         _service.Detail = installed
-            ? registration == RegistrationHealth.Matches ? "installed and started" : "repaired and started"
-            : "setup ran but the service is not running";
+            ? registration == RegistrationHealth.Matches ? Strings.Get("setup.service.installed") : Strings.Get("setup.service.repaired")
+            : Strings.Get("setup.service.notrunning");
 
-        return installed ? null : "The service was set up but is not running. Continuing directly.";
+        return installed ? null : Strings.Get("notice.service.notrunning");
     }
 
     private async Task<BootstrapResult> ConnectAsync(string? notice, CancellationToken ct)
@@ -332,14 +411,12 @@ public sealed class Bootstrapper
             // Worth saying, because the service running your changes is a build you may not
             // have meant to be in charge -- but nothing is broken, so this is not an alarm.
             RegistrationHealth.OtherCopy =>
-                $"The background service is running from another copy of the app ({folder}). " +
-                "Changes made here still go through it.",
+                Strings.Format("notice.service.othercopy", folder),
 
             // This one is a genuine time bomb: it works now and stops working at the next
             // reboot, which is the hardest kind of failure to connect back to its cause.
             RegistrationHealth.Orphaned =>
-                $"The background service is registered to a folder that no longer exists ({folder}), " +
-                "so it will not come back after a restart. Use Enable background service to repair it.",
+                Strings.Format("notice.service.orphaned", folder),
 
             _ => null,
         };
@@ -446,12 +523,11 @@ public sealed class Bootstrapper
     public static string? EnvironmentWarning()
     {
         if (NativeAssets.Warning is { } unpackFailure)
-            return unpackFailure;
+            return Strings.Format(unpackFailure, NativeAssets.WarningDetail);
 
         if (SystemInfo.SmartAppControl == SmartAppControlState.Enforced)
         {
-            return "Smart App Control is enforced on this machine. Unsigned builds are blocked " +
-                   "from running, so parts of this app may not start until it is signed.";
+            return Strings.Get("notice.smartappcontrol");
         }
 
         return null;

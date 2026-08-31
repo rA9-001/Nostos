@@ -1,7 +1,6 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Nostos.Tweaks</RootNamespace>
   </PropertyGroup>
 
@@ -11,11 +10,13 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The catalog ships inside the assembly so a single binary is self-describing,
-         and is also copied out so users can read it without unpacking anything. -->
-    <!-- Embedded only. RegistryTweakCatalog.LoadEmbedded reads these out of the assembly, so
-         a copy next to the executable would never be read and would stop a single-file build
-         from being a single file. -->
+    <!-- The whole catalog: registry.json, services.json, adapters.json. Embedded only, and
+         matched by name prefix at load time, so a new file needs a loader rather than only a
+         drop into this folder.
+
+         Embedded rather than copied beside the executable because a binary should be
+         self-describing: whatever it says the catalog is, is what it will do. A loose file
+         would also stop a single-file build from being a single file. -->
     <EmbeddedResource Include="Catalog\*.json" />
   </ItemGroup>
 </Project>

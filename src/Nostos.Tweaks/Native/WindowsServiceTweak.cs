@@ -118,14 +118,19 @@ public sealed class WindowsServiceTweak : ITweak
         if (info is null)
         {
             return Task.FromResult(Applicability.No(
-                $"'{_serviceName}' is not registered on this machine, so there is nothing to change."));
+                "notapplicable.servicemissing",
+                $"'{_serviceName}' is not registered on this machine, so there is nothing to change.",
+                _serviceName));
         }
 
         if (info.StartType is ServiceStartType.Boot or ServiceStartType.System)
         {
             return Task.FromResult(Applicability.No(
+                "notapplicable.servicedriver",
                 $"'{_serviceName}' starts at {info.StartType} scope on this machine, which means it "
-                + "is loaded as a driver. Changing that can leave the machine unbootable."));
+                + "is loaded as a driver. Changing that can leave the machine unbootable.",
+                _serviceName,
+                info.StartType.ToString()));
         }
 
         return Task.FromResult(Applicability.Applicable);

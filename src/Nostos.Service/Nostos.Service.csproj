@@ -1,8 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <RootNamespace>Nostos.Service</RootNamespace>
     <AssemblyName>Nostos.Service</AssemblyName>
     <!-- Required by the LibraryImport source generator; no unsafe code is hand-written here. -->
@@ -13,6 +12,5 @@
     <ProjectReference Include="..\Nostos.Core\Nostos.Core.csproj" />
     <ProjectReference Include="..\Nostos.Win32\Nostos.Win32.csproj" />
     <ProjectReference Include="..\Nostos.Tweaks\Nostos.Tweaks.csproj" />
-    <ProjectReference Include="..\Nostos.Ipc\Nostos.Ipc.csproj" />
   </ItemGroup>
 </Project>

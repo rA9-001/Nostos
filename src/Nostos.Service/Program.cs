@@ -1,7 +1,9 @@
+using Nostos.Core;
 using Nostos.Core.Abstractions;
 using Nostos.Service;
 using Nostos.Service.Daemon;
 using Nostos.Service.Logging;
+using Nostos.Win32.Removal;
 using Nostos.Win32.ServiceControl;
 
 var command = args.FirstOrDefault()?.ToLowerInvariant() ?? "help";
@@ -58,6 +60,39 @@ switch (command)
             Console.WriteLine("Tweaks already applied to this machine were NOT reverted -- removing the");
             Console.WriteLine("service is not the same as undoing its changes. Run `nos revert --all`");
             Console.WriteLine("first if that is what you wanted; the journal is still on disk either way.");
+            return 0;
+        });
+
+    // The elevated half of "remove Nostos from this PC". Launched by the app's Settings panel,
+    // which has already reverted every tweak through the ordinary revert path before getting
+    // here -- this verb is only about the two things an ordinary user cannot delete: a service
+    // registration, and files the service wrote to %ProgramData% as LocalSystem.
+    //
+    // It takes no arguments on purpose. An elevated process that deletes a directory named by
+    // an unelevated caller is an arbitrary-delete primitive wearing a helpful hat; the only
+    // path this will ever touch is the one it computes for itself.
+    case "remove":
+        return Guarded(() =>
+        {
+            var root = AppPaths.Root;
+
+            ServiceInstaller.Uninstall();
+            Console.WriteLine($"Removed '{ServiceInstaller.ServiceName}'.");
+
+            var leftovers = new List<string>();
+            if (Directory.Exists(root))
+            {
+                SystemRemoval.DeleteTree(root, leftovers);
+                Console.WriteLine(Directory.Exists(root)
+                    ? $"Could not fully delete {root}: {leftovers.Count} file(s) remain."
+                    : $"Deleted {root}.");
+            }
+
+            foreach (var leftover in leftovers)
+                Console.Error.WriteLine($"  left behind: {leftover}");
+
+            // Not an error exit. The service is gone, which is the part only this process could
+            // do; the caller re-reads the disk and reports the rest itself.
             return 0;
         });
 
@@ -299,6 +334,8 @@ static void PrintUsage()
           setup         Install and start in one step. What the app runs, elevated.
           install       Register the service without starting it.
           uninstall     Stop and remove the service. Does NOT revert applied tweaks.
+          remove        Remove the service AND the data folder. The elevated half of the
+                        app's "Remove Nostos from this PC"; reverts nothing by itself.
           start / stop  Control the installed service.
           status        Report whether the service is installed and running.
           run           Entry point used by the Service Control Manager.

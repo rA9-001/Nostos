@@ -1,0 +1,209 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- ==================================================================== the palette ===
+
+       Every colour the window uses, named once.
+
+       The rule the whole scheme follows: the surfaces are quiet and the meaning is loud. A
+       panel, a row and the window behind them differ by a few points of lightness, so the only
+       saturated things on screen are the ones carrying information: whether a tweak is on, how
+       risky it is, how well evidenced it is, and which control the pointer is over. Nothing is
+       coloured for decoration.
+
+       Colours are written as #AARRGGBB where they are tints. A tint over a surface keeps
+       working when the surface underneath changes, which a hand mixed opaque colour does not.  -->
+
+  <!-- ============================================================ backdrop and surfaces -->
+
+  <!-- The window itself. Nearly black, with a little blue in it: a true grey next to the
+       violet accent reads as brown. -->
+  <LinearGradientBrush x:Key="WindowBackground" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Offset="0" Color="#0B0E17" />
+    <GradientStop Offset="1" Color="#080A11" />
+  </LinearGradientBrush>
+
+  <!-- Two soft lights behind everything, one violet and one cyan, at a few percent opacity.
+       They give the top of the window somewhere to come from, so the header does not sit on a
+       flat field. Static brushes: they cost one gradient at paint time and never animate. -->
+  <RadialGradientBrush x:Key="GlowViolet" Center="50%,50%" GradientOrigin="50%,50%"
+                       RadiusX="50%" RadiusY="50%">
+    <GradientStop Offset="0" Color="#207C6CFF" />
+    <GradientStop Offset="0.65" Color="#0A7C6CFF" />
+    <GradientStop Offset="1" Color="#007C6CFF" />
+  </RadialGradientBrush>
+
+  <RadialGradientBrush x:Key="GlowCyan" Center="50%,50%" GradientOrigin="50%,50%"
+                       RadiusX="50%" RadiusY="50%">
+    <GradientStop Offset="0" Color="#1822D3EE" />
+    <GradientStop Offset="0.65" Color="#0822D3EE" />
+    <GradientStop Offset="1" Color="#0022D3EE" />
+  </RadialGradientBrush>
+
+  <!-- Panels. A gradient rather than a flat fill, top lighter than bottom, which is what makes
+       a rounded rectangle read as a raised surface instead of a coloured hole. -->
+  <LinearGradientBrush x:Key="Surface" StartPoint="0%,0%" EndPoint="0%,100%">
+    <GradientStop Offset="0" Color="#181E2D" />
+    <GradientStop Offset="1" Color="#141926" />
+  </LinearGradientBrush>
+
+  <SolidColorBrush x:Key="SurfaceFlat">#161B29</SolidColorBrush>
+
+  <!-- Recessed: code blocks, the value readout, the tab strip. Darker than the window, so it
+       reads as cut into the panel rather than laid on it. -->
+  <SolidColorBrush x:Key="SurfaceInset">#0C0F18</SolidColorBrush>
+
+  <SolidColorBrush x:Key="SurfaceHover">#14FFFFFF</SolidColorBrush>
+  <SolidColorBrush x:Key="SurfacePressed">#0AFFFFFF</SolidColorBrush>
+
+  <SolidColorBrush x:Key="Stroke">#22283A</SolidColorBrush>
+  <SolidColorBrush x:Key="StrokeSoft">#1A2030</SolidColorBrush>
+  <SolidColorBrush x:Key="StrokeStrong">#333D57</SolidColorBrush>
+
+  <!-- ========================================================================== text -->
+
+  <SolidColorBrush x:Key="TextPrimary">#E9EDF7</SolidColorBrush>
+  <SolidColorBrush x:Key="Muted">#93A0B8</SolidColorBrush>
+  <SolidColorBrush x:Key="TextFaint">#66738C</SolidColorBrush>
+
+  <!-- ======================================================================== accent -->
+
+  <Color x:Key="AccentColor">#8B7BFF</Color>
+  <SolidColorBrush x:Key="Accent" Color="{StaticResource AccentColor}" />
+  <SolidColorBrush x:Key="AccentBright">#A99BFF</SolidColorBrush>
+  <SolidColorBrush x:Key="AccentCyan">#3ED9F0</SolidColorBrush>
+
+  <!-- The one gradient the eye is meant to notice: it marks the selected tab and the single
+       button on screen that is the obvious next thing to press. Violet into blue rather than
+       violet into cyan, which at button size turns into a stripe rather than a sheen. -->
+  <LinearGradientBrush x:Key="AccentFill" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#7C6CFF" />
+    <GradientStop Offset="1" Color="#4F8CFF" />
+  </LinearGradientBrush>
+
+  <LinearGradientBrush x:Key="AccentFillHover" StartPoint="0%,0%" EndPoint="100%,100%">
+    <GradientStop Offset="0" Color="#9083FF" />
+    <GradientStop Offset="1" Color="#649BFF" />
+  </LinearGradientBrush>
+
+  <!-- The wordmark. Runs the other way so it does not look like a button. -->
+  <LinearGradientBrush x:Key="WordmarkFill" StartPoint="0%,0%" EndPoint="100%,0%">
+    <GradientStop Offset="0" Color="#FFFFFF" />
+    <GradientStop Offset="0.55" Color="#C9C4FF" />
+    <GradientStop Offset="1" Color="#7FD7EC" />
+  </LinearGradientBrush>
+
+  <SolidColorBrush x:Key="AccentTint">#2E7C6CFF</SolidColorBrush>
+  <SolidColorBrush x:Key="AccentTintSoft">#1A7C6CFF</SolidColorBrush>
+
+  <!-- ================================================================ risk and evidence ==
+
+       The app's whole visual vocabulary: a reader should be able to tell a measured, safe
+       tweak from an unproven one without reading a word. Each has a matching tint used as the
+       chip fill behind it, so the chip is legible without the text losing its colour.
+
+       These keys are named by the view models, not by the views: TweakItemViewModel hands back
+       the string "RiskModerate" and ResourceBrushConverter looks it up here. Renaming one means
+       renaming it there.                                                                    -->
+
+  <SolidColorBrush x:Key="RiskSafe">#3DDC97</SolidColorBrush>
+  <SolidColorBrush x:Key="RiskSafeTint">#243DDC97</SolidColorBrush>
+
+  <SolidColorBrush x:Key="RiskModerate">#FFC24B</SolidColorBrush>
+  <SolidColorBrush x:Key="RiskModerateTint">#24FFC24B</SolidColorBrush>
+
+  <SolidColorBrush x:Key="RiskHigh">#FF6B81</SolidColorBrush>
+  <SolidColorBrush x:Key="RiskHighTint">#24FF6B81</SolidColorBrush>
+
+  <!-- Deliberately the same green as RiskSafe, spelled out rather than aliased: these are two
+       different claims that happen to share a colour, and a reader changing one should not
+       silently change the other. -->
+  <SolidColorBrush x:Key="EvidenceMeasured">#3DDC97</SolidColorBrush>
+  <SolidColorBrush x:Key="EvidenceMeasuredTint">#243DDC97</SolidColorBrush>
+
+  <SolidColorBrush x:Key="EvidencePlausible">#8C9BB5</SolidColorBrush>
+  <SolidColorBrush x:Key="EvidencePlausibleTint">#1AFFFFFF</SolidColorBrush>
+
+  <!-- ======================================================================= status -->
+
+  <SolidColorBrush x:Key="Success">#3DDC97</SolidColorBrush>
+  <SolidColorBrush x:Key="Warning">#FFC24B</SolidColorBrush>
+  <SolidColorBrush x:Key="Danger">#FF6B81</SolidColorBrush>
+
+  <SolidColorBrush x:Key="DangerText">#FFB3BE</SolidColorBrush>
+  <SolidColorBrush x:Key="DangerTint">#1FFF6B81</SolidColorBrush>
+  <SolidColorBrush x:Key="DangerStroke">#4DFF6B81</SolidColorBrush>
+
+  <SolidColorBrush x:Key="WarningText">#FFD79A</SolidColorBrush>
+  <SolidColorBrush x:Key="WarningTint">#1CFF9A2E</SolidColorBrush>
+  <SolidColorBrush x:Key="WarningStroke">#40FFC24B</SolidColorBrush>
+
+  <SolidColorBrush x:Key="InfoText">#B9C6FF</SolidColorBrush>
+  <SolidColorBrush x:Key="InfoTint">#1F6C8CFF</SolidColorBrush>
+  <SolidColorBrush x:Key="InfoStroke">#4D6C8CFF</SolidColorBrush>
+
+  <!-- The scrim behind a modal. Nearly opaque, because what is behind it is not usable while
+       it is up and a half visible window invites the reader to try. -->
+  <SolidColorBrush x:Key="Scrim">#E60A0C13</SolidColorBrush>
+
+  <!-- ======================================================================== shape ==
+
+       Four radii, applied consistently: panels, cards, controls, pills. The whole scheme is
+       rounded, and the way that stays coherent rather than looking arbitrary is that a corner
+       radius is chosen by what kind of thing it is, never by how it looks in one place.      -->
+
+  <CornerRadius x:Key="CornerPanel">16</CornerRadius>
+  <CornerRadius x:Key="CornerCard">12</CornerRadius>
+  <CornerRadius x:Key="CornerControl">10</CornerRadius>
+  <CornerRadius x:Key="CornerPill">999</CornerRadius>
+
+  <!-- ======================================================================== icons ==
+
+       Drawn rather than borrowed. Avalonia has no SVG support without a package and this app
+       deliberately has exactly one third party dependency, so icons are StreamGeometry: the
+       same path commands an SVG compiles down to, drawn by the same renderer, with nothing
+       added to the dependency tree.                                                          -->
+
+  <!-- The settings gear, in a 24x24 box: eight teeth on an 11.2 outer radius, 8.6 at the root,
+       a 3.6 bore, flat tips and straight flanks. Generated geometry, so the proportions are
+       numbers somebody can change rather than path data nobody dares touch. F0 selects the
+       even odd fill rule, which is what makes the bore a hole. -->
+  <StreamGeometry x:Key="GearIcon">F0 M9.99,0.98 A11.20,11.20 0 0 1 14.01,0.98 L14.20,3.69 A8.60,8.60 0 0 1 16.32,4.56 L18.37,2.79 A11.20,11.20 0 0 1 21.21,5.63 L19.44,7.68 A8.60,8.60 0 0 1 20.31,9.80 L23.02,9.99 A11.20,11.20 0 0 1 23.02,14.01 L20.31,14.20 A8.60,8.60 0 0 1 19.44,16.32 L21.21,18.37 A11.20,11.20 0 0 1 18.37,21.21 L16.32,19.44 A8.60,8.60 0 0 1 14.20,20.31 L14.01,23.02 A11.20,11.20 0 0 1 9.99,23.02 L9.80,20.31 A8.60,8.60 0 0 1 7.68,19.44 L5.63,21.21 A11.20,11.20 0 0 1 2.79,18.37 L4.56,16.32 A8.60,8.60 0 0 1 3.69,14.20 L0.98,14.01 A11.20,11.20 0 0 1 0.98,9.99 L3.69,9.80 A8.60,8.60 0 0 1 4.56,7.68 L2.79,5.63 A11.20,11.20 0 0 1 5.63,2.79 L7.68,4.56 A8.60,8.60 0 0 1 9.80,3.69 Z M12.00,8.40 A3.60,3.60 0 0 0 12.00,15.60 A3.60,3.60 0 0 0 12.00,8.40 Z</StreamGeometry>
+
+  <!-- A magnifier, sized to the same 24x24 box: a ring of radius 7 centred at 10.5,10.5 with a
+       stroke drawn as an annulus, and a handle running out to 21,21. -->
+  <StreamGeometry x:Key="SearchIcon">F0 M10.5,2.5 A8,8 0 1 1 10.5,18.5 A8,8 0 1 1 10.5,2.5 Z M10.5,4.5 A6,6 0 1 0 10.5,16.5 A6,6 0 1 0 10.5,4.5 Z M16.16,14.75 L21.4,19.99 L19.99,21.4 L14.75,16.16 Z</StreamGeometry>
+
+  <!-- The mark beside the wordmark: a rounded chevron pair, read as "forward". -->
+  <StreamGeometry x:Key="MarkIcon">F1 M5.5,3.5 L12.5,12 L5.5,20.5 L9.2,20.5 L16.2,12 L9.2,3.5 Z</StreamGeometry>
+
+  <!-- ============================================================== window buttons ==
+
+       The three caption glyphs, drawn in a 10x10 box so they sit on whole pixels at the size
+       they are used. Windows draws these from a font (Segoe MDL2 Assets) that a stripped or
+       non English install is not guaranteed to have; geometry always renders.               -->
+
+  <!-- Chevrons, for a card that opens. A stroked V rather than a filled triangle: the arrow
+       sits next to text and a solid triangle at this size reads as heavier than the words it
+       is attached to. Drawn in a 10x10 box and stretched uniformly like the rest. -->
+  <StreamGeometry x:Key="ChevronDownIcon">F1 M0.9,3.2 L1.9,2.2 L5,5.3 L8.1,2.2 L9.1,3.2 L5,7.3 Z</StreamGeometry>
+  <StreamGeometry x:Key="ChevronUpIcon">F1 M0.9,6.8 L1.9,7.8 L5,4.7 L8.1,7.8 L9.1,6.8 L5,2.7 Z</StreamGeometry>
+
+  <!-- Minimise: one bar. Drawn at the origin rather than at the middle of a 10x10 box,
+       because the element that hosts it is 1.2 tall and centred by its button, not 10 tall
+       with the bar positioned inside it. See the note in MainWindow.axaml. -->
+  <StreamGeometry x:Key="MinimiseIcon">F1 M0,0 L10,0 L10,1.2 L0,1.2 Z</StreamGeometry>
+
+  <!-- Maximise: a square outline, drawn as an outer square with the inside cut out. -->
+  <StreamGeometry x:Key="MaximiseIcon">F0 M0,0 L10,0 L10,10 L0,10 Z M1.1,1.1 L1.1,8.9 L8.9,8.9 L8.9,1.1 Z</StreamGeometry>
+
+  <!-- Restore: the same square, with the one behind it showing at the top right. -->
+  <StreamGeometry x:Key="RestoreIcon">F0 M0,2.6 L7.4,2.6 L7.4,10 L0,10 Z M1.1,3.7 L1.1,8.9 L6.3,8.9 L6.3,3.7 Z M2.6,0 L10,0 L10,7.4 L8.9,7.4 L8.9,1.1 L2.6,1.1 Z</StreamGeometry>
+
+  <!-- Close: two bars crossed, as one path so the join is mitred rather than overlapped. -->
+  <StreamGeometry x:Key="CloseIcon">F1 M0.8,0 L5,4.2 L9.2,0 L10,0.8 L5.8,5 L10,9.2 L9.2,10 L5,5.8 L0.8,10 L0,9.2 L4.2,5 L0,0.8 Z</StreamGeometry>
+
+  <!-- A check, for the removal checklist and anywhere else something completed. -->
+  <StreamGeometry x:Key="CheckIcon">F1 M20.3,5.7 L9.1,16.9 L3.7,11.5 L5.5,9.7 L9.1,13.3 L18.5,3.9 Z</StreamGeometry>
+
+</ResourceDictionary>

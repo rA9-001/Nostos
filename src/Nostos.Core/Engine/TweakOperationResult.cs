@@ -19,6 +19,24 @@ public enum Outcome
     Failed,
 }
 
+/// <summary>
+/// Where a batch has got to, reported once as each tweak starts and once as it finishes.
+///
+/// This exists so a window can show a profile being applied rather than a spinner over a
+/// frozen list. It is deliberately reported from inside the loop that does the work: the
+/// alternative -- animating through the list at a plausible rate while the real batch runs
+/// somewhere else -- would put something on screen that is not true, and would keep ticking
+/// happily past the tweak that failed.
+/// </summary>
+/// <param name="Index">1-based position in the batch.</param>
+/// <param name="Total">How many tweaks the batch will attempt.</param>
+/// <param name="TweakId">Which one. The caller already has the catalog, so no title is sent.</param>
+/// <param name="Outcome">Null while it is running; set once it is done.</param>
+public sealed record BatchProgress(int Index, int Total, string TweakId, Outcome? Outcome = null)
+{
+    public bool IsRunning => Outcome is null;
+}
+
 public sealed record TweakOperationResult(
     string TweakId,
     Outcome Outcome,

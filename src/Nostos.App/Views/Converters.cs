@@ -1,3 +1,5 @@
+using Nostos.Core.Localization;
+using Nostos.App.Localization;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Data.Converters;
@@ -12,6 +14,12 @@ namespace Nostos.App.Views;
 ///
 /// Lets the view models describe a tweak's risk and evidence as semantic keys
 /// ("RiskModerate") instead of importing Avalonia types to hand back colours.
+///
+/// A converter parameter is appended to the key, so the one key a view model supplies can
+/// reach a family of related brushes: "RiskModerate" with the parameter "Tint" resolves
+/// <c>RiskModerateTint</c>, the wash a chip is filled with behind that same colour. The
+/// alternative was a second view model property whose only content would have been the first
+/// one with a word stuck on the end.
 /// </summary>
 public sealed class ResourceBrushConverter : IValueConverter
 {
@@ -22,12 +30,35 @@ public sealed class ResourceBrushConverter : IValueConverter
         if (value is not string key || Application.Current is null)
             return Brushes.Gray;
 
+        if (parameter is string suffix && suffix.Length > 0)
+            key += suffix;
+
         return Application.Current.Resources.TryGetResource(
                    key, Application.Current.ActualThemeVariant, out var resource)
                && resource is IBrush brush
             ? brush
             : Brushes.Gray;
     }
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+/// <summary>
+/// Resolves a resource key held in a view model into the icon geometry it names.
+///
+/// The brush version of this exists for the same reason and says why: a view model that had to
+/// hand back an Avalonia Geometry would be importing the rendering stack to answer "which way
+/// is this arrow pointing". It answers with a key instead.
+/// </summary>
+public sealed class ResourceGeometryConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => value is string key
+           && Application.Current is { } app
+           && app.Resources.TryGetResource(key, app.ActualThemeVariant, out var resource)
+            ? resource as Geometry
+            : null;
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();
@@ -48,9 +79,9 @@ public sealed class CategoryNameConverter : IValueConverter
         => value is string id
             ? id switch
             {
-                MainWindowViewModel.AllCategories => "All tweaks",
-                MainWindowViewModel.NotApplicableCategory => "Not applicable",
-                _ => TweakCategories.NameOf(id),
+                MainWindowViewModel.AllCategories => Strings.Get("tweaks.all"),
+                MainWindowViewModel.NotApplicableCategory => Strings.Get("tweaks.na.name"),
+                _ => CatalogText.CategoryName(id),
             }
             : value;
 
@@ -74,14 +105,14 @@ public sealed class CategoryGroupHeaderConverter : IValueConverter
     public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         if (value is string pseudo && pseudo == MainWindowViewModel.NotApplicableCategory)
-            return "THIS PC";
+            return Strings.Get("tweaks.thispc");
 
         if (value is not string id || TweakCategories.Find(id) is not { } category)
             return "";
 
         var leads = TweakCategories.InGroup(category.Group).FirstOrDefault();
         return leads?.Id == category.Id
-            ? TweakCategories.NameOfGroup(category.Group).ToUpperInvariant()
+            ? CatalogText.GroupName(category.Group).ToUpperInvariant()
             : "";
     }
 
@@ -96,6 +127,23 @@ public sealed class CategoryHasGroupHeaderConverter : IValueConverter
 
     public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         => Header.Convert(value, typeof(string), parameter, culture) is string s && s.Length > 0;
+
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
+/// <summary>
+/// Formats a value into a translated sentence: 4 becomes "4 TWEAKS", or "4 TWEAKS" in German.
+///
+/// A converter rather than a multi binding over the language and the value, because a multi
+/// binding is built from reflection bindings and this program is published ahead of time,
+/// where those do not exist. The language is not an input here; whatever needs to re-read this
+/// re-raises the value instead. See MainWindowViewModel.OnLanguageChanged.
+/// </summary>
+public sealed class LocalizedCountConverter : IValueConverter
+{
+    public object? Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+        => parameter is string key ? Strings.Format(key, value) : value;
 
     public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         => throw new NotSupportedException();

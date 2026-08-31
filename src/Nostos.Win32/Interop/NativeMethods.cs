@@ -134,4 +134,98 @@ internal static partial class NativeMethods
     [LibraryImport("ntdll.dll")]
     internal static partial int NtSetTimerResolution(
         uint desiredResolution, [MarshalAs(UnmanagedType.Bool)] bool setResolution, out uint currentResolution);
+
+    // ------------------------------------------------------------------ icons
+
+    // Reading the icon out of an executable, for the startup list. All of it operates on a file
+    // on disk, not on a running process: nothing here opens, reads or writes another process.
+
+    internal const uint ShgfiIcon = 0x000000100;
+    internal const uint ShgfiLargeIcon = 0x000000000;
+    internal const uint ShgfiSmallIcon = 0x000000001;
+    internal const uint ShgfiUseFileAttributes = 0x000000010;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    internal struct ShFileInfo
+    {
+        internal IntPtr hIcon;
+        internal int iIcon;
+        internal uint dwAttributes;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+        internal string szDisplayName;
+
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
+        internal string szTypeName;
+    }
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern IntPtr SHGetFileInfoW(
+        string path, uint fileAttributes, ref ShFileInfo info, uint sizeOfInfo, uint flags);
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct IconInfo
+    {
+        // An int rather than a marshalled bool: LibraryImport refuses a struct that needs
+        // runtime marshalling, and a BOOL is a 32-bit int anyway. Nothing here reads it.
+        internal int fIcon;
+        internal int xHotspot;
+        internal int yHotspot;
+        internal IntPtr hbmMask;
+        internal IntPtr hbmColor;
+    }
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool GetIconInfo(IntPtr icon, out IconInfo info);
+
+    [LibraryImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool DestroyIcon(IntPtr icon);
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct BitmapInfoHeader
+    {
+        internal uint biSize;
+        internal int biWidth;
+        internal int biHeight;
+        internal ushort biPlanes;
+        internal ushort biBitCount;
+        internal uint biCompression;
+        internal uint biSizeImage;
+        internal int biXPelsPerMeter;
+        internal int biYPelsPerMeter;
+        internal uint biClrUsed;
+        internal uint biClrImportant;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct Bitmap
+    {
+        internal int bmType;
+        internal int bmWidth;
+        internal int bmHeight;
+        internal int bmWidthBytes;
+        internal ushort bmPlanes;
+        internal ushort bmBitsPixel;
+        internal IntPtr bmBits;
+    }
+
+    [LibraryImport("gdi32.dll")]
+    internal static partial int GetObjectW(IntPtr handle, int size, ref Bitmap bitmap);
+
+    [LibraryImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool DeleteObject(IntPtr handle);
+
+    [LibraryImport("user32.dll")]
+    internal static partial IntPtr GetDC(IntPtr window);
+
+    [LibraryImport("user32.dll")]
+    internal static partial int ReleaseDC(IntPtr window, IntPtr dc);
+
+    [DllImport("gdi32.dll")]
+    internal static extern int GetDIBits(
+        IntPtr dc, IntPtr bitmap, uint startScan, uint scanLines,
+        byte[]? bits, ref BitmapInfoHeader info, uint usage);
 }

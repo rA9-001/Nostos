@@ -12,7 +12,12 @@
 `HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate`
 `ExcludeWUDriversInQualityUpdate` (REG_DWORD) -> `1`
 
-Defaults are `1` and absent respectively.
+`HKLM\SOFTWARE\Policies\Microsoft\Windows\DriverSearching`
+`DontSearchWindowsUpdate` (REG_DWORD) -> `1`
+`DontPromptForWindowsUpdate` (REG_DWORD) -> `1`
+`DriverUpdateWizardWuSearchEnabled` (REG_DWORD) -> `0`
+
+The default for `SearchOrderConfig` is `1`; the rest are absent.
 
 ## Mechanism
 
@@ -25,6 +30,11 @@ device is *installed* - plugged in, or enumerated for the first time.
 `ExcludeWUDriversInQualityUpdate` is the modern policy, and it governs the other path: drivers
 shipped as part of a monthly quality update to a device that is already working. This is the one
 that replaces a GPU driver overnight.
+
+The three under `Policies\...\DriverSearching` are the policy half of the first path.
+`SearchOrderConfig` is a *preference*, and a preference is something Windows feels free to
+re-derive - a feature update, a repair install, or a Settings page somebody clicked through can
+put it back. The policy is not. Both, because either one alone leaves a path open.
 
 Together they stop Windows Update sourcing drivers. They do not stop you installing drivers
 yourself, and they do not stop the vendor's own updater.
@@ -56,3 +66,8 @@ you pin driver versions on purpose; leave it alone if you do not.
 
 `nos revert stability.driver-search-off`. The captured state distinguishes "the policy value was
 absent" from "it was zero", and revert restores whichever it was.
+
+**A note on upgrading from 0.1.0.** This tweak wrote two values in 0.1.0 and writes five now.
+Capture happens at apply time, so a journal entry written by the old build covers only the two
+values it knew about. If you applied it on 0.1.0 and want the new three under your program's
+control, revert it and apply it again.

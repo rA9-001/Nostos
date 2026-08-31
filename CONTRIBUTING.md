@@ -20,6 +20,30 @@ The docs page must cover:
    finished investigating.
 5. **What revert does.**
 
+## Adding text that people read
+
+Every string a user sees comes from `src/Nostos.Core/Localization/en.json`, keyed by a dotted
+name. Add the English there and refer to it:
+
+- in a view, `Text="{loc:Tr settings.checknow}"`, or `{loc:TrFormat Key=..., Path=...}` when a
+  value has to be substituted into it;
+- in a view model, `Strings.Get("...")`, `Strings.Format("...", value)`, or
+  `Strings.Plural("summary.count.change", n)` for anything counted.
+
+**You do not have to translate it in the same commit.** A key missing from `de.json` falls back
+to the English, and the app carries on. What you must not do is add a key to `de.json` that is
+not in `en.json`, or give the two a different set of `{0}` placeholders — `StringTableTests`
+fails the build for both, the second because a German string with a placeholder the English
+does not have would throw at the moment it was displayed.
+
+A tweak's own title and summary are translated in `src/Nostos.Tweaks/Catalog/de.json`, keyed by
+tweak id, and are equally optional. `CatalogTranslationTests` checks the other direction: every
+id translated there has to be a tweak that still exists, which is what catches a rename.
+
+Dates are formatted from the table too, not from a `CultureInfo`. The build sets
+`InvariantGlobalization`, so there is no culture data to ask and requesting one throws; use
+`Strings.DateText`.
+
 ## Picking a category
 
 `category` is one of exactly six values, and it is a claim about the result, not a note about
@@ -163,7 +187,8 @@ it from a machine in that state.
 ## Adding a service tweak
 
 Services get their own rules, because this is where tools in this category do their worst
-damage. A new one is a single entry in `CatalogFactory.ServiceTweaks()` plus a docs page.
+damage. A new one is a single entry in `src/Nostos.Tweaks/Catalog/services.json` plus a docs page —
+no C#. The file's own header states the bar for being on the list.
 
 **The bar is honesty, not benefit.** An earlier version of this page said a service whose only
 real justification was "a smaller attack surface" or "less telemetry" did not belong in the

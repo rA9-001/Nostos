@@ -3,14 +3,21 @@ using Nostos.App.Backends;
 using Nostos.App.Startup;
 using Nostos.Core;
 using Nostos.Core.Abstractions;
+using Nostos.Core.Localization;
+using Nostos.Core.Settings;
 using Nostos.Core.Updates;
 using Nostos.Win32.Updates;
 using Nostos.Core.Engine;
 using Nostos.Ipc;
+using Nostos.Win32.Services;
+
+// The type and the property that lists them want the same name. The alias keeps the
+// property called what it should be called on screen.
+using Win32Startup = Nostos.Win32.Services.StartupItems;
 
 namespace Nostos.App.ViewModels;
 
-public sealed class MainWindowViewModel : ObservableObject, IDisposable
+public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettingsHost
 {
     private readonly List<TweakItemViewModel> _allTweaks = [];
     private readonly CancellationTokenSource _shutdown = new();
@@ -19,7 +26,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private readonly IOptimizerBackend? _injectedBackend;
 
     private IOptimizerBackend? _backend;
-    private string _connectionText = "connecting…";
+    private string _connectionText = Strings.Get("connection.connecting");
     private string? _connectionDetail;
     private bool _isServiceMode;
     private bool _canApplyMachineScope = true;
@@ -29,6 +36,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private string? _searchText;
     private string _selectedCategory = AllCategories;
     private TweakItemViewModel? _selectedTweak;
+    private RunningProcess? _selectedProcess;
     private int _outstandingCount;
     private bool _isSettingUp = true;
     private bool _serviceReady;
@@ -40,6 +48,9 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private bool _isLive;
     private Task? _liveLoop;
 
+    /// <summary>Set once the app has been removed from the machine. Nothing may touch it after.</summary>
+    private bool _detached;
+
     /// <summary>
     /// How often the catalog re-reads itself when nothing else is happening.
     ///
@@ -50,27 +61,11 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     /// </summary>
     private static readonly TimeSpan LiveInterval = TimeSpan.FromSeconds(5);
 
-    public const string AllCategories = "all";
-
-    /// <summary>
-    /// A filter, not a category.
-    ///
-    /// Whether a tweak applies here is live machine state -- a service that is not installed, a
-    /// Windows build that never had the setting, no game running to point at -- and it differs
-    /// between two PCs holding the same catalog. Making it a real <see cref="TweakCategory"/>
-    /// would mean a docs page could not name the category it is filed under, a profile could
-    /// reference a bucket that is empty on the next machine, and CI could not check either. So
-    /// it lives here, alongside "all", derived from what the last refresh actually found.
-    /// </summary>
-    public const string NotApplicableCategory = "not-applicable";
-
-    /// <summary>The band printed above the unavailable rows, and shown when they are filtered to.</summary>
-    public const string NotApplicableHeader = "Not applicable on this PC";
-
-    private const string NotApplicableDescription =
-        "These need something this PC does not have: a service that is not installed, a Windows "
-        + "version that never had the setting, or a running game to point at. They are listed so "
-        + "you can see they exist, and they all read OFF because none of them can be switched on.";
+    // Re-exported so the converters and the tests keep one name for these. The values, and
+    // the reasoning behind them, live with the filtering they belong to.
+    public const string AllCategories = CatalogFilter.AllCategories;
+    public const string NotApplicableCategory = CatalogFilter.NotApplicableCategory;
+    public static string NotApplicableHeader => CatalogFilter.NotApplicableHeader;
 
     /// <param name="backend">
     /// Supplied by tests. When null the view model discovers a backend for itself, preferring
@@ -80,7 +75,16 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     /// Supplied by tests so the show-delay and minimum-visible thresholds can be driven without
     /// sleeping. Production uses the real clock.
     /// </param>
-    public MainWindowViewModel(IOptimizerBackend? backend = null, ActivityTracker? activity = null)
+    /// <param name="remover">
+    /// How the app takes itself off the machine. Supplied by tests, because the real one talks
+    /// to the Service Control Manager and deletes folders.
+    /// </param>
+    /// <param name="store">Where preferences are read and written. Supplied by tests.</param>
+    public MainWindowViewModel(
+        IOptimizerBackend? backend = null,
+        ActivityTracker? activity = null,
+        ISystemRemover? remover = null,
+        ISettingsStore? store = null)
     {
         _injectedBackend = backend;
 
@@ -93,24 +97,122 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             Raise(nameof(ActivityDetail));
         };
 
-        RefreshCommand = new AsyncCommand(RefreshAsync, () => !IsBusy);
-        InstallUpdateCommand = new AsyncCommand(InstallUpdateAsync, () => _update is not null && !IsBusy);
-        RevertAllCommand = new AsyncCommand(RevertAllAsync, () => !IsBusy && OutstandingCount > 0);
+        RefreshCommand = new AsyncCommand(RefreshAsync, () => !IsBusy && !_detached);
+        InstallUpdateCommand = new AsyncCommand(
+            InstallUpdateAsync, () => _update is not null && !IsBusy && !_detached);
+        RevertAllCommand = new AsyncCommand(
+            RevertAllAsync, () => !IsBusy && OutstandingCount > 0 && !_detached);
         ApplyCommand = new AsyncCommand(p => ApplyAsync(p as TweakItemViewModel));
         RevertCommand = new AsyncCommand(p => RevertAsync(p as TweakItemViewModel));
         DryRunCommand = new AsyncCommand(p => DryRunAsync(p as TweakItemViewModel));
-        ApplyProfileCommand = new AsyncCommand(p => ApplyProfileAsync(p as ProfileSummary));
+        ApplyProfileCommand = new AsyncCommand(p => ApplyProfileAsync(p as ProfileViewModel));
+        ToggleProfileCommand = new AsyncCommand(p =>
+        {
+            (p as ProfileViewModel)?.Toggle();
+            return Task.CompletedTask;
+        });
+        RefreshProcessesCommand = new AsyncCommand(() =>
+        {
+            RefreshProcesses();
+            return Task.CompletedTask;
+        });
+        ToggleTweakCommand = new AsyncCommand(p => p is TweakItemViewModel tweak
+            ? tweak.ShowsAsApplied ? RevertAsync(tweak) : ApplyAsync(tweak)
+            : Task.CompletedTask);
+
+        ToggleStartupCommand = new AsyncCommand(p =>
+            p is StartupItemViewModel item ? item.ToggleAsync() : Task.CompletedTask);
+        RefreshStartupCommand = new AsyncCommand(() =>
+        {
+            ReloadStartup();
+            return Task.CompletedTask;
+        });
         EnableServiceCommand = new AsyncCommand(
             EnableServiceAsync,
-            () => !AppPaths.IsPortable && (!_serviceReady || _serviceNeedsRepair) && !IsBusy);
+            () => !AppPaths.IsPortable && (!_serviceReady || _serviceNeedsRepair) && !IsBusy && !_detached);
+
+        // Built before the commands that close over it, so that neither the compiler nor a
+        // reader has to wonder whether a click could arrive first.
+        Settings = new SettingsViewModel(this, remover, store);
+        Settings.Exit += () => ExitRequested?.Invoke();
+
+        OpenSettingsCommand = new AsyncCommand(() =>
+        {
+            // The removal plan is built on open rather than on construction: it reads the SCM,
+            // and a window that never opens Settings should never pay for that.
+            Settings.PrepareRemoval();
+            ShowSettings = true;
+            return Task.CompletedTask;
+        });
+
+        CloseSettingsCommand = new AsyncCommand(() =>
+        {
+            ShowSettings = false;
+            return Task.CompletedTask;
+        });
+
+        Strings.LanguageChanged += OnLanguageChanged;
     }
+
+    /// <summary>
+    /// Rewrites the window in the new language, without reloading anything.
+    ///
+    /// Nothing here goes back to the machine. Every string on screen is either a binding
+    /// through the string table, which re-reads itself, or a computed property over data the
+    /// window already has, which only needs telling to ask again. Re-running the filter is what
+    /// rebuilds the section bands, whose text is the translated group name.
+    /// </summary>
+    private void OnLanguageChanged()
+    {
+        // The backend names itself, and that name is on screen, so it has to be re-read too.
+        if (_backend is not null)
+            ConnectionText = _backend.Description;
+
+        foreach (var tweak in _allTweaks)
+            tweak.RefreshText();
+
+        // The journal rows are plain objects with no change notification of their own, so they
+        // are rebuilt from the lines they already hold rather than told to re-read. No I/O:
+        // the lines are in memory, and only the words wrapped around them change.
+        RebuildJournal(Journal.Select(e => e.Line).ToList());
+
+        foreach (var profile in Profiles)
+            profile.RefreshText();
+
+        foreach (var item in StartupItems)
+            item.RefreshText();
+
+        ApplyFilter();
+
+        if (_lastSummary is not null)
+            Report(_lastSummary);
+
+        Raise(nameof(OutstandingText));
+        Raise(nameof(ActivityTitle));
+        Raise(nameof(ActivityDetail));
+        Raise(nameof(LastUpdatedText));
+        Raise(nameof(UpdateTitle));
+        Raise(nameof(UpdateDetail));
+        Raise(nameof(SetupBannerTitle));
+        Raise(nameof(SetupActionLabel));
+        Raise(nameof(SelectedCategoryPromise));
+        Raise(nameof(TargetNote));
+        Raise(nameof(StartupSummary));
+        Raise(nameof(UpdateSummary));
+    }
+
+    /// <summary>
+    /// Raised when the app should close itself, which happens exactly once: after the user has
+    /// removed it and clicked the button that says so.
+    /// </summary>
+    public event Action? ExitRequested;
 
     // ------------------------------------------------------------- collections
 
     public ObservableCollection<TweakItemViewModel> Tweaks { get; } = [];
     public ObservableCollection<string> Categories { get; } = [AllCategories];
     public ObservableCollection<JournalEntryViewModel> Journal { get; } = [];
-    public ObservableCollection<ProfileSummary> Profiles { get; } = [];
+    public ObservableCollection<ProfileViewModel> Profiles { get; } = [];
 
     /// <summary>Live checklist shown while the app sets itself up on first launch.</summary>
     public ObservableCollection<StartupStep> SetupSteps => _bootstrapper.Steps;
@@ -124,7 +226,28 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     public AsyncCommand RevertCommand { get; }
     public AsyncCommand DryRunCommand { get; }
     public AsyncCommand ApplyProfileCommand { get; }
+
+    /// <summary>
+    /// Opens or closes a profile card.
+    ///
+    /// A command rather than a click handler in the view, because the whole header strip is the
+    /// hit target: a nine-pixel arrow is a fiddly thing to ask somebody to hit, and the card is
+    /// the thing they are looking at.
+    /// </summary>
+    public AsyncCommand ToggleProfileCommand { get; }
     public AsyncCommand EnableServiceCommand { get; }
+    public AsyncCommand OpenSettingsCommand { get; }
+    public AsyncCommand CloseSettingsCommand { get; }
+
+    /// <summary>Updates, and removing the app. See <see cref="SettingsViewModel"/>.</summary>
+    public SettingsViewModel Settings { get; }
+
+    /// <summary>True while the settings panel is covering the window.</summary>
+    public bool ShowSettings
+    {
+        get;
+        private set => SetField(ref field, value);
+    }
 
     // -------------------------------------------------------------- properties
 
@@ -175,9 +298,9 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     public bool ShowSetupBanner => ShowElevationWarning || HasSetupNotice;
 
     public string SetupBannerTitle =>
-        !_serviceReady ? "Running without the background service"
-        : _serviceNeedsRepair ? "The background service needs repairing"
-        : "Worth knowing";
+        !_serviceReady ? Strings.Get("banner.service.missing")
+        : _serviceNeedsRepair ? Strings.Get("banner.service.broken")
+        : Strings.Get("banner.service.known");
 
     /// <summary>
     /// Only the missing-service case needs the standing explanation of what is lost, and only
@@ -196,7 +319,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     public bool CanOfferServiceSetup => !IsPortableMode;
 
     /// <summary>Repairing an existing registration is a different act from enabling a new one.</summary>
-    public string SetupActionLabel => _serviceReady ? "Repair" : "Enable";
+    public string SetupActionLabel =>
+        _serviceReady ? Strings.Get("banner.service.repair") : Strings.Get("banner.service.enable");
 
     /// <summary>True when the service works now but will not survive a restart.</summary>
     public bool ServiceNeedsRepair
@@ -288,8 +412,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     /// <summary>The activity panel's headline: what is happening, or what last happened.</summary>
     public string ActivityTitle => _activity.IsVisible
-        ? _activity.Caption ?? "Working…"
-        : string.IsNullOrWhiteSpace(StatusMessage) ? "Ready" : StatusMessage;
+        ? _activity.Caption ?? Strings.Get("activity.working")
+        : string.IsNullOrWhiteSpace(StatusMessage) ? Strings.Get("activity.ready") : StatusMessage;
 
     /// <summary>
     /// The activity panel's second line: what the headline means, or what to do next.
@@ -302,16 +426,16 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         get
         {
             if (_activity.IsVisible)
-                return "Your previous settings are saved before anything is changed.";
+                return Strings.Get("activity.saved.first");
 
             if (!string.IsNullOrWhiteSpace(StatusDetail))
                 return StatusDetail;
 
             return OutstandingCount == 0
-                ? "Nothing has been changed on this PC by this program."
+                ? Strings.Get("activity.changes.none")
                 : OutstandingCount == 1
-                    ? "1 change made by this program. Revert everything puts it back."
-                    : $"{OutstandingCount} changes made by this program. Revert everything puts them back.";
+                    ? Strings.Get("activity.changes.one")
+                    : Strings.Format("activity.changes.many", OutstandingCount);
         }
     }
 
@@ -338,15 +462,15 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         get
         {
             if (_lastUpdatedUtc is not { } at)
-                return "not read yet";
+                return Strings.Get("activity.updated.never");
 
             var age = DateTimeOffset.UtcNow - at;
             return age.TotalSeconds switch
             {
-                < 3 => "live",
-                < 60 => $"updated {(int)age.TotalSeconds}s ago",
-                < 3600 => $"updated {(int)age.TotalMinutes}m ago",
-                _ => "stale",
+                < 3 => Strings.Get("activity.updated.live"),
+                < 60 => Strings.Format("activity.updated.seconds", (int)age.TotalSeconds),
+                < 3600 => Strings.Format("activity.updated.minutes", (int)age.TotalMinutes),
+                _ => Strings.Get("activity.updated.stale"),
             };
         }
     }
@@ -403,24 +527,234 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     /// "FPS" is a promise, and the user is entitled to see it spelled out before deciding that
     /// six rows under it are worth applying.
     /// </summary>
-    public string? SelectedCategoryPromise => _selectedCategory switch
-    {
-        AllCategories => null,
-        NotApplicableCategory => NotApplicableDescription,
-        _ => TweakCategories.Find(_selectedCategory)?.Promise,
-    };
+    public string? SelectedCategoryPromise => CatalogFilter.PromiseOf(_selectedCategory);
 
     public TweakItemViewModel? SelectedTweak
     {
         get => _selectedTweak;
         set
         {
-            if (SetField(ref _selectedTweak, value))
-                Raise(nameof(HasSelection));
+            if (!SetField(ref _selectedTweak, value))
+                return;
+
+            Raise(nameof(HasSelection));
+            Raise(nameof(NeedsTargetProcess));
+            Raise(nameof(TargetNote));
+
+            // Filled the moment a process-scoped row is selected, so the picker is populated by
+            // the time the reader looks at it. Refreshed then rather than once at startup
+            // because the interesting process is usually one they started after opening this.
+            if (NeedsTargetProcess)
+                RefreshProcesses();
         }
     }
 
     public bool HasSelection => _selectedTweak is not null;
+
+    // ------------------------------------------------- the target of a process-scoped tweak
+
+    /// <summary>
+    /// True when the selected tweak acts on one running process and therefore needs to be told
+    /// which.
+    ///
+    /// Two tweaks in the catalog are like this. process.game-tuning was unusable from the window
+    /// for as long as the window had no way to say: it reported itself not applicable with "no
+    /// target process specified", which is true and useless, and the only way to use it at all
+    /// was `nos apply process.game-tuning --pid`. process.persistent-priority needs the same
+    /// answer for a different reason -- it wants the executable's name, not the process -- and
+    /// picking a running copy of the game is the least error-prone way to spell it.
+    /// </summary>
+    public bool NeedsTargetProcess => _selectedTweak?.NeedsTarget == true;
+
+    public ObservableCollection<RunningProcess> Processes { get; } = [];
+
+    /// <summary>
+    /// What the picker says the chosen program is for, which is not the same sentence for
+    /// both tweaks that show one.
+    ///
+    /// A process-scoped tweak acts on that one process and dies with it. A machine-scoped
+    /// one is only using the process to spell an executable's name, and what it writes
+    /// outlives it -- telling somebody it "is undone when that process exits" would be the
+    /// opposite of true.
+    /// </summary>
+    public string TargetNote => Strings.Get(_selectedTweak?.Scope == TweakScope.Process
+        ? "tweaks.target.note"
+        : "tweaks.target.note.persistent");
+
+    /// <summary>
+    /// The process the next apply will act on, or null while nothing is chosen.
+    ///
+    /// Setting it re-reads the tweak against that process, which is what moves the row out of
+    /// "not applicable": applicability for this one is not a fact about the machine, it is a
+    /// fact about whether the question has been answered yet.
+    /// </summary>
+    public RunningProcess? SelectedProcess
+    {
+        get => _selectedProcess;
+        set
+        {
+            if (!SetField(ref _selectedProcess, value))
+                return;
+
+            ApplyCommand.RaiseCanExecuteChanged();
+            DryRunCommand.RaiseCanExecuteChanged();
+
+            if (_selectedTweak is { } tweak && value is not null)
+                _ = RefreshTweakAsync(tweak);
+        }
+    }
+
+    public AsyncCommand RefreshProcessesCommand { get; }
+
+    // ------------------------------------------------------------------- startup
+
+    /// <summary>
+    /// Everything that runs when you sign in.
+    ///
+    /// Read in-process rather than over the pipe: it needs no privilege, so a round trip to be
+    /// told what a plain registry read would have said is latency for nothing -- and it means
+    /// the tab works before the service is installed. Only switching an entry goes through the
+    /// backend, and only machine-wide ones actually leave this process.
+    /// </summary>
+    public ObservableCollection<StartupItemViewModel> StartupItems { get; } = [];
+
+    /// <summary>
+    /// Everything this program can do about Windows Update, on one page.
+    ///
+    /// Drawn from the "windows-update" tag rather than a category, because these tweaks are
+    /// deliberately spread across three of them: stopping a driver swap is Crashes and Freezes,
+    /// a restart toast is Interruptions, and a background download competing with the game for
+    /// the link is Ping. A category is a claim about what a tweak does for the player, and
+    /// "which part of Windows it writes to" is not one -- so the categories stay as they are
+    /// and this tab is a second way in, for a reader who arrived thinking "Windows Update"
+    /// rather than thinking "ping".
+    ///
+    /// The same view models as the Tweaks tab, not copies: a row switched here is the same
+    /// object that is already on screen there, so the two can never disagree.
+    /// </summary>
+    public ObservableCollection<TweakItemViewModel> UpdateTweaks { get; } = [];
+
+    /// <summary>The tag that puts a tweak on the Windows Update tab.</summary>
+    public const string UpdateTag = "windows-update";
+
+    /// <summary>How many of them are on, for the chip above the list.</summary>
+    public string UpdateSummary => Strings.Format(
+        "updates.summary", UpdateTweaks.Count(t => t.ShowsAsApplied), UpdateTweaks.Count);
+
+    /// <summary>
+    /// Switch one tweak the way the Startup tab switches a program: on if it is off, off if it
+    /// is on. The Tweaks tab keeps Apply, Dry run and Revert as separate buttons, because that
+    /// is a page for reading a tweak before deciding. This is a page for deciding.
+    /// </summary>
+    public AsyncCommand ToggleTweakCommand { get; }
+
+    public AsyncCommand ToggleStartupCommand { get; }
+
+    public AsyncCommand RefreshStartupCommand { get; }
+
+    private string? _startupError;
+
+    /// <summary>Why the last switch did not take, or null when nothing has gone wrong.</summary>
+    public string? StartupError
+    {
+        get => _startupError;
+        private set
+        {
+            if (SetField(ref _startupError, value))
+                Raise(nameof(HasStartupError));
+        }
+    }
+
+    public bool HasStartupError => _startupError is not null;
+
+    /// <summary>How many of the listed entries actually run, for the line above the list.</summary>
+    public string StartupSummary => Strings.Format(
+        "startup.summary", StartupItems.Count(i => i.IsEnabled), StartupItems.Count);
+
+    private void ReloadStartup()
+    {
+        StartupError = null;
+        StartupItems.Clear();
+
+        foreach (var entry in Win32Startup.List().ToWire())
+            StartupItems.Add(new StartupItemViewModel(entry, ToggleStartupAsync));
+
+        Raise(nameof(StartupSummary));
+    }
+
+    /// <summary>
+    /// Switches one entry, then re-reads it rather than assuming.
+    ///
+    /// The row shows what the machine says, not what was asked for. A machine-wide entry goes to
+    /// the service and can be refused -- an unelevated app with no service installed cannot
+    /// write HKLM -- and a row that flipped anyway would be lying about the state of the machine,
+    /// which is the one thing this program must not do.
+    /// </summary>
+    private async Task ToggleStartupAsync(StartupItemViewModel item, bool enabled)
+    {
+        StartupError = null;
+
+        if (_backend is null)
+        {
+            StartupError = Strings.Get("startup.error.nobackend");
+            return;
+        }
+
+        try
+        {
+            var result = await _backend
+                .SetStartupEnabledAsync(item.Id, enabled, _shutdown.Token)
+                .ConfigureAwait(true);
+
+            if (!result.Ok)
+                StartupError = result.Message;
+        }
+        catch (Exception e) when (e is IOException or TimeoutException or InvalidOperationException)
+        {
+            StartupError = e.Message;
+        }
+
+        // Re-read whether or not the write reported success: a refusal and a success that did
+        // not stick look identical from here, and both have to leave the row telling the truth.
+        var live = Win32Startup.List()
+            .FirstOrDefault(i => string.Equals(i.Id, item.Id, StringComparison.OrdinalIgnoreCase));
+
+        if (live is not null)
+            item.Update(live.ToWire());
+        else
+            StartupItems.Remove(item);
+
+        Raise(nameof(StartupSummary));
+
+        // The History tab is the record of what this program did to the machine, and a switch
+        // flicked here is one of those things. Re-read rather than appending a row locally, so
+        // the tab shows what is actually on disk -- including a line the service wrote for a
+        // machine-wide entry, which this process never saw.
+        await ReloadJournalAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>The target to send with a change, or null for every tweak that does not take one.</summary>
+    private TweakTarget? TargetFor(TweakItemViewModel tweak)
+        => tweak.NeedsTarget && _selectedProcess is { } process
+            ? new TweakTarget(process.Id, process.Name)
+            : null;
+
+    private void RefreshProcesses()
+    {
+        var previous = _selectedProcess?.Id;
+
+        Processes.Clear();
+        foreach (var process in RunningProcesses.List())
+            Processes.Add(process);
+
+        // Keep the choice across a refresh when that process is still running, so pressing
+        // Refresh to pick up a game that has just started does not clear the one already
+        // chosen. Cleared when it has exited, because a stale pid is the one thing here that
+        // could act on the wrong process.
+        SelectedProcess = previous is { } id
+            ? Processes.FirstOrDefault(p => p.Id == id)
+            : null;
+    }
 
     public int OutstandingCount
     {
@@ -437,8 +771,8 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     public string OutstandingText => _outstandingCount == 1
-        ? "1 change managed by this app"
-        : $"{_outstandingCount} changes managed by this app";
+        ? Strings.Get("app.managed.one")
+        : Strings.Format("app.managed.many", _outstandingCount);
 
     // ------------------------------------------------------------------ actions
 
@@ -449,7 +783,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         // The setup overlay hides the window until the backend is chosen, but the first catalog
         // read happens after it closes. Without a caption that gap is an unlabelled busy state
         // on a window the user is seeing for the first time.
-        var activity = _activity.Begin("Reading your PC's current settings…");
+        var activity = _activity.Begin(Strings.Get("activity.reading"));
         try
         {
             if (_injectedBackend is not null)
@@ -482,7 +816,14 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             ConnectionDetail = null;
 
             await ReloadAsync();
-            SetStatus($"{_allTweaks.Count} tweaks loaded");
+
+            // Local and synchronous: a registry read of five keys, not worth an await, and the
+            // tab has to be populated before the user can reach it.
+            ReloadStartup();
+
+            var count = _allTweaks.Count;
+            Report(() => new ChangeSummary(
+                Strings.Format("activity.loaded", count), null, IsProblem: false));
 
             // Started after the first read, so the loop never races the initial load. Left
             // unawaited on purpose: it runs for the lifetime of the window.
@@ -490,12 +831,17 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
             // Unawaited, and last. A failed or slow update check must never be something the
             // user waits through to reach a catalog that is already on screen.
-            _ = CheckForUpdateAsync();
+            //
+            // Skipped when a backend was injected, which means a test: a unit test has no
+            // business making an HTTP request to GitHub, and until this condition was here
+            // every test that loaded the window made one.
+            if (_injectedBackend is null && Settings.Current.IsCheckDue(DateTimeOffset.UtcNow))
+                _ = LaunchUpdateCheckAsync();
         }
         catch (Exception e)
         {
             IsSettingUp = false;
-            SetStatus($"could not start: {e.Message}", isError: true);
+            SetStatus(Strings.Format("status.couldnotstart", e.Message), isError: true);
         }
         finally
         {
@@ -513,7 +859,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private async Task EnableServiceAsync()
     {
         IsBusy = true;
-        var setup = _activity.Begin("Setting up the background service…");
+        var setup = _activity.Begin(Strings.Get("activity.settingupservice"));
         try
         {
             Bootstrapper.ClearDecline();
@@ -538,9 +884,9 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             IsSettingUp = false;
 
             await ReloadAsync();
-            SetStatus(result.ServiceReady
-                ? "background service is running"
-                : "continuing without the background service");
+            SetStatus(Strings.Get(result.ServiceReady
+                ? "status.service.running"
+                : "status.service.without"));
         }
         catch (Exception e)
         {
@@ -557,11 +903,11 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private async Task RefreshAsync()
     {
         IsBusy = true;
-        var activity = _activity.Begin("Checking your PC's current settings…");
+        var activity = _activity.Begin(Strings.Get("activity.checking"));
         try
         {
             await ReloadAsync();
-            SetStatus("refreshed");
+            SetStatus(Strings.Get("status.refreshed"));
         }
         catch (Exception e)
         {
@@ -609,6 +955,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         _allTweaks.AddRange(rebuilt);
 
         SyncCategories();
+        SyncUpdateTweaks();
         ApplyFilter();
 
         OutstandingCount = _allTweaks.Count(t => t.IsManaged);
@@ -654,6 +1001,11 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         {
             while (await timer.WaitForNextTickAsync(_shutdown.Token).ConfigureAwait(true))
             {
+                // The app has been removed from the machine. There is nothing left to read, and
+                // a read would re-create the data folder that was just deleted.
+                if (_detached)
+                    break;
+
                 // The age caption ticks even when a read is skipped, so a loop that has stalled
                 // shows itself as stale rather than as fresh.
                 Raise(nameof(LastUpdatedText));
@@ -703,7 +1055,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
         try
         {
-            var status = await _backend.GetStatusAsync(tweak.Id, tweak.SelectedOptions, _shutdown.Token);
+            var status = await _backend.GetStatusAsync(tweak.Id, tweak.SelectedOptions, TargetFor(tweak), _shutdown.Token);
             if (status is not null)
                 tweak.Status = status;
         }
@@ -717,21 +1069,6 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     }
 
     /// <summary>
-    /// Which band a row sits under: its half of the catalog, or the unavailable pile.
-    ///
-    /// Applicability wins over the group. A tweak that cannot run here is not a Gaming change
-    /// or a Windows change from the reader's point of view -- it is not a change at all.
-    /// </summary>
-    private static (string Header, string Description) SectionOf(TweakItemViewModel tweak)
-    {
-        if (!tweak.IsApplicable)
-            return (NotApplicableHeader, NotApplicableDescription);
-
-        var group = TweakCategories.GroupOf(tweak.Category);
-        return (TweakCategories.NameOfGroup(group), TweakCategories.DescriptionOfGroup(group));
-    }
-
-    /// <summary>
     /// Reconciles the category list in place.
     ///
     /// Deliberately never calls Clear(): emptying a collection bound to ListBox.SelectedItem
@@ -739,23 +1076,31 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     /// user's filter and leaves nothing highlighted. Adding and removing individual entries
     /// leaves an unaffected selection alone.
     /// </summary>
+    /// <summary>
+    /// Rebuilds the Windows Update tab's list from the catalog.
+    ///
+    /// Cleared and refilled rather than diffed, unlike the Tweaks list: this one has no
+    /// selection and no scroll position worth preserving at a dozen rows, and the items
+    /// themselves are shared with the Tweaks tab, so nothing about a row is lost by dropping
+    /// the reference to it here.
+    /// </summary>
+    private void SyncUpdateTweaks()
+    {
+        UpdateTweaks.Clear();
+
+        foreach (var tweak in _allTweaks.Where(t => t.IsWindowsUpdate)
+                     .OrderBy(t => t.Risk)
+                     .ThenBy(t => t.Id, StringComparer.OrdinalIgnoreCase))
+        {
+            UpdateTweaks.Add(tweak);
+        }
+
+        Raise(nameof(UpdateSummary));
+    }
+
     private void SyncCategories()
     {
-        var desired = _allTweaks
-            .Select(t => t.Category)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            // Group first, so the sidebar reads Gaming-then-Windows and the band headings the
-            // item template draws land where they belong.
-            .OrderBy(TweakCategories.GroupOf)
-            .ThenBy(TweakCategories.OrderOf)
-            .ThenBy(c => c, StringComparer.Ordinal)
-            .ToList();
-
-        // Offered only when there is something in it. An always-present filter that is usually
-        // empty trains people to ignore it, and on a machine where everything applies it is a
-        // question with no answer.
-        if (_allTweaks.Any(t => !t.IsApplicable))
-            desired.Add(NotApplicableCategory);
+        var desired = CatalogFilter.CategoriesFor(_allTweaks);
 
         for (var i = Categories.Count - 1; i >= 1; i--)
         {
@@ -772,43 +1117,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     private void ApplyFilter()
     {
-        // Nothing is filtered out by how well evidenced it is. Every tweak in the catalog is
-        // listed, always; a user who had heard of one and could not find it concluded the tool
-        // lacked it, and went looking for a .reg file instead.
-        //
-        // Group first, so the Gaming half is never interleaved with the Windows half. Turning
-        // off the Fax service and extending the GPU timeout are both reasonable things to do
-        // and have nothing to do with each other, and a single flat list said otherwise.
-        var filtered = _allTweaks
-            .Where(t => _selectedCategory switch
-            {
-                AllCategories => true,
-                NotApplicableCategory => !t.IsApplicable,
-                _ => string.Equals(t.Category, _selectedCategory, StringComparison.OrdinalIgnoreCase),
-            })
-            .Where(t => t.Matches(_searchText))
-            // Unavailable rows sink to the bottom whatever else is selected. They are not
-            // choices, and leaving them interleaved means every scan of the list steps over
-            // things that cannot be clicked.
-            .OrderBy(t => t.IsApplicable ? 0 : 1)
-            .ThenBy(t => TweakCategories.GroupOf(t.Category))
-            .ThenBy(t => TweakCategories.OrderOf(t.Category))
-            .ThenBy(t => t.Id, StringComparer.Ordinal)
-            .ToList();
-
-        // The band goes on the first row of each section, which is only knowable once the
-        // filter has run. Cleared on every other row, or a row that used to lead a section
-        // keeps its heading after something above it appears.
-        string? previousSection = null;
-        foreach (var tweak in filtered)
-        {
-            var (header, description) = SectionOf(tweak);
-            var leads = header != previousSection;
-
-            tweak.GroupHeader = leads ? header : null;
-            tweak.GroupDescription = leads ? description : null;
-            previousSection = header;
-        }
+        var filtered = CatalogFilter.Select(_allTweaks, _selectedCategory, _searchText);
 
         // Reconciled in place rather than Clear()-and-refill. The background refresh runs every
         // few seconds, and a collection that empties itself first makes the ListBox drop its
@@ -837,8 +1146,18 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         if (_backend is null)
             return;
 
-        var lines = await _backend.GetJournalAsync(80, _shutdown.Token);
+        RebuildJournal(await _backend.GetJournalAsync(80, _shutdown.Token));
+    }
 
+    /// <summary>
+    /// Turns journal lines into rows.
+    ///
+    /// Split out from the read so that a language change can rebuild the rows from the lines
+    /// already in memory. The rows are plain objects with no change notification, which is
+    /// right for a list of things that happened: nothing about a past change can change.
+    /// </summary>
+    private void RebuildJournal(IReadOnlyList<JournalLine> lines)
+    {
         // Titles come from the loaded catalog. A tweak that has since been removed still has
         // journal entries, and falling back to the id keeps those rows readable rather than
         // blank -- a record of a change you can no longer name is worse than an ugly name.
@@ -850,8 +1169,19 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         foreach (var entry in built)
             Journal.Add(entry);
 
+        Raise(nameof(HasJournal));
         UnfinishedCount = built.Count(e => e.IsUnfinished);
     }
+
+    /// <summary>
+    /// Whether anything has ever been changed on this PC by this program.
+    ///
+    /// Exists so the History tab can say that nothing has, rather than showing an empty panel.
+    /// A blank page is indistinguishable from a page that failed to load, and on a tool whose
+    /// whole claim is that it keeps a record, "the record is empty" and "the record is missing"
+    /// are very different things to leave a reader guessing between.
+    /// </summary>
+    public bool HasJournal => Journal.Count > 0;
 
     /// <summary>
     /// Changes that were started and never confirmed finished, normally a crash or a power cut
@@ -869,14 +1199,57 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     public bool HasUnfinished => UnfinishedCount > 0;
 
+    /// <summary>
+    /// The loaded catalog row for an id, or null when this build has no such tweak.
+    ///
+    /// Handed to each profile card so it can name what it would apply. A profile carries ids
+    /// and nothing else; every word next to one -- title, category, risk -- belongs to the
+    /// catalog, and the catalog is what gets translated.
+    /// </summary>
+    private TweakItemViewModel? FindTweak(string id)
+        => _allTweaks.FirstOrDefault(t => string.Equals(t.Id, id, StringComparison.OrdinalIgnoreCase));
+
     private async Task ReloadProfilesAsync()
     {
         if (_backend is null)
             return;
 
-        Profiles.Clear();
-        foreach (var profile in await _backend.GetProfilesAsync(_shutdown.Token))
-            Profiles.Add(profile);
+        var loaded = await _backend.GetProfilesAsync(_shutdown.Token);
+
+        // Reconciled in place rather than cleared and rebuilt, the same way the tweak list is.
+        // Rebuilding kept which cards were open by copying a set of names across, which worked
+        // while a card was inert data; it does not work now that a card can be mid-apply, because
+        // the live loop ticks every few seconds and would replace the object the progress
+        // reports are being delivered to.
+        var existing = Profiles.ToDictionary(p => p.Name, StringComparer.OrdinalIgnoreCase);
+
+        for (var i = Profiles.Count - 1; i >= 0; i--)
+        {
+            if (!loaded.Any(l => string.Equals(l.Name, Profiles[i].Name, StringComparison.OrdinalIgnoreCase)))
+                Profiles.RemoveAt(i);
+        }
+
+        for (var i = 0; i < loaded.Count; i++)
+        {
+            if (existing.TryGetValue(loaded[i].Name, out var card))
+            {
+                // The rows hold what the machine said when they were built, so they are thrown
+                // away and rebuilt on the next read. Not while the card is being applied: that
+                // would clear the ticks out from under somebody watching them appear.
+                if (!card.IsApplying)
+                    card.Invalidate();
+
+                if (Profiles.IndexOf(card) != i)
+                {
+                    Profiles.Remove(card);
+                    Profiles.Insert(i, card);
+                }
+
+                continue;
+            }
+
+            Profiles.Insert(i, new ProfileViewModel(loaded[i], FindTweak));
+        }
     }
 
     // ------------------------------------------------------------------ updates
@@ -886,28 +1259,32 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
     public string UpdateTitle => _update is null
         ? ""
-        : $"Nostos {_update.Version.ToString(3)} is available";
-
-    public string UpdateDetail => _update is null
-        ? ""
-        : $"You have {UpdateClient.CurrentVersion().ToString(3)}. " + FirstLineOf(_update.Notes);
+        : Strings.Format("update.available.title", _update.Version.ToString(3));
 
     /// <summary>
-    /// The first meaningful line of the release notes, for the banner.
+    /// The line under the banner headline.
     ///
-    /// Release notes are markdown and start with a heading often enough that showing the raw
-    /// first line would put "## Changes since v0.2.0" in front of the user.
+    /// It says which version you are on and nothing else. It used to carry the first line of
+    /// the release notes as well, which sounds useful and is not: release notes are markdown
+    /// written for a changelog, so what landed in the banner was whatever sentence happened to
+    /// come first, truncated mid-clause. The one fact the banner needs to supply is the one
+    /// the headline does not already give -- what you are upgrading from.
     /// </summary>
-    private static string FirstLineOf(string notes)
-    {
-        foreach (var line in notes.Split('\n'))
-        {
-            var trimmed = line.Trim().TrimStart('#', '-', '*', ' ');
-            if (trimmed.Length > 0 && !trimmed.StartsWith('|') && !trimmed.StartsWith("```", StringComparison.Ordinal))
-                return trimmed.Length > 120 ? trimmed[..117] + "..." : trimmed;
-        }
+    public string UpdateDetail => _update is null
+        ? ""
+        : Strings.Format("update.available.detail", UpdateClient.CurrentVersion().ToString(3));
 
-        return "";
+    /// <summary>
+    /// The launch-time check, run only when the user's cadence says it is due.
+    ///
+    /// Whether it succeeded or not, the attempt is recorded: a machine that is offline for a
+    /// week must not ask on every single launch, because that is precisely the machine least
+    /// able to answer.
+    /// </summary>
+    private async Task LaunchUpdateCheckAsync()
+    {
+        await CheckForUpdatesAsync(_shutdown.Token).ConfigureAwait(true);
+        Settings.RecordCheck();
     }
 
     /// <summary>
@@ -918,27 +1295,86 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     /// an updater that fetched and swapped code on its own would be the one exception -- on the
     /// component that runs as LocalSystem, of all of them.
     /// </summary>
-    private async Task CheckForUpdateAsync()
+    /// <returns>
+    /// What to tell somebody who asked for this check. On launch nobody did, and the caller
+    /// throws it away: a failed check is not news when it was nobody's idea. In Settings it is
+    /// the whole point of having pressed the button.
+    /// </returns>
+    public async Task<string> CheckForUpdatesAsync(CancellationToken ct = default)
     {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token, ct);
+
         try
         {
             using var client = new UpdateClient();
-            var status = await client.CheckAsync(_shutdown.Token).ConfigureAwait(true);
+            var status = await client.CheckAsync(linked.Token).ConfigureAwait(true);
 
-            // A failed check is not news. Offline, a captive portal or a rate limit are all
-            // normal, and none of them is something the user can act on.
+            if (status.Problem is { } problem)
+                return Strings.Format("update.checkfailed", problem);
+
             if (!status.UpdateAvailable)
-                return;
+                return Strings.Format("update.newest", status.Current.ToString(3));
 
             _update = status.Latest;
             Raise(nameof(UpdateAvailable));
             Raise(nameof(UpdateTitle));
             Raise(nameof(UpdateDetail));
             InstallUpdateCommand.RaiseCanExecuteChanged();
+
+            return Strings.Format("update.available.status", _update!.Version.ToString(3));
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
+            return Strings.Format("update.checkfailed", e.Message);
         }
+    }
+
+    // ------------------------------------------------------------ ISettingsHost
+
+    /// <summary>
+    /// Undoes everything, for the removal path.
+    ///
+    /// Deliberately the same backend call the Revert everything button makes. An uninstaller
+    /// with its own idea of how to put settings back is an uninstaller whose bugs nobody finds
+    /// until the day somebody uses it.
+    /// </summary>
+    public async Task<int> RevertEverythingAsync(CancellationToken ct = default)
+    {
+        if (_backend is null)
+            return 0;
+
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(_shutdown.Token, ct);
+
+        var results = await _backend.RevertAllAsync(linked.Token).ConfigureAwait(true);
+        await ReloadAsync().ConfigureAwait(true);
+        return results.Count;
+    }
+
+    /// <summary>
+    /// Stops talking to the machine, permanently.
+    ///
+    /// Called between "undo everything" and "delete everything". The pipe has to be closed
+    /// before the service is stopped, and the refresh loop has to stop before the data folder
+    /// is deleted -- a tick landing afterwards would re-create the folder that was just removed
+    /// and leave the app having lied about the machine being clean.
+    /// </summary>
+    public async Task DetachAsync()
+    {
+        _detached = true;
+
+        if (_backend is not null)
+        {
+            await _backend.DisposeAsync().ConfigureAwait(true);
+            _backend = null;
+        }
+
+        IsLive = false;
+        ConnectionText = Strings.Get("connection.removed");
+        OutstandingCount = 0;
+
+        RefreshCommand.RaiseCanExecuteChanged();
+        RevertAllCommand.RaiseCanExecuteChanged();
+        EnableServiceCommand.RaiseCanExecuteChanged();
     }
 
     private async Task InstallUpdateAsync()
@@ -947,13 +1383,15 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             return;
 
         IsBusy = true;
-        await using var activity = _activity.Begin($"Downloading Nostos {_update.Version.ToString(3)}…");
+        await using var activity = _activity.Begin(
+            Strings.Format("update.downloading", _update.Version.ToString(3)));
 
         try
         {
             using var client = new UpdateClient();
             var progress = new Progress<double>(fraction =>
-                activity.Describe($"Downloading… {(int)(fraction * 100)}%"));
+                activity.Describe(
+                    Strings.Format("update.downloading.percent", (int)(fraction * 100))));
 
             var outcome = await new UpdateInstaller()
                 .ApplyAsync(client, _update, progress, _shutdown.Token)
@@ -972,7 +1410,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            SetStatus($"Update failed: {e.Message}", isError: true);
+            SetStatus(Strings.Format("update.failed", e.Message), isError: true);
         }
         finally
         {
@@ -980,25 +1418,27 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
-    private Task ApplyAsync(TweakItemViewModel? tweak) => RunChangeAsync(tweak, "Applying", async backend =>
-        await backend.ApplyAsync(tweak!.Id, tweak.SelectedOptions, ct: _shutdown.Token));
+    private Task ApplyAsync(TweakItemViewModel? tweak) => RunChangeAsync(tweak, "activity.applying", async backend =>
+        await backend.ApplyAsync(tweak!.Id, tweak.SelectedOptions, target: TargetFor(tweak), ct: _shutdown.Token));
 
-    private Task DryRunAsync(TweakItemViewModel? tweak) => RunChangeAsync(tweak, "Checking", async backend =>
-        await backend.ApplyAsync(tweak!.Id, tweak.SelectedOptions, dryRun: true, ct: _shutdown.Token));
+    private Task DryRunAsync(TweakItemViewModel? tweak) => RunChangeAsync(tweak, "activity.dryrun", async backend =>
+        await backend.ApplyAsync(tweak!.Id, tweak.SelectedOptions, dryRun: true, target: TargetFor(tweak), ct: _shutdown.Token));
 
-    private Task RevertAsync(TweakItemViewModel? tweak) => RunChangeAsync(tweak, "Reverting", async backend =>
+    private Task RevertAsync(TweakItemViewModel? tweak) => RunChangeAsync(tweak, "activity.reverting.one", async backend =>
         await backend.RevertAsync(tweak!.Id, _shutdown.Token));
 
     private async Task RunChangeAsync(
         TweakItemViewModel? tweak,
-        string verb,
+        string captionKey,
         Func<IOptimizerBackend, Task<IReadOnlyList<ChangeResult>>> operation)
     {
         if (tweak is null || _backend is null || tweak.IsBusy)
             return;
 
         tweak.IsBusy = true;
-        var activity = _activity.Begin($"{verb} {tweak.Title}…");
+        // The key rather than a verb: German does not put the verb where English does, so
+        // the whole caption has to come out of the table as one sentence.
+        var activity = _activity.Begin(Strings.Format(captionKey, tweak.Title));
         try
         {
             var results = await operation(_backend);
@@ -1011,7 +1451,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
 
             // Re-read rather than assuming: the point of Verify is that an apply which reports
             // success can still not have landed.
-            activity.Describe("Checking what actually changed…");
+            activity.Describe(Strings.Get("activity.confirming"));
             await ReloadAsync();
         }
         catch (Exception e)
@@ -1031,16 +1471,16 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
             return;
 
         IsBusy = true;
-        var activity = _activity.Begin($"Reverting {OutstandingCount} change(s)…");
+        var activity = _activity.Begin(Strings.Format("activity.reverting", OutstandingCount));
         try
         {
             var results = await _backend.RevertAllAsync(_shutdown.Token);
             Report(results.Count == 0
                 ? new ChangeSummary(
-                    "Nothing to undo",
-                    "This program has not changed anything on this PC.",
+                    Strings.Get("activity.nothing.title"),
+                    Strings.Get("activity.nothing.detail"),
                     IsProblem: false)
-                : ChangeSummary.ForMany(results, "everything this program changed"));
+                : ChangeSummary.ForMany(results, Strings.Get("activity.everything")));
 
             await ReloadAsync();
         }
@@ -1055,18 +1495,45 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         }
     }
 
-    private async Task ApplyProfileAsync(ProfileSummary? profile)
+    /// <summary>
+    /// Applies a profile, showing the card being worked through rather than a spinner over a
+    /// frozen list.
+    ///
+    /// Forty-two tweaks is fifteen seconds of nothing moving, and "is it stuck, or is it
+    /// working?" is the only question a reader has during it. The reports come from inside the
+    /// loop that does the work -- see <see cref="BatchProgress"/> -- so what is on screen is
+    /// where the batch actually is, and it stops on the tweak that stops rather than animating
+    /// cheerfully past it.
+    /// </summary>
+    private async Task ApplyProfileAsync(ProfileViewModel? card)
     {
-        if (profile is null || _backend is null)
+        if (card is null || _backend is null)
             return;
 
         IsBusy = true;
+        card.BeginRun();
+
         var activity = _activity.Begin(
-            $"Applying preset '{profile.Name}' — {profile.TweakCount} tweak(s)…");
+            Strings.Format("activity.applying.profile", card.Name, card.Summary.TweakCount));
         try
         {
-            var results = await _backend.ApplyProfileAsync(profile.Name, _shutdown.Token);
-            Report(ChangeSummary.ForMany(results, $"the '{profile.Name}' preset"));
+            var results = await _backend.ApplyProfileAsync(
+                card.Name,
+                progress =>
+                {
+                    card.Report(progress);
+
+                    // The activity panel names the tweak too, so the answer is on screen even
+                    // for somebody who is looking at a different tab. Only on the way in: naming
+                    // it again on the way out would make the caption flicker twice per tweak.
+                    if (progress.IsRunning && TitleOf(card, progress.TweakId) is { } title)
+                        activity.Describe(Strings.Format("activity.applying.one", title));
+
+                    return Task.CompletedTask;
+                },
+                _shutdown.Token);
+
+            Report(ChangeSummary.ForMany(results, Strings.Format("activity.preset.named", card.Name)));
 
             await ReloadAsync();
         }
@@ -1076,10 +1543,16 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         }
         finally
         {
+            card.EndRun();
             IsBusy = false;
             await activity.DisposeAsync();
         }
     }
+
+    /// <summary>The translated title of one of a card's rows, or null when it has no such row.</summary>
+    private static string? TitleOf(ProfileViewModel card, string tweakId)
+        => card.Tweaks.FirstOrDefault(t =>
+            string.Equals(t.Id, tweakId, StringComparison.OrdinalIgnoreCase))?.Title;
 
     private static bool IsSuccess(Outcome outcome)
         => outcome is not (Outcome.Failed or Outcome.RolledBack);
@@ -1087,9 +1560,21 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
     private void SetStatus(string message, bool isError = false)
         => Report(new ChangeSummary(message, null, isError));
 
-    /// <summary>Puts a summary into the activity panel: headline on top, meaning underneath.</summary>
-    private void Report(ChangeSummary summary)
+    /// <summary>
+    /// Puts a summary into the activity panel: headline on top, meaning underneath.
+    ///
+    /// The factory is kept, not just the text it produced. The panel holds the last thing that
+    /// happened, which can be minutes old by the time somebody changes the language, and a line
+    /// left in the old language is the one thing on screen that would not have moved. Re-running
+    /// the closure re-renders it from the same facts in the new language.
+    /// </summary>
+    private void Report(ChangeSummary summary) => Report(() => summary);
+
+    private void Report(Func<ChangeSummary> summarise)
     {
+        _lastSummary = summarise;
+        var summary = summarise();
+
         StatusMessage = summary.Headline;
         StatusDetail = summary.Detail;
         StatusIsError = summary.IsProblem;
@@ -1098,8 +1583,12 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable
         Raise(nameof(ActivityDetail));
     }
 
+    /// <summary>How to re-render the standing status line. Null until something has happened.</summary>
+    private Func<ChangeSummary>? _lastSummary;
+
     public void Dispose()
     {
+        Strings.LanguageChanged -= OnLanguageChanged;
         _shutdown.Cancel();
 
         // The live loop observes the same token, so cancelling is enough to end it. It is not

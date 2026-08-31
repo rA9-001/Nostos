@@ -39,6 +39,35 @@ public static class SystemInfo
     public static int UpdateBuildRevision => RegistryAccess.ReadDword(
         new RegistryValueRef("HKLM", @"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "UBR")) ?? 0;
 
+    /// <summary>
+    /// The edition as Windows names it internally: "Core" on Home, "Professional",
+    /// "Enterprise", "Education". Not the marketing name -- ProductName still reads
+    /// "Windows 10 Pro" on a Windows 11 machine, which is why nothing here uses it.
+    /// </summary>
+    public static string Edition
+    {
+        get
+        {
+            var (value, _) = RegistryAccess.Read(
+                new RegistryValueRef("HKLM", @"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "EditionID"));
+            return value?.ToString() ?? "";
+        }
+    }
+
+    /// <summary>
+    /// True on Home, which ignores the Windows Update for Business policies outright.
+    ///
+    /// Deliberately asked as "is this Home" rather than "is this Pro or better": the edition
+    /// list is long and Microsoft keeps adding to it, and an edition this program has never
+    /// heard of should get the tweak offered rather than hidden. Offering one that turns out
+    /// to do nothing is a smaller failure than hiding one that would have worked.
+    /// </summary>
+    public static bool IsHomeEdition => IsHome(Edition);
+
+    /// <summary>The rule behind <see cref="IsHomeEdition"/>, separated so it can be tested.</summary>
+    public static bool IsHome(string editionId)
+        => editionId.StartsWith("Core", StringComparison.OrdinalIgnoreCase);
+
     public static string DisplayVersion
     {
         get

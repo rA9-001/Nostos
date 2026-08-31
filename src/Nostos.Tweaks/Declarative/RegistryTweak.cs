@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json.Nodes;
 using Nostos.Core.Abstractions;
 using Nostos.Win32.Services;
@@ -27,11 +28,34 @@ public sealed class RegistryTweak : ITweak
     {
         if (_definition.MinBuild > 0 && SystemInfo.Build < _definition.MinBuild)
             return Task.FromResult(Applicability.No(
-                $"needs Windows build {_definition.MinBuild} or later (this machine is {SystemInfo.Build})"));
+                "notapplicable.minbuild",
+                $"needs Windows build {_definition.MinBuild} or later (this machine is {SystemInfo.Build})",
+                _definition.MinBuild.ToString(CultureInfo.InvariantCulture),
+                SystemInfo.Build.ToString(CultureInfo.InvariantCulture)));
 
         if (_definition.DesktopOnly && SystemInfo.HasBattery)
             return Task.FromResult(Applicability.No(
+                "notapplicable.battery",
                 "this tweak trades battery life for performance and is disabled on battery-powered machines"));
+
+        if (_definition.ProOnly && SystemInfo.IsHomeEdition)
+            return Task.FromResult(Applicability.No(
+                "notapplicable.proonly",
+                "this is a Windows Update for Business policy, and Windows Home ignores it. "
+                + $"Setting it here would look like it worked (this machine is {SystemInfo.Edition}).",
+                SystemInfo.Edition));
+
+        // Last, because it is the only one whose answer can change while the program is running:
+        // a policy can arrive between two launches, whereas the build, the battery and the
+        // edition are what they were when the machine booted.
+        if (_definition.OverriddenBy is { } policy && policy.IsInForce())
+        {
+            return Task.FromResult(Applicability.No(
+                "notapplicable.policy",
+                $"a Group Policy on this machine ({policy.Describe}) already controls this "
+                + "setting, and Windows will not let anything else change it",
+                policy.Describe));
+        }
 
         return Task.FromResult(Applicability.Applicable);
     }

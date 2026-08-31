@@ -1,8 +1,8 @@
 # shell.startup-delay-off
 
-**Group:** Windows · **Improves:** Background & Cleanup · **Risk:** Safe · **Evidence:** Plausible · **Scope:** User · **Reboot:** no
+**Group:** Windows · **Improves:** Startup & Boot · **Risk:** Safe · **Evidence:** Plausible · **Scope:** User · **Reboot:** no
 
-> Stops Windows running services and features you do not use. Frees some memory and boot time; does not, on its own, promise you frames.
+> Shortens the gap between signing in and a machine that is actually ready, by removing work Windows schedules for itself in those first minutes.
 
 ## What it changes
 

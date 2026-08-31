@@ -202,6 +202,13 @@ public static class CatalogCommands
         Console.WriteLine($"{Ansi.Bold}Environment{Ansi.Reset}");
         Line("Windows", $"{SystemInfo.OsVersion} (build {SystemInfo.Build}.{SystemInfo.UpdateBuildRevision}, {SystemInfo.DisplayVersion})");
         Line("Elevated", WindowsPrivilegeCheck.Instance.IsElevated ? "yes" : $"{Ansi.Yellow}no - machine-scope tweaks will be skipped{Ansi.Reset}");
+
+        // Here because Home silently ignores the Windows Update for Business policies, and a
+        // reader wondering why a tweak reports itself not applicable should find the reason in
+        // the environment report rather than having to go and look up EditionID.
+        Line("Edition", SystemInfo.IsHomeEdition
+            ? $"{SystemInfo.Edition} (Home - Windows Update for Business policies are ignored)"
+            : SystemInfo.Edition);
         Line("Battery present", SystemInfo.HasBattery ? "yes (power tweaks are restricted)" : "no");
         Line("Timer resolution", $"{SystemInfo.CurrentTimerResolutionMs:0.000} ms");
 

@@ -81,7 +81,7 @@ gh attestation verify Nostos.exe --repo rA9-001/Nostos
 On first launch the app:
 
 1. creates its data folder,
-2. installs the default profiles if you have none,
+2. installs any of the three default profiles you do not already have,
 3. installs and starts the background service — **one administrator prompt, once, ever**,
 4. connects and loads the catalog.
 
@@ -92,8 +92,13 @@ there is nothing to configure before it works.
 The setup looks like nothing happened, which is the point. To check, run `nos service status`.
 
 Everything the app writes outside its own folder lives in one place,
-`%ProgramData%\Nostos`. `nos revert --all` undoes the changes, and
-`Nostos.Service.exe uninstall` from an elevated prompt removes the service.
+`%ProgramData%\Nostos`.
+
+To get rid of it, open **Settings** — the gear in the top right — and choose **Remove Nostos
+from this PC**. It undoes every change it made, deletes the service and the data folder, and
+then tells you the one folder you still have to delete. See
+[docs/uninstall.md](docs/uninstall.md), including how to do it by hand if the app will not
+start.
 
 ### Giving it to someone else
 
@@ -138,7 +143,12 @@ the executable, or passing `--portable`.
 ### Updating
 
 The app checks GitHub on launch and shows a banner when there is a newer release. One click
-downloads and installs it; nothing is fetched until you click. From the CLI:
+downloads and installs it; nothing is fetched until you click.
+
+**Settings** (the gear, top right) controls that: whether to check at all, and whether to check
+every launch, once a day or once a week. There is also a **Check now** button, which is the one
+place a failed check is reported rather than ignored — everywhere else, being offline is not
+news. From the CLI:
 
 ```
 nos update              # check only
@@ -303,32 +313,68 @@ Most tweaks are data, not code. Add an object to
 …and a page at `docs/tweaks/<id>.md` explaining the mechanism and justifying the evidence
 rating. **CI fails without the docs page.** That is the whole point.
 
-`category` is one of six fixed values — `fps`, `stutter`, `input-lag`, `ping`, `interruptions`,
-`stability` — and it is a claim, not a filing cabinet. It says what the tweak does *for the
+Four optional fields say when a tweak does not apply, and all four are checked before it is ever
+offered rather than after it fails:
+
+| Field | Meaning |
+|---|---|
+| `"minBuild": 22000` | The setting does not exist on older builds. |
+| `"desktopOnly": true` | It is a straight regression on a machine with a battery. |
+| `"proOnly": true` | It is a Windows Update for Business policy, which Home ignores. |
+| `"overriddenBy": { … }` | A Group Policy owns the value and Windows refuses every write to it. |
+
+`proOnly` exists because those policies are the one class of registry value where **every
+observable sign says the change worked and nothing happened**: the key is writable on Home, the
+value stays where it was put, a read-back returns it, and Verify reports no drift — the update
+client on Home simply never reads it. A tweak that quietly does nothing while showing a tick is
+worse than one that fails, because a failure says so.
+
+`category` is one of ten fixed values — `performance`, `input-lag`, `ping`, `stability`,
+`interruptions`, `telemetry`, `startup`, `unused`, `services`, `storage` — and it is a claim, not
+a filing cabinet. It says what the tweak does *for the
 player*, not which part of Windows it writes to, which is why two HKCU values can end up in
 different categories and a registry key and a power scheme can end up in the same one. An
 unrecognised category fails the build, and a docs page that never mentions its own category
 fails CI. `nos categories` prints what each one promises.
 
-Tweaks that need to call an API, or whose revert is not "put the old value back", become a
-class in `src/Nostos.Tweaks/Native/` instead. That friction is deliberate.
+A Windows service is an entry in
+[`services.json`](src/Nostos.Tweaks/Catalog/services.json), and a per-adapter network setting
+one in [`adapters.json`](src/Nostos.Tweaks/Catalog/adapters.json), in the same folder:
+
+```json
+{
+  "id": "services.example",
+  "service": "ExampleSvc",
+  "title": "Stop the example service starting at boot",
+  "summary": "What it does, and what stops working without it.",
+  "category": "unused",
+  "evidence": "Plausible",
+  "tags": ["service"]
+}
+```
+
+Only four tweaks in the whole catalog are code: the ones that duplicate a power scheme, retune
+a running process, set a permanent per-executable priority, or write to whichever interface
+currently carries the default route. Anything
+that needs to call an API, or whose revert is not "put the old value back", becomes a class in
+`src/Nostos.Tweaks/Native/` — and that friction is deliberate.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Layout
 
 ```
-src/Nostos.Core/     Engine, journal, profiles, safety. No Windows dependency, fully unit-tested.
+src/Nostos.Core/     Engine, journal, profiles, safety, settings, the control-pipe contract.
+                     No Windows dependency, fully unit-tested.
 src/Nostos.Win32/    Registry, power schemes, process control, P/Invoke.
-src/Nostos.Tweaks/   The catalog: declarative JSON + native tweaks.
-src/Nostos.Ipc/      Control-pipe contract and client. Portable, no Windows dependency.
+src/Nostos.Tweaks/   The catalog: three JSON files, plus the four tweaks that need code.
 src/Nostos.Service/  LocalSystem service: ACL'd pipe, reconciler.
 src/Nostos.Cli/      `nos`.
 src/Nostos.App/      Avalonia desktop app. Bootstraps itself on launch; talks to the service or the engine.
 tools/                        Maintainer tooling. Release signing. Never shipped.
-tests/                        495 tests, including catalog integrity rules enforced in CI.
+tests/                        817 tests, including catalog integrity rules enforced in CI.
 docs/tweaks/                  One page per tweak. Required.
-profiles/                     Sample profiles.
+profiles/                     The three shipped profiles: Basic, Intermediate, Expert.
 ```
 
 `Core` deliberately has no Windows dependency and no NuGet packages, so the logic that decides

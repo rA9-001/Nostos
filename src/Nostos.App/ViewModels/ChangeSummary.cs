@@ -1,4 +1,5 @@
 using Nostos.Core.Engine;
+using Nostos.Core.Localization;
 using Nostos.Ipc;
 
 namespace Nostos.App.ViewModels;
@@ -32,48 +33,46 @@ public readonly record struct ChangeSummary(string Headline, string? Detail, boo
     public static ChangeSummary ForOne(ChangeResult result, string title) => result.Outcome switch
     {
         Outcome.Applied => new(
-            $"Applied — {title}",
-            result.RequiresReboot
-                ? "Restart your PC for this to take effect. Until then nothing has changed for you."
-                : "Your previous setting was saved, so this can be undone at any time.",
+            Strings.Format("summary.applied", title),
+            Strings.Get(result.RequiresReboot
+                ? "summary.applied.reboot"
+                : "summary.applied.undoable"),
             IsProblem: false),
 
         Outcome.AlreadyApplied => new(
-            $"Already set — {title}",
-            "This was already how you wanted it, so nothing was changed.",
+            Strings.Format("summary.alreadyset", title),
+            Strings.Get("summary.alreadyset.detail"),
             IsProblem: false),
 
         Outcome.Reverted => new(
-            $"Undone — {title}",
-            "Your original setting is back, exactly as it was before.",
+            Strings.Format("summary.undone", title),
+            Strings.Get("summary.undone.detail"),
             IsProblem: false),
 
         Outcome.NothingToRevert => new(
-            $"Nothing to undo — {title}",
-            "This program never changed this setting, so there is nothing to put back.",
+            Strings.Format("summary.nothingtoundo", title),
+            Strings.Get("summary.nothingtoundo.detail"),
             IsProblem: false),
 
         // Skipped is the one where the reason is the whole message: not applicable here, not
         // elevated, conflicts with something else. Passing it through is right.
         Outcome.Skipped => new(
-            $"Skipped — {title}",
+            Strings.Format("summary.skipped", title),
             Sentence(result.Message),
             IsProblem: false),
 
         Outcome.RolledBack => new(
-            $"Did not work — {title}",
-            "Something went wrong partway through, so your original setting was put back "
-            + "automatically. Your PC is as it was.",
+            Strings.Format("summary.rolledback", title),
+            Strings.Get("summary.rolledback.detail"),
             IsProblem: true),
 
         Outcome.Unverified => new(
-            $"Applied, but could not confirm — {title}",
-            "The change was made and can be undone, but reading it back did not confirm it. "
-            + "Something else on this PC may be overriding it.",
+            Strings.Format("summary.unverified", title),
+            Strings.Get("summary.unverified.detail"),
             IsProblem: true),
 
         _ => new(
-            $"Could not apply — {title}",
+            Strings.Format("summary.failed", title),
             Sentence(result.Message),
             IsProblem: true),
     };
@@ -88,7 +87,12 @@ public readonly record struct ChangeSummary(string Headline, string? Detail, boo
     public static ChangeSummary ForMany(IReadOnlyList<ChangeResult> results, string what)
     {
         if (results.Count == 0)
-            return new($"Nothing to do — {what}", "No settings needed changing.", IsProblem: false);
+        {
+            return new(
+                Strings.Format("summary.nothingtodo", what),
+                Strings.Get("summary.nothingtodo.detail"),
+                IsProblem: false);
+        }
 
         var changed = results.Count(r => r.Outcome is Outcome.Applied or Outcome.Reverted);
         var already = results.Count(r => r.Outcome is Outcome.AlreadyApplied or Outcome.NothingToRevert);
@@ -97,29 +101,33 @@ public readonly record struct ChangeSummary(string Headline, string? Detail, boo
             is Outcome.Failed or Outcome.RolledBack or Outcome.Unverified).ToList();
 
         var headline = changed == 0
-            ? $"No changes needed — {what}"
-            : $"{Count(changed, "change")} made — {what}";
+            ? Strings.Format("summary.nochanges", what)
+            : Strings.Format(
+                "summary.changesmade", Strings.Plural("summary.count.change", changed), what);
 
         var notes = new List<string>();
         if (already > 0)
-            notes.Add($"{already} already set the way you wanted");
+            notes.Add(Strings.Format("summary.note.already", already));
         if (skipped > 0)
-            notes.Add($"{skipped} skipped (not applicable to this PC, or needs administrator)");
+            notes.Add(Strings.Format("summary.note.skipped", skipped));
         if (problems.Count > 0)
-            notes.Add($"{Count(problems.Count, "problem")}: {problems[0].Message}");
+        {
+            notes.Add(Strings.Format(
+                "summary.note.problems",
+                Strings.Plural("summary.count.problem", problems.Count),
+                problems[0].Message));
+        }
 
         if (results.Any(r => r.RequiresReboot))
-            notes.Add("restart your PC for everything to take effect");
+            notes.Add(Strings.Get("summary.note.reboot"));
 
         return new(
             headline,
             notes.Count == 0
-                ? "Your previous settings were saved, so all of this can be undone."
+                ? Strings.Get("summary.alldone")
                 : Sentence(string.Join("; ", notes)),
             IsProblem: problems.Count > 0);
     }
-
-    private static string Count(int n, string noun) => n == 1 ? $"1 {noun}" : $"{n} {noun}s";
 
     /// <summary>Capitalises and full-stops an engine message so it reads as prose beside ours.</summary>
     private static string? Sentence(string? text)

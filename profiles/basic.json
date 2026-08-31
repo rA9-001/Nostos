@@ -1,0 +1,82 @@
+{
+  "name": "basic",
+  "description": "The uncontroversial set. Every change here is rated Safe, needs no reboot, and switches nothing off that you might be using: it stops background recording, hands the foreground game the CPU Windows was holding back, and gets notifications and update restarts out of your way. Apply it and forget it.",
+  "order": 0,
+  "tweaks": [
+    {
+      "tweakId": "gamedvr.policy-off"
+    },
+    {
+      "tweakId": "gamedvr.user-capture-off"
+    },
+    {
+      "tweakId": "mmcss.games-task-priority"
+    },
+    {
+      "tweakId": "mmcss.system-responsiveness",
+      "options": {
+        "reserve": "balanced"
+      }
+    },
+    {
+      "tweakId": "power.throttling-off"
+    },
+    {
+      "tweakId": "shell.background-apps-off"
+    },
+    {
+      "tweakId": "shell.game-mode",
+      "options": {
+        "state": "on"
+      }
+    },
+    {
+      "tweakId": "shell.transparency-off"
+    },
+    {
+      "tweakId": "shell.visual-effects"
+    },
+    {
+      "tweakId": "graphics.fullscreen-optimizations-off"
+    },
+    {
+      "tweakId": "input.mouse-acceleration-off"
+    },
+    {
+      "tweakId": "shell.menu-show-delay",
+      "options": {
+        "delay": "instant"
+      }
+    },
+    {
+      "tweakId": "mmcss.network-throttling-off"
+    },
+    {
+      "tweakId": "network.qos-reserved-bandwidth"
+    },
+    {
+      "tweakId": "update.delivery-optimization-off",
+      "options": {
+        "mode": "off"
+      }
+    },
+    {
+      "tweakId": "input.accessibility-shortcuts-off"
+    },
+    {
+      "tweakId": "shell.notifications-off"
+    },
+    {
+      "tweakId": "shell.search-highlights-off"
+    },
+    {
+      "tweakId": "shell.suggestions-off"
+    },
+    {
+      "tweakId": "shell.widgets-off"
+    },
+    {
+      "tweakId": "update.no-auto-restart"
+    }
+  ]
+}

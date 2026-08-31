@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using Nostos.App.Localization;
 using Nostos.Core.Abstractions;
 
 namespace Nostos.App.ViewModels;
@@ -14,11 +15,14 @@ public sealed class TweakChoiceViewModel : ObservableObject
 {
     private TweakChoiceOptionViewModel _selected;
 
-    public TweakChoiceViewModel(TweakChoice choice, string? currentSelection)
+    private readonly string _tweakId;
+    private readonly TweakChoice _choice;
+
+    public TweakChoiceViewModel(string tweakId, TweakChoice choice, string? currentSelection)
     {
+        _tweakId = tweakId;
+        _choice = choice;
         Id = choice.Id;
-        Title = choice.Title;
-        Description = choice.Description;
 
         foreach (var option in choice.Options)
             Options.Add(new TweakChoiceOptionViewModel(this, option));
@@ -32,8 +36,13 @@ public sealed class TweakChoiceViewModel : ObservableObject
     }
 
     public string Id { get; }
-    public string Title { get; }
-    public string Description { get; }
+
+    /// <summary>The tweak this choice belongs to, so its text can be looked up by id.</summary>
+    public string TweakId => _tweakId;
+
+    // Computed rather than stored, so that changing the language rewrites them in place.
+    public string Title => CatalogText.ChoiceTitle(_tweakId, _choice.Id, _choice.Title);
+    public string Description => CatalogText.ChoiceDescription(_tweakId, _choice.Id, _choice.Description);
 
     /// <summary>Matches the small uppercase section labels used elsewhere in the detail pane.</summary>
     public string TitleUpper => Title.ToUpperInvariant();
@@ -71,18 +80,25 @@ public sealed class TweakChoiceOptionViewModel : ObservableObject
     private readonly TweakChoiceViewModel _owner;
     private bool _isChecked;
 
+    private readonly TweakChoiceOption _option;
+
     public TweakChoiceOptionViewModel(TweakChoiceViewModel owner, TweakChoiceOption option)
     {
         _owner = owner;
+        _option = option;
         Id = option.Id;
-        Title = option.Title;
-        Description = option.Description;
         Recommended = option.Recommended;
     }
 
     public string Id { get; }
-    public string Title { get; }
-    public string Description { get; }
+
+    // Computed, for the same reason as the choice's own: the language can change under them.
+    public string Title
+        => CatalogText.OptionTitle(_owner.TweakId, _owner.Id, _option.Id, _option.Title);
+
+    public string Description
+        => CatalogText.OptionDescription(_owner.TweakId, _owner.Id, _option.Id, _option.Description);
+
     public bool Recommended { get; }
 
     public string GroupName => _owner.GroupName;

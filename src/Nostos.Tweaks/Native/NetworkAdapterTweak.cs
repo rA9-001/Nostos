@@ -123,7 +123,11 @@ public sealed class NetworkAdapterTweak : ITweak
     }
 
     public Task<Applicability> CheckApplicabilityAsync(TweakContext context, CancellationToken ct = default)
-        => Task.FromResult(Targets().Count == 0 ? Applicability.No(_absentReason) : Applicability.Applicable);
+        => Task.FromResult(Targets().Count == 0
+            // Keyed on the tweak's own id: each of these names the setting it went looking for,
+            // so there is no shared sentence to share a key with.
+            ? Applicability.No($"notapplicable.{Metadata.Id}", _absentReason)
+            : Applicability.Applicable);
 
     public Task<TweakState> ReadAsync(TweakContext context, CancellationToken ct = default)
     {

@@ -18,8 +18,8 @@ public sealed class MainWindowViewModelTests
         {
             FakeBackend.Tweak("perf.measured", TweakCategories.Performance, evidence: Evidence.Measured, applied: true, managed: true),
             FakeBackend.Tweak("perf.plausible", TweakCategories.Performance),
-            FakeBackend.Tweak("background.one", TweakCategories.Background),
-            FakeBackend.Tweak("background.two", TweakCategories.Background),
+            FakeBackend.Tweak("unused.one", TweakCategories.Unused),
+            FakeBackend.Tweak("unused.two", TweakCategories.Unused),
             FakeBackend.Tweak("ping.one", TweakCategories.Ping),
         },
     };
@@ -29,7 +29,7 @@ public sealed class MainWindowViewModelTests
     {
         var backend = Catalog();
         backend.Statuses.Add(FakeBackend.Tweak(
-            "background.absent", TweakCategories.Background, applied: true, applicable: false));
+            "unused.absent", TweakCategories.Unused, applied: true, applicable: false));
         return backend;
     }
 
@@ -38,6 +38,133 @@ public sealed class MainWindowViewModelTests
         var viewModel = new MainWindowViewModel(backend ?? Catalog());
         await viewModel.InitialiseAsync();
         return viewModel;
+    }
+
+    /// <summary>A category holding one of each risk level, deliberately added worst-first.</summary>
+    private static FakeBackend MixedRisk() => new()
+    {
+        Statuses =
+        {
+            FakeBackend.Tweak("ping.experimental", TweakCategories.Ping, risk: Risk.Experimental),
+            FakeBackend.Tweak("ping.risky", TweakCategories.Ping, risk: Risk.Risky),
+            FakeBackend.Tweak("ping.moderate", TweakCategories.Ping, risk: Risk.Moderate),
+            FakeBackend.Tweak("ping.safe", TweakCategories.Ping, risk: Risk.Safe),
+        },
+    };
+
+    [Fact]
+    public async Task Inside_a_category_the_safest_tweaks_come_first()
+    {
+        var viewModel = await LoadedAsync(MixedRisk());
+        viewModel.SelectedCategory = TweakCategories.Ping;
+
+        Assert.Equal(
+            ["ping.safe", "ping.moderate", "ping.risky", "ping.experimental"],
+            viewModel.Tweaks.Select(t => t.Id));
+    }
+
+    [Fact]
+    public async Task Inside_a_category_the_bands_are_the_risk_levels()
+    {
+        // Every row under Ping is there to improve ping, so a band repeating "Gaming" over all
+        // of them says nothing the sidebar has not already said. What is still open at that
+        // point is what a change costs if it goes wrong.
+        var viewModel = await LoadedAsync(MixedRisk());
+        viewModel.SelectedCategory = TweakCategories.Ping;
+
+        Assert.Equal(
+            ["Safe", "Moderate", "Risky", "Experimental"],
+            viewModel.Tweaks.Select(t => t.GroupHeader));
+
+        Assert.All(viewModel.Tweaks, t => Assert.False(string.IsNullOrWhiteSpace(t.GroupDescription)));
+    }
+
+    [Fact]
+    public async Task Across_the_whole_catalog_the_bands_are_the_halves_and_the_categories()
+    {
+        // Two levels, because the unfiltered list is ordered by half of the catalog and then by
+        // category, and one heading could only name one of them. It was the half, which made
+        // the risk ordering underneath look broken: one "Gaming" heading sat over four
+        // categories in a row, so the risk column ran safe-to-moderate four separate times
+        // with nothing on screen marking where one category ended and the next began.
+        var viewModel = await LoadedAsync();
+
+        Assert.Equal(MainWindowViewModel.AllCategories, viewModel.SelectedCategory);
+
+        Assert.Equal(
+            [
+                ("Gaming", "Performance", "perf.measured"),
+                (null, null, "perf.plausible"),
+                (null, "Ping", "ping.one"),
+                ("Windows", "Unused Features", "unused.one"),
+                (null, null, "unused.two"),
+            ],
+            viewModel.Tweaks.Select(t => (t.SuperHeader, t.GroupHeader, t.Id)));
+    }
+
+    [Fact]
+    public async Task Every_band_runs_safest_first_with_no_going_back()
+    {
+        // The property the whole thing exists for, asserted directly rather than through one
+        // arrangement of ids: within any run of rows under one heading, risk never decreases.
+        // This is what was wrong before, and it was wrong in the view that shows every tweak.
+        var viewModel = await LoadedAsync(EveryCategoryAndRisk());
+
+        foreach (var category in viewModel.Categories)
+        {
+            viewModel.SelectedCategory = category;
+
+            var worstSoFar = Risk.Safe;
+
+            foreach (var row in viewModel.Tweaks)
+            {
+                if (row.GroupHeader is not null)
+                    worstSoFar = Risk.Safe;
+
+                Assert.True(
+                    row.Risk >= worstSoFar,
+                    $"{category}: {row.Id} is {row.Risk} under a band that had already reached "
+                    + $"{worstSoFar}. A band has to run safest-first or the order means nothing.");
+
+                worstSoFar = row.Risk;
+            }
+        }
+    }
+
+    /// <summary>Two categories in each half, each holding one of every risk level.</summary>
+    private static FakeBackend EveryCategoryAndRisk()
+    {
+        var backend = new FakeBackend();
+        string[] categories =
+        [
+            TweakCategories.Performance, TweakCategories.Ping,
+            TweakCategories.Interruptions, TweakCategories.Unused,
+        ];
+
+        foreach (var category in categories)
+        {
+            // Added worst-first, so an implementation that preserved input order would fail.
+            foreach (var risk in Enum.GetValues<Risk>().Reverse())
+                backend.Statuses.Add(FakeBackend.Tweak($"{category}.{risk}".ToLowerInvariant(), category, risk: risk));
+        }
+
+        return backend;
+    }
+
+    [Fact]
+    public async Task Risk_order_still_loses_to_a_row_that_cannot_run_here()
+    {
+        // A Safe tweak that cannot be applied is not the first thing to offer somebody. Being
+        // unavailable is the stronger fact, and it stays the outermost sort.
+        var backend = MixedRisk();
+        backend.Statuses.Add(FakeBackend.Tweak(
+            "ping.absent", TweakCategories.Ping, risk: Risk.Safe, applicable: false));
+
+        var viewModel = await LoadedAsync(backend);
+        viewModel.SelectedCategory = TweakCategories.Ping;
+
+        Assert.Equal("ping.absent", viewModel.Tweaks[^1].Id);
+        Assert.Equal(MainWindowViewModel.NotApplicableHeader, viewModel.Tweaks[^1].GroupHeader);
     }
 
     [Fact]
@@ -61,7 +188,7 @@ public sealed class MainWindowViewModelTests
         // and the reader resolves it by distrusting the badge.
         var viewModel = await LoadedAsync(WithUnavailable());
 
-        var row = viewModel.Tweaks.Single(t => t.Id == "background.absent");
+        var row = viewModel.Tweaks.Single(t => t.Id == "unused.absent");
 
         Assert.True(row.IsApplied);
         Assert.False(row.ShowsAsApplied);
@@ -73,7 +200,7 @@ public sealed class MainWindowViewModelTests
     {
         var viewModel = await LoadedAsync(WithUnavailable());
 
-        Assert.Equal("background.absent", viewModel.Tweaks[^1].Id);
+        Assert.Equal("unused.absent", viewModel.Tweaks[^1].Id);
         Assert.Equal(MainWindowViewModel.NotApplicableHeader, viewModel.Tweaks[^1].GroupHeader);
         Assert.All(viewModel.Tweaks.SkipLast(1), t => Assert.True(t.IsApplicable));
     }
@@ -97,7 +224,7 @@ public sealed class MainWindowViewModelTests
 
         viewModel.SelectedCategory = MainWindowViewModel.NotApplicableCategory;
 
-        Assert.Equal(["background.absent"], viewModel.Tweaks.Select(t => t.Id));
+        Assert.Equal(["unused.absent"], viewModel.Tweaks.Select(t => t.Id));
         Assert.NotNull(viewModel.SelectedCategoryPromise);
     }
 
@@ -107,12 +234,12 @@ public sealed class MainWindowViewModelTests
         // Otherwise picking a category puts something unclickable back in the middle of the
         // list, which is the behaviour the sinking was meant to remove.
         var backend = WithUnavailable();
-        backend.Statuses.Add(FakeBackend.Tweak("background.three", TweakCategories.Background));
+        backend.Statuses.Add(FakeBackend.Tweak("unused.three", TweakCategories.Unused));
         var viewModel = await LoadedAsync(backend);
 
-        viewModel.SelectedCategory = TweakCategories.Background;
+        viewModel.SelectedCategory = TweakCategories.Unused;
 
-        Assert.Equal("background.absent", viewModel.Tweaks[^1].Id);
+        Assert.Equal("unused.absent", viewModel.Tweaks[^1].Id);
     }
 
     [Fact]
@@ -129,13 +256,32 @@ public sealed class MainWindowViewModelTests
     }
 
     [Fact]
-    public async Task Only_the_first_row_of_a_group_carries_its_heading()
+    public async Task Only_the_first_row_of_a_band_carries_its_heading()
     {
         var viewModel = await LoadedAsync();
 
-        var headed = viewModel.Tweaks.Where(t => t.HasGroupHeader).Select(t => t.GroupHeader).ToList();
+        Assert.Equal(
+            ["Performance", "Ping", "Unused Features"],
+            viewModel.Tweaks.Where(t => t.HasGroupHeader).Select(t => t.GroupHeader));
 
-        Assert.Equal(["Gaming", "Windows"], headed);
+        Assert.Equal(
+            ["Gaming", "Windows"],
+            viewModel.Tweaks.Where(t => t.HasSuperHeader).Select(t => t.SuperHeader));
+    }
+
+    [Fact]
+    public async Task A_new_half_always_restates_the_category_underneath_it()
+    {
+        // The row that opens "Windows" opens a category band too, even when that category's
+        // name has not changed since the row above. It can happen: filter to a search term
+        // that leaves one category as the last under Gaming and the same one first under
+        // Windows, and the heading would be suppressed as a repeat, leaving a half-heading
+        // with unlabelled rows under it.
+        var viewModel = await LoadedAsync();
+
+        Assert.All(
+            viewModel.Tweaks.Where(t => t.HasSuperHeader),
+            t => Assert.True(t.HasGroupHeader));
     }
 
     [Fact]
@@ -143,10 +289,10 @@ public sealed class MainWindowViewModelTests
     {
         var viewModel = await LoadedAsync();
 
-        viewModel.SelectedCategory = TweakCategories.Background;
+        viewModel.SelectedCategory = TweakCategories.Unused;
 
         Assert.Equal(
-            ["background.one", "background.two"],
+            ["unused.one", "unused.two"],
             viewModel.Tweaks.Select(t => t.Id).Order());
     }
 
@@ -169,13 +315,13 @@ public sealed class MainWindowViewModelTests
         var viewModel = await LoadedAsync();
 
         // Not alphabetical, and the Gaming categories come first. Sorted A-Z the sidebar would
-        // open on "Background & Cleanup", which is the least interesting thing the tool does.
+        // open on "Unused Features", which is the least interesting thing the tool does.
         Assert.Equal(
             [
                 MainWindowViewModel.AllCategories,
                 TweakCategories.Performance,
                 TweakCategories.Ping,
-                TweakCategories.Background,
+                TweakCategories.Unused,
             ],
             viewModel.Categories);
     }
@@ -210,12 +356,12 @@ public sealed class MainWindowViewModelTests
     {
         var backend = Catalog();
         var viewModel = await LoadedAsync(backend);
-        viewModel.SelectedCategory = TweakCategories.Background;
+        viewModel.SelectedCategory = TweakCategories.Unused;
 
         viewModel.RefreshCommand.Execute(null);
         await Task.Delay(50);
 
-        Assert.Equal(TweakCategories.Background, viewModel.SelectedCategory);
+        Assert.Equal(TweakCategories.Unused, viewModel.SelectedCategory);
         Assert.Equal(2, viewModel.Tweaks.Count);
     }
 
@@ -264,7 +410,7 @@ public sealed class MainWindowViewModelTests
     {
         // Otherwise the detail panel keeps describing a tweak that is no longer in the list.
         var viewModel = await LoadedAsync();
-        viewModel.SelectedTweak = viewModel.Tweaks.First(t => t.Category == TweakCategories.Background);
+        viewModel.SelectedTweak = viewModel.Tweaks.First(t => t.Category == TweakCategories.Unused);
 
         viewModel.SelectedCategory = TweakCategories.Performance;
 

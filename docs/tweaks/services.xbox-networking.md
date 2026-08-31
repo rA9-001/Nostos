@@ -1,8 +1,8 @@
 # services.xbox-networking
 
-**Group:** Windows · **Improves:** Background & Cleanup · **Risk:** Moderate · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** no
+**Group:** Windows · **Improves:** Unused Features · **Risk:** Moderate · **Evidence:** Plausible · **Scope:** Machine · **Reboot:** no
 
-> Stops Windows running services and features you do not use. Frees some memory and boot time; does not, on its own, promise you frames.
+> Turns off features this PC has but you do not use -- Bluetooth, printing, Xbox and Game Pass, Fax. You already know which of these you need; each one names what stops working.
 
 ## What it changes
 
@@ -17,12 +17,17 @@ tunnelling for peer-to-peer matchmaking, and the connectivity checks the Xbox ap
 Nothing outside the Microsoft Store and Game Pass ecosystem uses it. A Steam or Epic title has
 its own networking and never asks.
 
-## Why it is filed under Ping, and how much it is worth
+## Why it is filed under Unused Features, and how much it is worth
 
-**Ping** because the service's whole job is network connectivity, so if it belongs anywhere it
-belongs there. It is unproven because the claim attached to turning it off - that Teredo tunnelling
-adds latency to unrelated traffic - is not supported by anything this repo can point at. Teredo
-is only active for connections that use it, and a Steam match does not.
+**Unused Features** because the decision is not a networking question, it is "do you play
+Microsoft Store and Game Pass titles?" - which you can answer instantly and this program cannot
+answer for you. It sat under Ping for a while on the argument that the service's job is network
+connectivity. That described the service rather than the decision, and it put a row in front of
+people looking to lower their ping that was never going to lower anyone's ping.
+
+Because the claim attached to turning it off - that Teredo tunnelling adds latency to unrelated
+traffic - is not supported by anything this repo can point at. Teredo is only active for
+connections that use it, and a Steam match does not.
 
 The honest summary: on a machine with no Store titles, this is a service doing nothing, and
 turning it off gets you one fewer service doing nothing.

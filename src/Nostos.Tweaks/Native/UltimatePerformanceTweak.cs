@@ -33,6 +33,7 @@ public sealed class UltimatePerformanceTweak : ITweak
         if (SystemInfo.HasBattery && !context.GetBool("allowOnBattery", false))
         {
             return Task.FromResult(Applicability.No(
+                "notapplicable.ultimatebattery",
                 "this machine has a battery, and Ultimate Performance is a straight battery-life " +
                 "regression. Pass allowOnBattery=true if you want it anyway."));
         }

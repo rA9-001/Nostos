@@ -149,14 +149,30 @@ try {
     )
 
     foreach ($project in $projects) {
-        Write-Host "publishing $([System.IO.Path]::GetFileNameWithoutExtension($project))" -ForegroundColor Cyan
+        $name = [System.IO.Path]::GetFileNameWithoutExtension($project)
+        Write-Host "publishing $name" -ForegroundColor Cyan
+
+        # The window is compiled ahead of time; the service and the CLI are not.
+        #
+        # This is the difference between a window that appears in a quarter of a second and one
+        # that takes over a second, and it was measured rather than assumed: the same build is
+        # 1212ms to first window as ordinary IL, 640ms with ReadyToRun and 264ms ahead of time.
+        # Nearly all of the saving is JIT compiling Avalonia on the way to the first frame.
+        #
+        # Only the window, because only the window is something a person waits in front of. The
+        # service starts once at boot and nobody watches it, the CLI is measured in the time it
+        # takes to type the next command, and ahead-of-time compilation costs several minutes of
+        # build time and a C++ linker on the build machine for each of them.
+        $aot = $name -eq 'Nostos.App' -and -not $FrameworkDependent
+
         $arguments = @(
             'publish', $project
             '-c', $Configuration
             '-r', 'win-x64'
             '--self-contained', $selfContained.ToString().ToLowerInvariant()
             '-o', $Output
-        ) + $versionArgs + @('--nologo', '-v', 'quiet')
+        ) + $(if ($aot) { @('-p:PublishAot=true') } else { @() }) `
+          + $versionArgs + @('--nologo', '-v', 'quiet')
 
         & dotnet $arguments
         if ($LASTEXITCODE -ne 0) { throw "publish failed for $project" }

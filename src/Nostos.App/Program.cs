@@ -47,6 +47,10 @@ internal static class Program
     // Referenced by name by the Avalonia XAML previewer tooling.
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
+            // Detected rather than named. Wiring the three backends by hand (UseWin32, UseSkia,
+            // UseHarfBuzz) was tried and measured at 2ms faster out of ~195ms, which is noise,
+            // and it is a standing invitation to the failure it caused on the first attempt:
+            // leaving out text shaping does not degrade, it throws before a window exists.
             .UsePlatformDetect()
             .LogToTrace();
 }

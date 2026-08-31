@@ -3,6 +3,7 @@
 **Group:** Windows · **Improves:** Interruptions · **Risk:** Safe · **Evidence:** Plausible · **Scope:** User · **Reboot:** no
 
 > Stops things appearing over what you are doing, stealing focus, or restarting the machine at a moment you did not choose.
+
 ## What it changes
 
 `HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced`
@@ -11,6 +12,28 @@
 The same switch as right-clicking the taskbar, Taskbar settings, "Widgets". Windows 11 only
 (`minBuild` 22000); on Windows 10 the tweak reports itself as not applicable rather than writing
 a value that means nothing.
+
+## When this is not applicable
+
+Besides Windows 10, this tweak stands down when Widgets has been turned off machine-wide by
+Group Policy:
+
+`HKLM\SOFTWARE\Policies\Microsoft\Dsh`
+`AllowNewsAndInterests` (REG_DWORD) = `0`
+
+— *Computer Configuration > Administrative Templates > Windows Components > Widgets > Allow
+widgets*, and the value some "debloat" scripts and Windows editions set for you.
+
+While that policy is in force **Windows refuses every write to `TaskbarDa`**, including from an
+elevated process and including from SYSTEM. It is worth being precise about why, because it
+looks like a permissions bug and is not one: the `Advanced` key's ACL grants the user full
+control, the key opens for writing, and creating any *other* value in it succeeds. What refuses
+is a kernel registry callback that rejects that one value name, because the policy owns the
+setting. The failure surfaces as `UnauthorizedAccessException`, which sends people to look at
+elevation, which never helps.
+
+There is nothing to do about it and nothing worth doing: the policy has already achieved what
+this tweak is for. The board is gone. If you want the taskbar button back, lift the policy.
 
 ## Mechanism
 

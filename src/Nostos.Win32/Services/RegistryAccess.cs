@@ -58,7 +58,32 @@ public static class RegistryAccess
         using var baseKey = OpenBase(reference.Hive);
         using var key = baseKey.CreateSubKey(reference.SubKey, writable: true)
             ?? throw new InvalidOperationException($"Could not open or create {reference.Hive}\\{reference.SubKey}.");
-        key.SetValue(reference.Name, value, kind);
+
+        try
+        {
+            key.SetValue(reference.Name, value, kind);
+        }
+        catch (UnauthorizedAccessException e)
+        {
+            // The key opened for writing and then refused this one value.
+            //
+            // Not a permissions problem in any sense the reader can act on: the key's ACL
+            // granted the write, which is why there is a writable handle here at all, and every
+            // other value in the same key still accepts one. What refuses is a kernel callback
+            // enforcing a Group Policy that owns this particular setting.
+            //
+            // The framework's own message is "Attempted to perform an unauthorized operation",
+            // which sends people to look at permissions and at running as administrator,
+            // neither of which is the problem and neither of which helps. A tweak whose setting
+            // is known to be policy-owned declares it and reports itself not applicable long
+            // before reaching here; this is for the policy nobody has seen yet.
+            throw new UnauthorizedAccessException(
+                $"Windows refused to set {reference.Hive}\\{reference.SubKey}\\{reference.Name}. "
+                + "The key itself is writable, so this is not a permissions problem: a Group "
+                + "Policy on this machine owns that setting and blocks writes to it from "
+                + "anything else. Running as administrator will not help.",
+                e);
+        }
     }
 
     public static void DeleteValue(RegistryValueRef reference)
