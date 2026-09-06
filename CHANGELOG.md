@@ -224,6 +224,13 @@ the major version is `0`, a minor bump may change behaviour.
   because a full-size button at the end of a line of text outweighs the line it acts on.
 
 ### Fixed
+- **A test asserted a fact about the machine running it.** "Seven programs in ten find their own
+  artwork" held on the desktop this was written on, at 89 of 105, and failed the build on a CI
+  runner at 56 of 106 — a runner has build tools, SDKs and redistributables installed and almost
+  nothing that ships an icon. What is asserted now is what the machine can actually settle: an
+  entry whose recorded icon file exists on disk must come back with that icon, and a row that
+  finds nothing must at least be an installer package. The proportion was never a fact about this
+  program.
 - **A per-item removal said nothing at all, whether it worked or not.** Pressing Remove beside a
   registry entry deleted the key, exported its backup, and left the window exactly as it was: the
   code reloaded the tab, and the tab's reload rebuilds tweaks, history and profiles but not the

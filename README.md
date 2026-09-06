@@ -372,7 +372,7 @@ src/Nostos.Service/  LocalSystem service: ACL'd pipe, reconciler.
 src/Nostos.Cli/      `nos`.
 src/Nostos.App/      Avalonia desktop app. Bootstraps itself on launch; talks to the service or the engine.
 tools/                        Maintainer tooling. Release signing. Never shipped.
-tests/                        1,042 tests, including catalog integrity rules enforced in CI.
+tests/                        1,043 tests, including catalog integrity rules enforced in CI.
 docs/tweaks/                  One page per tweak. Required.
 profiles/                     The three shipped profiles: Basic, Intermediate, Expert.
 ```

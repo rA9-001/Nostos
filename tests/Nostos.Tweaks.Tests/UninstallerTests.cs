@@ -880,26 +880,38 @@ public sealed class UninstallerTests
         => Assert.Null(AppIcons.BiggestExecutable(folder));
 
     [Fact]
-    public void Most_of_the_machine_ends_up_with_real_artwork()
+    public void An_entry_that_names_artwork_that_exists_gets_it()
     {
-        // The number the feature is actually judged by, held against the real machine, and
-        // counting only artwork belonging to the program itself -- the generic package icon is a
-        // fallback, so letting it count here would hide a whole source breaking.
+        // Held against the real machine, but only where the machine settles the question. An
+        // entry whose DisplayIcon points at a file that is actually there has artwork by
+        // definition, and returning anything else means the first and strongest of the six
+        // sources has broken.
         //
-        // It was 89 of 105 before Windows Installer's cached icons were searched and 94 after.
-        // The bar is set well below that so an unusual machine does not fail the build.
-        var all = InstalledApps.List();
-        if (all.Count == 0)
-            return;
+        // What this deliberately does not assert is a proportion. It used to -- seven programs
+        // in ten had to find their own artwork -- and that is a fact about which programs happen
+        // to be installed, not about this code. It held on a desktop, at 89 of 105, and failed
+        // the build on a CI runner at 56 of 106: a runner has build tools, SDKs and
+        // redistributables on it and almost nothing that ships an icon. A test that passes or
+        // fails on what somebody installed last week is not testing this program.
+        foreach (var app in InstalledApps.List())
+        {
+            if (app.IconPath is not { Length: > 0 } icon || !File.Exists(icon))
+                continue;
 
-        var found = all.Count(a => AppIcons.For(a) is { Kind: not IconKind.FileType });
+            Assert.Equal(new AppIcon(icon, IconKind.Resource), AppIcons.For(app));
+        }
+    }
 
-        Assert.True(found * 10 >= all.Count * 7,
-            $"only {found} of {all.Count} programs found their own artwork; a source has probably broken");
-
-        // And no row is left blank: everything the search gave up on is an installer package,
-        // which is itself something to draw.
-        Assert.All(all, a => Assert.True(AppIcons.For(a) is not null || a.MsiProductCode is null));
+    [Fact]
+    public void No_row_on_this_machine_is_left_with_nothing_to_draw()
+    {
+        // The weaker claim, and the one that is true anywhere: the search either finds artwork
+        // or the row is an installer package, which is itself something to draw. A program that
+        // is neither gets a monogram from the window, so nothing is ever blank -- but a *package*
+        // falling through to that would mean the last fallback had stopped working.
+        Assert.All(
+            InstalledApps.List(),
+            app => Assert.True(AppIcons.For(app) is not null || app.MsiProductCode is null));
     }
 
     private static string Quoted(string path) => '"' + path + '"';
