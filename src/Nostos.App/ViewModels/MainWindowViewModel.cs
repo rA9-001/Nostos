@@ -1,5 +1,6 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using Nostos.App.Backends;
+using Nostos.App.Localization;
 using Nostos.App.Startup;
 using Nostos.Core;
 using Nostos.Core.Abstractions;
@@ -13,6 +14,8 @@ using Nostos.Win32.Services;
 
 // The type and the property that lists them want the same name. The alias keeps the
 // property called what it should be called on screen.
+using Win32Apps = Nostos.Win32.Apps;
+using Win32Cleanup = Nostos.Win32.Cleanup;
 using Win32Startup = Nostos.Win32.Services.StartupItems;
 
 namespace Nostos.App.ViewModels;
@@ -120,13 +123,23 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
             ? tweak.ShowsAsApplied ? RevertAsync(tweak) : ApplyAsync(tweak)
             : Task.CompletedTask);
 
+        RemoveAppCommand = new AsyncCommand(p =>
+            p is AppItemViewModel app ? app.RemoveAsync() : Task.CompletedTask);
+        ToggleDetailsCommand = new AsyncCommand(p =>
+            p is AppItemViewModel app ? app.ToggleDetailsAsync() : Task.CompletedTask);
+        ForgetAppCommand = new AsyncCommand(p =>
+            p is AppItemViewModel app ? ForgetAppAsync(app) : Task.CompletedTask);
+        RemoveItemCommand = new AsyncCommand(p =>
+            p is LeftoverRow row ? RemoveItemAsync(row) : Task.CompletedTask);
+        ScanCleanupCommand = new AsyncCommand(ReloadCleanupAsync);
+        CleanItemCommand = new AsyncCommand(p =>
+            p is CleanupItemViewModel item ? CleanAsync(item) : Task.CompletedTask);
+        CleanAllCommand = new AsyncCommand(CleanEverythingAsync);
+        RefreshAppsCommand = new AsyncCommand(ReloadAppsAsync);
+
         ToggleStartupCommand = new AsyncCommand(p =>
             p is StartupItemViewModel item ? item.ToggleAsync() : Task.CompletedTask);
-        RefreshStartupCommand = new AsyncCommand(() =>
-        {
-            ReloadStartup();
-            return Task.CompletedTask;
-        });
+        RefreshStartupCommand = new AsyncCommand(ReloadStartupAsync);
         EnableServiceCommand = new AsyncCommand(
             EnableServiceAsync,
             () => !AppPaths.IsPortable && (!_serviceReady || _serviceNeedsRepair) && !IsBusy && !_detached);
@@ -182,6 +195,9 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
         foreach (var item in StartupItems)
             item.RefreshText();
 
+        foreach (var app in _allApps)
+            app.RefreshText();
+
         ApplyFilter();
 
         if (_lastSummary is not null)
@@ -199,6 +215,9 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
         Raise(nameof(TargetNote));
         Raise(nameof(StartupSummary));
         Raise(nameof(UpdateSummary));
+        Raise(nameof(AppsSummary));
+        Raise(nameof(AppsBlurb));
+        Raise(nameof(AppsBackupPath));
     }
 
     /// <summary>
@@ -285,6 +304,16 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
             {
                 Raise(nameof(ShowElevationWarning));
                 Raise(nameof(ShowSetupBanner));
+
+                // Pushed down to the rows rather than left for each to ask, because a row is
+                // built from what came over the pipe and has no way to know where that pipe
+                // goes. Without this the banner said machine-wide changes were unavailable
+                // while thirty rows underneath it went on offering to make them.
+                foreach (var tweak in _allTweaks)
+                    tweak.MachineScopeAvailable = value;
+
+                foreach (var entry in StartupItems)
+                    entry.MachineScopeAvailable = value;
             }
         }
     }
@@ -396,7 +425,7 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
     /// What is happening right now, or null when nothing is.
     ///
     /// Separate from <see cref="StatusMessage"/>, which is the result of the *last* thing.
-    /// Collapsing the two meant the outcome of an apply was overwritten by "working…" the next
+    /// Collapsing the two meant the outcome of an apply was overwritten by "workingâ€¦" the next
     /// time anything ran, and there was nowhere to say what the spinner was spinning for.
     /// </summary>
     public string? BusyText => _activity.Caption;
@@ -652,6 +681,529 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
 
     public AsyncCommand RefreshStartupCommand { get; }
 
+    // ------------------------------------------------------------------ installed programs
+
+    /// <summary>
+    /// Everything installed on this machine, from every source that can be enumerated.
+    ///
+    /// Read in-process rather than over the pipe, the same as the startup list and for the same
+    /// reason: enumerating needs no privilege, so a round trip to be told what a registry read
+    /// would have said is latency for nothing, and the tab works before the service exists.
+    /// Only the removal goes through a backend.
+    /// </summary>
+    public ObservableCollection<AppItemViewModel> Apps { get; } = [];
+
+    private readonly List<AppItemViewModel> _allApps = [];
+
+    public AsyncCommand RemoveAppCommand { get; }
+
+    /// <summary>Opens or closes the panel explaining why a row is in the list.</summary>
+    public AsyncCommand ToggleDetailsCommand { get; }
+
+    /// <summary>Removes a registration that outlived its program, and what it left behind.</summary>
+    public AsyncCommand ForgetAppCommand { get; }
+
+    /// <summary>Removes one thing an entry owns: a folder, a key, or the entry itself.</summary>
+    public AsyncCommand RemoveItemCommand { get; }
+
+    /// <summary>Measures the places that can be emptied.</summary>
+    public AsyncCommand ScanCleanupCommand { get; }
+
+    /// <summary>Empties one of them.</summary>
+    public AsyncCommand CleanItemCommand { get; }
+
+    /// <summary>Empties every one that has anything in it.</summary>
+    public AsyncCommand CleanAllCommand { get; }
+
+    public AsyncCommand RefreshAppsCommand { get; }
+
+    private string _appSearch = "";
+
+    /// <summary>
+    /// Filters the list as you type.
+    ///
+    /// A hundred-odd rows is more than anybody scrolls, and the question people arrive with is
+    /// almost always about one program they can already name.
+    /// </summary>
+    public string AppSearch
+    {
+        get => _appSearch;
+        set
+        {
+            if (SetField(ref _appSearch, value ?? ""))
+                ApplyAppFilter();
+        }
+    }
+
+    public string AppsSummary => Strings.Format("apps.summary", Apps.Count, _allApps.Count);
+
+    /// <summary>The line under the heading. Carries the total, so the count is stated once.</summary>
+    public string AppsBlurb => Strings.Format("apps.blurb", _allApps.Count);
+
+    /// <summary>
+    /// Where the registry backups a sweep writes are kept.
+    ///
+    /// On the page rather than only in the documentation. "Registry keys are exported before they
+    /// are removed" is a promise, and a promise about a file is worth much less if the reader
+    /// cannot see where the file went.
+    /// </summary>
+    public string AppsBackupPath => Strings.Format("apps.backups", Win32Apps.AppRemoval.BackupDirectory);
+
+    /// <summary>
+    /// Re-reads what is installed, including the icons, off the UI thread.
+    ///
+    /// The registry walk always went to the pool. The rows did not, and the rows are where the
+    /// cost is: each one extracts the program's icon, and a hundred of those measured 81ms of a
+    /// window that could not repaint. They are built on the pool now and handed over here.
+    ///
+    /// <para>What must stay on the UI thread is the handover itself. Filling the bound
+    /// collection from a worker crashed the window with "Collection was modified; enumeration
+    /// operation may not execute", thrown from inside Avalonia's own item generator as it
+    /// walked the list being rebuilt underneath it. So the pool builds a plain list and this
+    /// method, back on the UI thread, is the only thing that touches what is bound.</para>
+    /// </summary>
+    private async Task ReloadAppsAsync()
+    {
+        var read = await Task.Run(
+            () => Win32Apps.InstalledApps.List()
+                .Select(app => (App: app, Icon: AppItemViewModel.ReadIcon(app)))
+                .ToList(),
+            _shutdown.Token).ConfigureAwait(true);
+
+        _allApps.Clear();
+        _allApps.AddRange(read.Select(r => new AppItemViewModel(r.App, RemoveAppAsync, r.Icon)));
+
+        ApplyAppFilter();
+    }
+
+    private void ApplyAppFilter()
+    {
+        Apps.Clear();
+
+        foreach (var app in _allApps.Where(a => Matches(a, _appSearch)))
+            Apps.Add(app);
+
+        Raise(nameof(AppsSummary));
+        Raise(nameof(AppsBlurb));
+    }
+
+    private static bool Matches(AppItemViewModel app, string search)
+    {
+        if (string.IsNullOrWhiteSpace(search))
+            return true;
+
+        return app.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase)
+               || (app.App.Publisher?.Contains(search, StringComparison.CurrentCultureIgnoreCase) ?? false);
+    }
+
+    /// <summary>
+    /// Uninstalls one program, showing each stage on its row as it happens.
+    ///
+    /// The row is not removed from the list when it finishes. What the reader wants at that
+    /// moment is the sentence saying what was swept up, and a row that vanished the instant the
+    /// work completed would take the answer with it. The next refresh drops it.
+    /// </summary>
+    // ------------------------------------------------------------------ reclaiming space
+
+    /// <summary>Every place that can be emptied, measured.</summary>
+    public ObservableCollection<CleanupItemViewModel> Cleanup { get; } = [];
+
+    private bool _scanningCleanup;
+    private bool _cleanupWanted;
+
+    /// <summary>
+    /// Called when the Cleanup tab is first shown.
+    ///
+    /// Not simply the command, because of the order these can happen in. The tab can be on
+    /// screen before <see cref="InitialiseAsync"/> has a backend -- at startup, or on a machine
+    /// slow enough that the window is up before the service answers -- and a scan that ran then
+    /// would find no backend, return quietly, and leave the tab reading "nothing to reclaim"
+    /// over a machine with nine gigabytes in it. So the request is remembered and honoured when
+    /// there is something to honour it with.
+    /// </summary>
+    public Task RequestCleanupAsync()
+    {
+        _cleanupWanted = true;
+        return _backend is null ? Task.CompletedTask : ReloadCleanupAsync();
+    }
+
+    /// <summary>True while the machine is being measured.</summary>
+    public bool IsScanningCleanup
+    {
+        get => _scanningCleanup;
+        private set
+        {
+            if (SetField(ref _scanningCleanup, value))
+            {
+                Raise(nameof(CanClean));
+                Raise(nameof(CanCleanAnything));
+            }
+        }
+    }
+
+    /// <summary>How much is there, across everything that can actually be emptied.</summary>
+    public string CleanupSummary
+    {
+        get
+        {
+            var bytes = Cleanup.Where(c => c.CanClean).Sum(c => c.Bytes);
+
+            return bytes > 0
+                ? Strings.Format("clean.summary", AppItemViewModel.Format(bytes))
+                : Strings.Get("clean.nothing");
+        }
+    }
+
+    /// <summary>True when there is something the button could actually empty.</summary>
+    public bool CanClean => !_scanningCleanup && Cleanup.Any(c => c.CanClean);
+
+    /// <summary>
+    /// Whether "Clean everything" is offered at all, which is the looser question.
+    ///
+    /// A page whose only remaining rows are the machine-wide ones has something to say, and a
+    /// greyed-out button says none of it. Pressing it there marks those rows and states what
+    /// would reach them, which is the answer somebody standing in front of that page wants.
+    /// </summary>
+    public bool CanCleanAnything => !_scanningCleanup
+        && Cleanup.Any(c => c.CanClean || (c.NeedsAdmin && c.HasAnything));
+
+    /// <summary>
+    /// How much an elevated launch would additionally reach.
+    ///
+    /// Worth a line of its own above the list. The four machine-wide places are measured either
+    /// way -- that was always deliberate -- but until this line existed the only place that
+    /// measurement appeared was as four rows the headline total quietly disagreed with.
+    /// </summary>
+    public string CleanupAdminNote
+    {
+        get
+        {
+            var bytes = Cleanup.Where(c => c.NeedsAdmin).Sum(c => c.Bytes);
+
+            return bytes > 0 ? AdminNeeded.More(AppItemViewModel.Format(bytes)) : "";
+        }
+    }
+
+    public bool HasCleanupAdminNote => CleanupAdminNote.Length > 0;
+
+    /// <summary>What this refuses to look at, and why, straight from the catalogue.</summary>
+    public string CleanupNever => Strings.Format(
+        "clean.never",
+        string.Join(", ", Win32Cleanup.CleanupTargets.NeverTouched.Select(n => n.Path)));
+
+    /// <summary>
+    /// Measures everything.
+    ///
+    /// Done on demand rather than at startup: it walks several directory trees and adds up file
+    /// sizes, and a tab nobody has opened has not earned that. The rows are built here and only
+    /// mutated on the UI thread -- filling a bound collection from the thread pool is what
+    /// crashed the Apps tab with "collection was modified" out of Avalonia's own item generator.
+    /// </summary>
+    private async Task ReloadCleanupAsync()
+    {
+        if (_backend is null)
+            return;
+
+        IsScanningCleanup = true;
+        try
+        {
+            var findings = await _backend.ScanCleanupAsync(_shutdown.Token).ConfigureAwait(true);
+            var existing = Cleanup.ToDictionary(c => c.Id, StringComparer.OrdinalIgnoreCase);
+
+            Cleanup.Clear();
+
+            foreach (var finding in findings)
+            {
+                if (existing.TryGetValue(finding.Target.Id, out var row))
+                {
+                    row.Update(finding);
+                    Cleanup.Add(row);
+                }
+                else
+                {
+                    Cleanup.Add(new CleanupItemViewModel(finding));
+                }
+            }
+
+            Raise(nameof(CleanupSummary));
+            Raise(nameof(CanClean));
+            Raise(nameof(CanCleanAnything));
+            Raise(nameof(CleanupAdminNote));
+            Raise(nameof(HasCleanupAdminNote));
+        }
+        catch (Exception e) when (e is IOException or TimeoutException or InvalidOperationException)
+        {
+            // A measurement that fails leaves the previous numbers, which are stale rather than
+            // wrong. Nothing here has changed the machine.
+        }
+        finally
+        {
+            IsScanningCleanup = false;
+        }
+    }
+
+    /// <summary>Empties one place and says what it got.</summary>
+    private async Task CleanAsync(CleanupItemViewModel item)
+    {
+        if (_backend is null)
+            return;
+
+        // Answered here rather than in the sweep. The backend would refuse this too, and would
+        // be right to, but a refusal that arrives as a result reads as something having gone
+        // wrong -- and nothing has: the machine is fine, this copy simply cannot reach that
+        // folder. Saying so before the attempt is the difference between an error and an
+        // instruction.
+        if (item.NeedsAdmin)
+        {
+            item.State = CleanupRowState.NeedsAdmin;
+            item.Detail = null;
+            SetStatus(AdminNeeded.Status, isError: true);
+            return;
+        }
+
+        if (!item.CanClean)
+            return;
+
+        item.State = CleanupRowState.Working;
+
+        var activity = _activity.Begin(Strings.Format("clean.activity", item.Name));
+        try
+        {
+            var result = await _backend
+                .CleanAsync(item.Id, null, _shutdown.Token)
+                .ConfigureAwait(true);
+
+            item.Describe(result);
+
+            // Re-measured rather than assumed: the row now shows what is there, not what this
+            // program believes it removed.
+            item.Update(await Task.Run(
+                () => Win32Cleanup.Cleanup.Measure(item.Target, Win32Cleanup.Cleanup.IsElevated),
+                _shutdown.Token).ConfigureAwait(true));
+
+            Raise(nameof(CleanupSummary));
+            Raise(nameof(CanClean));
+            Raise(nameof(CanCleanAnything));
+        }
+        catch (Exception e) when (e is IOException or TimeoutException or InvalidOperationException)
+        {
+            item.State = CleanupRowState.Failed;
+            item.Detail = e.Message;
+        }
+        finally
+        {
+            await activity.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Empties everything that has something in it, one at a time.
+    ///
+    /// Sequentially on purpose. These are disk-bound and running them together would make the
+    /// whole thing slower while making the progress meaningless, and a row at a time is what the
+    /// window can honestly show.
+    /// </summary>
+    private async Task CleanEverythingAsync()
+    {
+        foreach (var item in Cleanup.Where(c => c.CanClean).ToList())
+        {
+            _shutdown.Token.ThrowIfCancellationRequested();
+            await CleanAsync(item).ConfigureAwait(true);
+        }
+
+        // The rows this could not take are marked rather than passed over in silence. "Clean
+        // everything listed" that leaves four rows sitting there at their full size has to
+        // account for them, or it has broken its own promise in front of the reader.
+        foreach (var item in Cleanup.Where(c => c.NeedsAdmin && c.HasAnything))
+            item.State = CleanupRowState.NeedsAdmin;
+
+        if (Cleanup.Any(c => c.NeedsAdmin && c.HasAnything))
+            SetStatus(AdminNeeded.Status, isError: true);
+    }
+
+    /// <summary>
+    /// Removes one thing an entry owns.
+    ///
+    /// The row and the path travel together because that pairing is what the removal is checked
+    /// against: the backend rebuilds the list of what the program owns from the live machine and
+    /// refuses a path that is not on it. A command that took a path alone would be a way to
+    /// recycle anything on the machine.
+    /// </summary>
+    private async Task RemoveItemAsync(LeftoverRow row)
+    {
+        if (_backend is null)
+            return;
+
+        var app = row.Owner;
+
+        // The panel read this off the machine when it was opened, so the answer is already on
+        // the row. Attempting it anyway would export nothing, delete nothing, and come back
+        // with reg.exe's own wording, which says access is denied without saying whose.
+        if (row.NeedsAdmin)
+        {
+            app.State = RemovalRowState.Failed;
+            app.Detail = AdminNeeded.Explain;
+            return;
+        }
+
+        await app.RemoveItemAsync(row.Path, async (id, path) =>
+        {
+            var report = await _backend.RemoveItemAsync(id, path, null, _shutdown.Token).ConfigureAwait(true);
+
+            // Both outcomes are stated on the row, and that is the whole point of this block.
+            // The first version reported neither for the entry itself: it reloaded the tab, and
+            // the tab's reload does not rebuild the installed list. So a successful removal and
+            // a failed one produced exactly the same thing on screen -- nothing -- and the only
+            // way to find out which had happened was to open regedit.
+            if (report.Problems.Count > 0)
+            {
+                app.State = RemovalRowState.Failed;
+                app.Detail = report.Problems[0];
+                return false;
+            }
+
+            if (row.IsRegistration)
+            {
+                // Removing the registration takes the program out of Windows' own list, so the
+                // row now describes something that is not there. Marked the way a finished
+                // removal is marked rather than made to vanish: the sentence saying what
+                // happened is what somebody pressed the button for, and a row that tidies itself
+                // away takes the answer with it.
+                app.State = RemovalRowState.Removed;
+                app.Detail = Strings.Get("apps.details.entrygone");
+
+                // For the History tab, which is where the line about it lands.
+                await ReloadAsync().ConfigureAwait(true);
+            }
+
+            return true;
+        }).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Removes an entry that outlived its program, together with whatever was found under its
+    /// name.
+    ///
+    /// Deliberately a separate command from Remove rather than a mode of it. The two make
+    /// different claims: Remove says "uninstall this", and this says "the program is gone, take
+    /// its entry away as well". A single button that quietly did whichever seemed to apply would
+    /// be guessing on the reader's behalf about the one thing they are here to decide.
+    /// </summary>
+    private async Task ForgetAppAsync(AppItemViewModel app)
+    {
+        if (_backend is null)
+            return;
+
+        if (app.ForgetNeedsAdmin)
+        {
+            app.State = RemovalRowState.Failed;
+            app.Detail = AdminNeeded.Explain;
+            return;
+        }
+
+        app.Detail = null;
+        app.State = RemovalRowState.Scanning;
+
+        var activity = _activity.Begin(Strings.Format("apps.activity", app.Name));
+        try
+        {
+            var report = await _backend.ForgetAppAsync(
+                app.Id,
+                progress =>
+                {
+                    app.State = AppItemViewModel.StateFor(progress.Stage, app.State);
+
+                    if (progress.Stage == Win32Apps.RemovalStage.Sweeping)
+                        app.Detail = progress.Detail;
+
+                    return Task.CompletedTask;
+                },
+                _shutdown.Token).ConfigureAwait(true);
+
+            Describe(app, report);
+        }
+        catch (Exception e) when (e is IOException or TimeoutException or InvalidOperationException)
+        {
+            app.State = RemovalRowState.Failed;
+            app.Detail = e.Message;
+        }
+        finally
+        {
+            await activity.DisposeAsync();
+            await ReloadAsync();
+        }
+    }
+
+    private async Task RemoveAppAsync(AppItemViewModel app)
+    {
+        if (_backend is null)
+            return;
+
+        app.Detail = null;
+        app.State = RemovalRowState.Uninstalling;
+
+        var activity = _activity.Begin(Strings.Format("apps.activity", app.Name));
+        try
+        {
+            var report = await _backend.RemoveAppAsync(
+                app.Id,
+                progress =>
+                {
+                    app.State = AppItemViewModel.StateFor(progress.Stage, app.State);
+
+                    if (progress.Stage == Win32Apps.RemovalStage.Sweeping)
+                        app.Detail = progress.Detail;
+
+                    return Task.CompletedTask;
+                },
+                _shutdown.Token).ConfigureAwait(true);
+
+            Describe(app, report);
+        }
+        catch (Exception e) when (e is IOException or TimeoutException or InvalidOperationException)
+        {
+            app.State = RemovalRowState.Failed;
+            app.Detail = e.Message;
+        }
+        finally
+        {
+            await activity.DisposeAsync();
+            await ReloadAsync();
+        }
+    }
+
+    /// <summary>
+    /// Turns a removal report into the sentence on the row.
+    ///
+    /// A removal that could not finish says so on the row rather than only in the status bar,
+    /// because by the time somebody reads the status bar they have usually moved on to the next
+    /// program in the list.
+    /// </summary>
+    private void Describe(AppItemViewModel app, Win32Apps.RemovalReport report)
+    {
+        if (report.Problems.Count > 0)
+        {
+            app.State = report.FoldersRecycled + report.KeysRemoved > 0
+                ? RemovalRowState.Removed
+                : RemovalRowState.Failed;
+
+            app.Detail = report.Problems[0];
+            SetStatus(Strings.Format("apps.failed", app.Name, report.Problems[0]), isError: true);
+            return;
+        }
+
+        app.State = RemovalRowState.Removed;
+        app.Detail = report.FoldersRecycled + report.KeysRemoved == 0
+            ? Strings.Get("apps.removed.clean")
+            : Strings.Format(
+                "apps.removed.swept",
+                report.FoldersRecycled,
+                report.KeysRemoved,
+                AppItemViewModel.Format(report.BytesReclaimed));
+
+        SetStatus(Strings.Format("apps.done", app.Name));
+    }
+
     private string? _startupError;
 
     /// <summary>Why the last switch did not take, or null when nothing has gone wrong.</summary>
@@ -671,13 +1223,35 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
     public string StartupSummary => Strings.Format(
         "startup.summary", StartupItems.Count(i => i.IsEnabled), StartupItems.Count);
 
-    private void ReloadStartup()
+    /// <summary>
+    /// Rebuilds the startup list, doing the reading and the icons off the UI thread.
+    ///
+    /// It used to be synchronous on the grounds that five registry keys are not worth an await.
+    /// The registry was never the cost: each row also pulls the program's icon out of its
+    /// executable, which is a shell call apiece, and fifteen of those measured 92ms of a window
+    /// that could not repaint. What comes back here is a list of rows to hand to the bound
+    /// collection, which is the one part that has to be on this thread.
+    /// </summary>
+    private async Task ReloadStartupAsync()
     {
+        var machineScope = _canApplyMachineScope;
+
+        var read = await Task.Run(
+            () => Win32Startup.List().ToWire()
+                .Select(entry => (Entry: entry, Icon: StartupItemViewModel.ReadIcon(entry.ExecutablePath)))
+                .ToList(),
+            _shutdown.Token).ConfigureAwait(true);
+
         StartupError = null;
         StartupItems.Clear();
 
-        foreach (var entry in Win32Startup.List().ToWire())
-            StartupItems.Add(new StartupItemViewModel(entry, ToggleStartupAsync));
+        foreach (var (entry, icon) in read)
+        {
+            StartupItems.Add(new StartupItemViewModel(entry, ToggleStartupAsync, icon)
+            {
+                MachineScopeAvailable = machineScope,
+            });
+        }
 
         Raise(nameof(StartupSummary));
     }
@@ -697,6 +1271,16 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
         if (_backend is null)
         {
             StartupError = Strings.Get("startup.error.nobackend");
+            return;
+        }
+
+        // Before the write rather than after the refusal. The re-read below is what makes a
+        // refused write honest, and it works -- but the switch flicking and springing back is
+        // the visual language of a broken control, and the sentence that used to accompany it
+        // came from whatever threw inside the registry API.
+        if (item.NeedsAdmin)
+        {
+            StartupError = item.AdminNote;
             return;
         }
 
@@ -780,10 +1364,20 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
     {
         IsBusy = true;
 
+        // How long the setup checklist should stay up. Started while the reads run rather than
+        // before them, and already finished for the ordinary case: a launch that fixed nothing.
+        var linger = Task.CompletedTask;
+
         // The setup overlay hides the window until the backend is chosen, but the first catalog
         // read happens after it closes. Without a caption that gap is an unlabelled busy state
         // on a window the user is seeing for the first time.
-        var activity = _activity.Begin(Strings.Get("activity.reading"));
+        //
+        // Given a longer fuse than anything else, because this is the one piece of work nobody
+        // asked for. It takes about half a second now, and at the usual threshold that was long
+        // enough to raise the indicator and then hold it up for its minimum -- so a window that
+        // had finished loading went on saying it was loading for another half second.
+        var activity = _activity.Begin(
+            Strings.Get("activity.reading"), showAfter: TimeSpan.FromMilliseconds(700));
         try
         {
             if (_injectedBackend is not null)
@@ -795,7 +1389,12 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
             }
             else
             {
-                var result = await _bootstrapper.RunAsync(_shutdown.Token);
+                // On the pool, not here. Bootstrapping creates folders, hashes and rewrites
+                // profile files, asks the SCM about a service and reads the registry -- all of
+                // it synchronous, and all of it ran inline on the UI thread of a window that
+                // was already on screen. The steps report their progress through
+                // ObservableObject, which marshals back to the UI thread on its own.
+                var result = await Task.Run(() => _bootstrapper.RunAsync(_shutdown.Token), _shutdown.Token);
 
                 _backend = result.Backend;
                 ServiceReady = result.ServiceReady;
@@ -804,10 +1403,15 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
 
                 // Leave the checklist up briefly when it did real work, so a first-run user can
                 // see what was installed rather than a panel that flashes past.
-                if (_bootstrapper.Steps.Any(step => step.Status == StepStatus.Fixed))
-                    await Task.Delay(TimeSpan.FromSeconds(1.2), _shutdown.Token);
-
-                IsSettingUp = false;
+                //
+                // Started rather than awaited. Awaited, it was 1.2 seconds of nothing happening
+                // in front of somebody opening the app for the first time: the reads below did
+                // not begin until it elapsed, so the pause and the loading were added together
+                // instead of overlapping. Now the checklist comes down when what is behind it
+                // is ready, and the pause costs nothing it did not already cost.
+                linger = _bootstrapper.Steps.Any(step => step.Status == StepStatus.Fixed)
+                    ? Task.Delay(TimeSpan.FromSeconds(1.2), _shutdown.Token)
+                    : Task.CompletedTask;
             }
 
             IsServiceMode = _backend.IsService;
@@ -815,11 +1419,21 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
             ConnectionText = _backend.Description;
             ConnectionDetail = null;
 
-            await ReloadAsync();
+            // The three reads are independent -- none is another's input -- so they run at the
+            // same time rather than one after another. Each does its work on the pool and comes
+            // back only to fill a bound collection, which is the part that must be on this
+            // thread and the part that costs microseconds.
+            var catalog = ReloadAsync();
+            var startup = ReloadStartupAsync();
+            var apps = ReloadAppsAsync();
 
-            // Local and synchronous: a registry read of five keys, not worth an await, and the
-            // tab has to be populated before the user can reach it.
-            ReloadStartup();
+            // Only the catalog is waited for, because the catalog is the tab in front of the
+            // reader. The other two fill tabs nobody is looking at yet; holding the window's
+            // first usable moment behind them bought nothing.
+            await catalog;
+
+            await linger;
+            IsSettingUp = false;
 
             var count = _allTweaks.Count;
             Report(() => new ChangeSummary(
@@ -832,11 +1446,25 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
             // Unawaited, and last. A failed or slow update check must never be something the
             // user waits through to reach a catalog that is already on screen.
             //
+            // On the pool as well, for a reason that only shows up on a real machine: the
+            // synchronous head of an HTTP request -- building the client, resolving the name,
+            // negotiating TLS for the first time in a process -- runs inline on whichever
+            // thread starts it, and measured here that was 450ms of the UI thread on a window
+            // that had otherwise finished loading.
+            //
             // Skipped when a backend was injected, which means a test: a unit test has no
             // business making an HTTP request to GitHub, and until this condition was here
             // every test that loaded the window made one.
             if (_injectedBackend is null && Settings.Current.IsCheckDue(DateTimeOffset.UtcNow))
-                _ = LaunchUpdateCheckAsync();
+                _ = Task.Run(LaunchUpdateCheckAsync, _shutdown.Token);
+
+            // A tab that asked to be measured before there was anything to measure with.
+            if (_cleanupWanted && Cleanup.Count == 0)
+                await ReloadCleanupAsync();
+
+            // Last, and only so that a failure in either surfaces rather than being dropped:
+            // both have been filling their tabs since well before this line.
+            await Task.WhenAll(startup, apps);
         }
         catch (Exception e)
         {
@@ -954,6 +1582,9 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
         _allTweaks.Clear();
         _allTweaks.AddRange(rebuilt);
 
+        foreach (var tweak in _allTweaks)
+            tweak.MachineScopeAvailable = _canApplyMachineScope;
+
         SyncCategories();
         SyncUpdateTweaks();
         ApplyFilter();
@@ -963,7 +1594,15 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
         // The bulk read above uses default selections, because a single call has nowhere to
         // carry per-tweak choices. Anything the user has chosen differently is re-read here, or
         // its badge would flip back to reflect an option they did not pick.
-        foreach (var tweak in _allTweaks.Where(t => t.HasChoices))
+        //
+        // Only what they have actually changed. Fifty of the eighty-nine tweaks carry choices,
+        // and re-reading all of them asked the same question twice: on a row still on its
+        // defaults the bulk read had already resolved to exactly those defaults. That was fifty
+        // extra calls per refresh -- fifty round trips over the pipe on an installed copy, four
+        // times a minute, for answers already in hand. A machine where nothing has been
+        // customised now makes none of them.
+        var customised = _allTweaks.Where(t => t.HasChoices && !t.UsesDefaultChoices).ToList();
+        foreach (var tweak in customised)
             await RefreshTweakAsync(tweak);
 
         // The journal and the profile list only change when something acts on them, so they are
@@ -1084,15 +1723,33 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
     /// themselves are shared with the Tweaks tab, so nothing about a row is lost by dropping
     /// the reference to it here.
     /// </summary>
+    /// <summary>
+    /// Rebuilds the Windows Update tab's list, in place.
+    ///
+    /// Reconciled rather than emptied and refilled, for the same reason the catalog list is:
+    /// this runs on every background refresh, and a bound collection that clears itself first
+    /// makes the list drop its scroll position and its selection on every tick. The rows are
+    /// the same objects the catalog holds, so in the ordinary case nothing here changes at all.
+    /// </summary>
     private void SyncUpdateTweaks()
     {
-        UpdateTweaks.Clear();
+        var wanted = _allTweaks.Where(t => t.IsWindowsUpdate)
+            .OrderBy(t => t.Risk)
+            .ThenBy(t => t.Id, StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
-        foreach (var tweak in _allTweaks.Where(t => t.IsWindowsUpdate)
-                     .OrderBy(t => t.Risk)
-                     .ThenBy(t => t.Id, StringComparer.OrdinalIgnoreCase))
+        for (var i = UpdateTweaks.Count - 1; i >= 0; i--)
         {
-            UpdateTweaks.Add(tweak);
+            if (!wanted.Contains(UpdateTweaks[i]))
+                UpdateTweaks.RemoveAt(i);
+        }
+
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            if (i >= UpdateTweaks.Count)
+                UpdateTweaks.Add(wanted[i]);
+            else if (!ReferenceEquals(UpdateTweaks[i], wanted[i]))
+                UpdateTweaks.Insert(i, wanted[i]);
         }
 
         Raise(nameof(UpdateSummary));
@@ -1434,6 +2091,17 @@ public sealed class MainWindowViewModel : ObservableObject, IDisposable, ISettin
     {
         if (tweak is null || _backend is null || tweak.IsBusy)
             return;
+
+        // Refused here, where the answer has been on the row since it was drawn. The engine
+        // refuses this too, and its sentence -- "requires elevation; run the service or start
+        // the CLI as administrator" -- is written for somebody at a command line. Sending a
+        // change down a pipe in order to be told what the window already knew also spends a
+        // round trip to produce a worse sentence.
+        if (tweak.NeedsAdmin)
+        {
+            Report(new ChangeSummary(AdminNeeded.Status, tweak.AdminNote, IsProblem: true));
+            return;
+        }
 
         tweak.IsBusy = true;
         // The key rather than a verb: German does not put the verb where English does, so

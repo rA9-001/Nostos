@@ -12,10 +12,14 @@
   <Border Classes="panel" Padding="10,14,10,10">
     <DockPanel>
 
-      <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="14,2,14,16">
+      <!-- Capped like every other tab's blurb. Uncapped it ran the full width of the window,
+           which at this size is a line of prose about two hundred characters long: the eye
+           loses its place on the way back to the left. -->
+      <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="14,2,14,16"
+                  MaxWidth="980" HorizontalAlignment="Left">
         <TextBlock Classes="title"
                    Text="{loc:Tr history.title}" />
-        <TextBlock Classes="muted" TextWrapping="Wrap"
+        <TextBlock Classes="muted" TextWrapping="Wrap" LineHeight="20"
                    Text="{loc:Tr history.intro}" />
       </StackPanel>
 
@@ -77,14 +81,14 @@
                           Background="{Binding GlyphBrushKey,
                                                Converter={StaticResource BrushFromKey},
                                                ConverterParameter=Tint}">
-                    <TextBlock Text="{Binding Glyph}" FontSize="13"
+                    <TextBlock Text="{Binding Glyph}" FontSize="{DynamicResource FontBody}"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                Foreground="{Binding GlyphBrushKey,
                                                     Converter={StaticResource BrushFromKey}}" />
                   </Border>
 
                   <TextBlock Grid.Column="1" Text="{Binding Time}" Classes="faint"
-                             Width="48" VerticalAlignment="Top" Margin="0,7,10,0" />
+                             Width="56" VerticalAlignment="Top" Margin="0,7,10,0" />
 
                   <StackPanel Grid.Column="2" Spacing="3">
                     <TextBlock Text="{Binding Headline}" TextWrapping="Wrap"

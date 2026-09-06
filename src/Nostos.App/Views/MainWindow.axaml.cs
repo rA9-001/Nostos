@@ -22,6 +22,7 @@ namespace Nostos.App.Views;
 /// </summary>
 public partial class MainWindow : Window
 {
+
     private Button? _maximiseButton;
     private Shape? _maximiseGlyph;
 

@@ -63,21 +63,31 @@ public sealed class ActivityTracker : ObservableObject
     /// Nested scopes are counted, so a refresh that happens inside an apply does not put the
     /// indicator away while the apply is still going.
     /// </summary>
-    public Scope Begin(string caption)
+    /// <param name="showAfter">
+    /// How long this particular work may take before it is worth mentioning. Overrides
+    /// <see cref="ShowAfter"/> for one scope.
+    ///
+    /// One caller uses it: the read that fills the window at startup. Nobody asked for that
+    /// one, and it now finishes in about half a second, so announcing it at the usual 180ms
+    /// meant the window said "reading the catalog" for the better part of a second after it had
+    /// finished reading the catalog -- the indicator's own minimum visible time outlasting the
+    /// work it was reporting. A slow machine still gets told; a normal one is left alone.
+    /// </param>
+    public Scope Begin(string caption, TimeSpan? showAfter = null)
     {
         _depth++;
         Caption = caption;
         Raise(nameof(IsRunning));
 
         if (_depth == 1)
-            _ = ShowIfSlowAsync();
+            _ = ShowIfSlowAsync(showAfter ?? ShowAfter);
 
         return new Scope(this);
     }
 
-    private async Task ShowIfSlowAsync()
+    private async Task ShowIfSlowAsync(TimeSpan showAfter)
     {
-        await _delay(ShowAfter, CancellationToken.None).ConfigureAwait(true);
+        await _delay(showAfter, CancellationToken.None).ConfigureAwait(true);
 
         // Finished inside the grace period: the user never needed to know it was working.
         if (_depth == 0)

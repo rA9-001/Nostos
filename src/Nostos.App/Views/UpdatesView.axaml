@@ -33,7 +33,7 @@
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="FontWeight" Value="Normal" />
-      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
 
       <!-- The base Button theme shrinks on press, which is right for a 90px button and wrong
            for one the width of the window: the whole list appears to flinch. -->
@@ -84,7 +84,7 @@
     <DockPanel>
 
       <Grid DockPanel.Dock="Top" ColumnDefinitions="*" Margin="14,2,14,16">
-        <StackPanel Grid.Column="0" Spacing="4" MaxWidth="860" HorizontalAlignment="Left">
+        <StackPanel Grid.Column="0" Spacing="4" MaxWidth="940" HorizontalAlignment="Left">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <TextBlock Classes="title" VerticalAlignment="Center"
                        Text="{loc:Tr updates.heading}" />
@@ -93,7 +93,7 @@
                          Foreground="{DynamicResource Muted}" />
             </Border>
           </StackPanel>
-          <TextBlock Classes="muted" TextWrapping="Wrap" LineHeight="19"
+          <TextBlock Classes="muted" TextWrapping="Wrap" LineHeight="22"
                      Text="{loc:Tr updates.blurb}" />
           <TextBlock Classes="faint" TextWrapping="Wrap" Margin="0,2,0,0"
                      Text="{loc:Tr updates.hint}" />
@@ -104,7 +104,7 @@
            list raises rather than one the reader arrives with, and putting "here is what we
            refuse to do" above the things we do would be leading with an apology. -->
       <Border DockPanel.Dock="Bottom" Classes="inset" Margin="14,12,14,4">
-        <TextBlock Classes="faint" FontSize="11" TextWrapping="Wrap" LineHeight="17"
+        <TextBlock Classes="faint" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap" LineHeight="20"
                    Text="{loc:Tr updates.stance}" />
       </Border>
 
@@ -128,7 +128,7 @@
 
                   <!-- Reading down the left edge answers "what have I already changed here" in
                        one movement, which is the question this page exists for. -->
-                  <Border Grid.Column="0" Width="3" Height="38" CornerRadius="2"
+                  <Border Grid.Column="0" Width="3" Height="43" CornerRadius="2"
                           VerticalAlignment="Center"
                           IsVisible="{Binding ShowsAsApplied}"
                           Background="{DynamicResource RiskSafe}" />
@@ -141,14 +141,22 @@
                     <!-- The summary, not the id. On the Tweaks tab the id earns its place
                          because that page is for reading a tweak before deciding; here the
                          reader wants the sentence that says what it costs. -->
-                    <TextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
-                               LineHeight="17" MaxWidth="560" HorizontalAlignment="Left"
+                    <TextBlock Classes="muted" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap"
+                               LineHeight="20" MaxWidth="620" HorizontalAlignment="Left"
                                Text="{Binding Summary}" />
 
-                    <TextBlock Classes="muted" FontSize="11" TextWrapping="Wrap"
+                    <TextBlock Classes="muted" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap"
                                Foreground="{DynamicResource Warning}"
                                Text="{Binding NotApplicableReason}"
                                IsVisible="{Binding !IsApplicable}" />
+
+                    <!-- Every row on this page writes machine-wide policy, so without a way to
+                         reach HKLM none of these switches can move. Said on the row: a switch
+                         that silently refuses is indistinguishable from one that is broken. -->
+                    <TextBlock Classes="muted" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap"
+                               Foreground="{DynamicResource Warning}"
+                               Text="{Binding AdminNote}"
+                               IsVisible="{Binding NeedsAdmin}" />
                   </StackPanel>
 
                   <!-- Risk and evidence, because these are real tweaks with real trade-offs and

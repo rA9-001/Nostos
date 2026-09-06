@@ -1,3 +1,5 @@
+using Nostos.Win32.Apps;
+using Nostos.Win32.Cleanup;
 using Nostos.Core.Abstractions;
 using Nostos.Core.Engine;
 using Nostos.Ipc;
@@ -161,6 +163,43 @@ public sealed class SplitBackend : IOptimizerBackend
 
         return results;
     }
+
+    /// <summary>
+    /// Always the local half.
+    ///
+    /// An uninstaller needing administrator rights prompts for it itself, so there is nothing
+    /// here the elevated service could do better -- and a great deal it would do worse, since a
+    /// LocalSystem service has no desktop for somebody else's uninstall wizard to appear on.
+    /// </summary>
+    public Task<RemovalReport> RemoveAppAsync(
+        string appId, Func<RemovalProgress, Task>? onProgress = null, CancellationToken ct = default)
+        => _local.RemoveAppAsync(appId, onProgress, ct);
+
+    /// <summary>
+    /// Also the local half. An HKCU registration needs no privilege at all, and an HKLM one
+    /// needs the app itself to have been started elevated -- the same limit the leftover sweep
+    /// has, for the same reason.
+    /// </summary>
+    public Task<RemovalReport> ForgetAppAsync(
+        string appId, Func<RemovalProgress, Task>? onProgress = null, CancellationToken ct = default)
+        => _local.ForgetAppAsync(appId, onProgress, ct);
+
+    /// <summary>Local as well, and for the same reasons.</summary>
+    public Task<RemovalReport> RemoveItemAsync(
+        string appId, string path, Func<RemovalProgress, Task>? onProgress = null,
+        CancellationToken ct = default)
+        => _local.RemoveItemAsync(appId, path, onProgress, ct);
+
+    /// <summary>
+    /// Local. Every cleanup target is either inside this account's own profile or needs an
+    /// elevated launch of the app -- the same limit the leftover sweep has, for the same reason.
+    /// </summary>
+    public Task<IReadOnlyList<CleanupFinding>> ScanCleanupAsync(CancellationToken ct = default)
+        => _local.ScanCleanupAsync(ct);
+
+    public Task<CleanupResult> CleanAsync(
+        string targetId, Func<string, Task>? onProgress = null, CancellationToken ct = default)
+        => _local.CleanAsync(targetId, onProgress, ct);
 
     /// <summary>
     /// Sends a startup switch to whichever half can actually perform it.

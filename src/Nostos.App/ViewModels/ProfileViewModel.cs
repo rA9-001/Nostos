@@ -289,6 +289,25 @@ public sealed class ProfileViewModel : ObservableObject
 
     public bool HasAppliedText => Summary.TweakIds is { Count: > 0 };
 
+    /// <summary>
+    /// How many of this profile's tweaks this copy has no way to apply.
+    ///
+    /// Counted off the same rows the card lists, so it moves when the connection does. Worth
+    /// saying on the card because a profile is a batch: pressing Apply on a machine with no
+    /// service produced a run that marched through forty rows marking most of them skipped,
+    /// and the summary underneath said "not applicable to this PC, or needs administrator" --
+    /// two different answers, offered as a guess, after the fact.
+    /// </summary>
+    public int NeedsAdminCount =>
+        (Summary.TweakIds ?? []).Count(id => _lookup(id) is { NeedsAdmin: true });
+
+    public bool HasAdminNote => NeedsAdminCount > 0;
+
+    /// <summary>The count, and what would make them apply.</summary>
+    public string AdminNote => HasAdminNote
+        ? $"{Strings.Format("admin.profile", NeedsAdminCount)} {AdminNeeded.RemedyMachineWide}"
+        : "";
+
     // ------------------------------------------------------------------ applying
 
     /// <summary>True while this profile is being applied. Only ever one card at a time.</summary>
@@ -398,6 +417,9 @@ public sealed class ProfileViewModel : ObservableObject
         Raise(nameof(Tweaks));
         Raise(nameof(Groups));
         Raise(nameof(AppliedText));
+        Raise(nameof(NeedsAdminCount));
+        Raise(nameof(HasAdminNote));
+        Raise(nameof(AdminNote));
     }
 
     /// <summary>Re-reads everything the string table feeds. Called when the language changes.</summary>

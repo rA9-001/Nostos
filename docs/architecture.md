@@ -299,6 +299,101 @@ injected, so the state machine is tested exactly rather than raced.
 that only shows while the loop is alive. The claim is that nothing displayed is outdated; that
 pair is where a user gets to check it rather than take our word for it.
 
+## One type scale, named
+
+Every size in the window comes from nine tokens in `Palette.axaml` — `FontLabel` through
+`FontDisplay` — and no view sets a number. That is the same rule the corner radii already
+followed, and it is there for the same reason: a size chosen per element is a size that drifts,
+and this window had drifted to six different literals between 10 and 15px.
+
+It also makes the whole window adjustable in one place, which is what it needed. The first
+version was designed at a comfortable distance on a large display and was genuinely hard to read
+anywhere else. The worst of it was the annotations under each row — what a tweak writes, where
+a cache lives, what a cleanup costs — set at 10 and 11px. Those lines are most of what this
+program is: a list of things it will do to somebody's machine, each with a sentence explaining
+itself. Setting them at the smallest size available said the opposite of what the program means.
+
+The scale moved up two to four points across the board rather than only at the bottom, because
+what carries the hierarchy is the steps between the sizes. Fixed dimensions holding text moved
+with it — column widths, the two dialogs, the window's own minimum size — since text that
+grows inside a box that does not is text that gets clipped instead of read.
+
+## What a launch is allowed to cost
+
+Measured on this machine, on the shipped ahead-of-time build, with a trace through every phase
+and a heartbeat on the UI thread that records any gap over 120ms.
+
+| | before | after |
+|---|---|---|
+| first frame | 256 ms | 256 ms |
+| catalog on screen | 453 ms | 443 ms |
+| every tab filled | 661 ms | 529 ms |
+| **UI thread blocked after the window appeared** | **323 ms** | **0 ms** |
+| first launch, checklist to catalog | 1,687 ms | 603 ms |
+| backend calls per refresh, 5 seconds apart, forever | 51 | 1 |
+
+The first-frame number is Avalonia starting: 200ms to initialise, then the window. Nothing below
+touches it, and it is the floor this app has.
+
+**Five things were wrong, and they were all the same thing.** Work that did not need the UI
+thread was on it, and work that did not need doing was being done.
+
+- **Bootstrapping ran inline.** Creating folders, hashing and rewriting profile files, asking
+  the SCM about the service: all synchronous, all on the UI thread of a window already on
+  screen. It goes to the pool; the steps report themselves through `ObservableObject`, which
+  marshals back on its own.
+- **Icons were read on the UI thread.** A hundred programs and fifteen startup entries, each a
+  registry search and a shell call: 173ms of a window that could not repaint. The work is split
+  now, and the split is the interesting part — *finding and reading* an icon is Win32 and goes to
+  the pool, while *turning pixels into a `WriteableBitmap`* goes through the render interface and
+  has to stay here. Reading is all of the cost; the bitmap is a memory copy.
+- **The three reads were sequential.** Catalog, then startup, then apps, each waiting for the
+  last. They share nothing, so they start together, and only the catalog is awaited: it is the
+  tab in front of the reader, and the other two fill tabs nobody is looking at yet.
+- **The first-run checklist was awaited before loading began.** 1.2 seconds of deliberate pause
+  and then the loading, added together. Now they overlap: the pause costs what it always cost
+  and the window behind it is ready when it lifts.
+- **Fifty of the eighty-nine tweaks were read twice.** The bulk read resolves every choice to its
+  default, and then every tweak carrying a choice was re-read under selections that *were* those
+  defaults. Fifty extra calls per refresh — fifty round trips over the pipe on an installed copy,
+  four times a minute, to be told what the first answer already said. Only what somebody has
+  actually changed is re-read.
+
+**And a refresh that finds nothing new now says nothing.** Assigning a row's status invalidated
+every property on it, so the five-second re-read relaid out all eighty-nine rows to redraw what
+was already there. `TweakItemViewModel.SameState` compares the answers — applied, managed,
+applicable, the raw state line — and skips the notification when they match. The static half of
+the record is deliberately not compared: it is identical on every read, and the lists inside it
+are rebuilt each time, so comparing the record wholesale would always say "different".
+
+None of this is assertable as timings — a test machine under load would fail an honest build — so
+what `StartupCostTests` holds is the shape instead: how many reads a load performs, and whether a
+read that found nothing still churns the rows.
+
+## Lists are virtualised, and one of them was not
+
+Switching to the Apps tab for the first time blocked the window for **487ms** on the shipped
+build. Nothing was being read: the list had been in memory since startup. The tab was being
+*built*.
+
+An `ItemsControl` inside a `ScrollViewer` creates every row it is given, whether or not any of
+them can be seen. A hundred programs, each with an icon, five pieces of text, two chips, two
+buttons and a details panel folded up behind them, is several thousand controls measured and
+arranged in one pass, on the UI thread, at the moment the tab first appears.
+
+A `ListBox` creates the dozen rows that fit and the rest as they scroll into view. **487ms became
+25ms.** The row still draws its own surface, so nothing looks different; the work is now
+proportional to what is visible rather than to what is installed.
+
+The other lists were already right, and the measurements say so: Cleanup 3ms for 22 rows,
+Profiles 7ms, History 1ms — the last two because they were `ListBox`es from the start. The rule
+worth keeping is that an `ItemsControl` is for a handful of rows whose count is bounded by the
+design, and anything bound to what happens to be on the machine belongs in a virtualising list.
+
+One thing that was tried and rejected: building each row's details panel only when it opens,
+instead of hiding it with `IsVisible`. It measured 100ms against 103ms, which is nothing, so it
+is not in the code. The remaining 25ms is the tab's own template and the first dozen rows.
+
 ## Results are translated, in one vocabulary
 
 The engine answers with `mmcss.system-responsiveness: applied — SystemResponsiveness = 10

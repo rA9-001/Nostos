@@ -3,6 +3,329 @@
 Notable changes per release. Versions follow [semantic versioning](https://semver.org): while
 the major version is `0`, a minor bump may change behaviour.
 
+## 0.3.0 - 2026-09-06
+
+### Added
+- **An Apps tab: everything installed on this PC, and an uninstaller that cleans up after
+  itself.** Windows has no single honest list of what is installed — Settings shows Store packages
+  and per-user installs, Programs and Features shows machine-wide Win32 and hides Store packages,
+  and neither shows what scoop or Chocolatey put there. This merges all six sources. On the
+  machine it was built on that is **106 programs out of about 300 registry keys**, the difference
+  being Windows' own rules for what counts as a program rather than a patch record, a system
+  component or a shared runtime.
+
+  Removing runs the program's own uninstaller — silently where one genuinely can be, including
+  MSIs, where `MsiExec.exe /I{GUID}` is rewritten to `/X{GUID} /qn /norestart` — and the row says
+  **before you press it** whether it will be unattended or ask questions. Then it sweeps up the
+  folders and registry keys the uninstaller left behind.
+
+  **Nothing is deleted.** Folders go to the Recycle Bin via `FOF_ALLOWUNDO`; registry keys are
+  exported to a `.reg` file in `%ProgramData%\Nostos\removed\` before they are removed. And a
+  failure is never turned into a delete: if the Recycle Bin will not take something, or a key
+  cannot be backed up, the item is left where it is and the reason appears on the row. Doing the
+  irreversible thing at the moment the reversible one turned out to be unavailable is precisely
+  backwards.
+
+  That is what makes an automatic sweep defensible, because **finding leftovers is name matching
+  and name matching is guesswork.** Knowing for certain what an installer created means having
+  watched it install, which needs a filesystem filter driver — a kernel driver, which this
+  program will not ship. So the guessing is made as narrow as it can be: a candidate must match
+  the name in full and never as a substring (substring matching is how uninstalling "Microsoft
+  Teams" proposes deleting `%LOCALAPPDATA%\Microsoft`), only a fixed set of parent directories is
+  looked in, the registry side is a fixed list rather than a search, and a drive root, Windows,
+  Program Files, the user profile and `WindowsApps` are refused whatever the match says.
+
+  See [docs/uninstaller.md](docs/uninstaller.md).
+
+  **Every row has an icon.** The registry's nominated icon first; then, for a packaged app, the
+  artwork out of the package itself -- a Store app's launcher is a zero-length reparse point that
+  the shell cannot read, so its logo has to be found in `Assets\` (or `Images\`, which is not the
+  convention but is what MSI Center uses), usually in a sibling package ending `_split.scale-100`
+  rather than the one the registry names. Failing both, the largest executable in the install
+  directory. That covers **89 of the 105 programs** on this machine; the remaining sixteen are
+  redistributables and SDKs that genuinely ship no artwork anywhere, and they get a monogram tile
+  coloured by a hash of the name — stable between launches, so the same program is the same
+  colour every time. A list where a sixth of the rows are blank squares reads as broken.
+
+  The page also names where the registry backups go, because "keys are exported before they are
+  removed" is a promise worth much less if the reader cannot see where the file went.
+- **A Details button on every row, answering "why is this even listed?"** A row exists because
+  something registered it — almost always a key under `…\CurrentVersion\Uninstall` — and that key
+  is not the program. An uninstaller that deletes a program's files without deleting its own key
+  leaves an entry Windows still believes in, so a game removed months ago is still in the list.
+  Until now the only thing the window could say was that it was installed, which to somebody who
+  knows it is not reads as the list being wrong rather than the registry being stale.
+
+  The panel names the exact registry key, in full and selectable, then checks every path the entry
+  records and says which of three cases it is: everything still there, nothing still there, or in
+  between. The middle one is a real shape rather than an evasion — a game whose files were deleted
+  while its launcher stayed is neither installed nor a leftover. Under that is what the leftover
+  scan finds on disk under the same name, with sizes, and with anything that looks like your own
+  files marked.
+
+  It is read on demand rather than for every row, because the scan measures folder sizes and doing
+  that a hundred times to fill a panel nobody opened would make the tab slow to earn nothing.
+- **Removing an entry that outlived its program.** The panel's button takes the registration and
+  everything listed, without running an uninstaller — which is the point of it, because `Remove`
+  runs the program's own uninstaller and then refuses to sweep while the program is still
+  registered. That is right when the program is real and a dead end when it is not: there is no
+  uninstaller left, or there is one that shrugs because its program is already gone, and the entry
+  is still there either way.
+
+  Deliberately a second button rather than a mode of the first. The two make different claims
+  about the machine — "uninstall this" and "the program is gone, take its entry away as well" —
+  and one button that quietly did whichever seemed to apply would be guessing on the reader's
+  behalf about the one thing they are deciding.
+
+  Same reversible machinery as everything else: the key is exported to a `.reg` file in
+  `%ProgramData%\Nostos\removed\` before it goes, folders go to the Recycle Bin, and a failure is
+  never turned into a delete. Only a registry entry can be forgotten — a Store package or a scoop
+  directory is the program rather than a note about it, so the button is not offered there — and
+  the registration is removed last, so a sweep that fails half way leaves the row in the list with
+  the rest of it still findable rather than hiding it.
+- **Each thing an entry owns can be removed on its own.** The Details panel lists every folder and
+  registry key found under a program's name, the entry itself, and an icon file it records when
+  that sits outside those folders — each with its own Remove button, alongside the one button that
+  takes all of them. "The registry entry is stale but I want to keep the folder" and "clear the
+  lot" are both ordinary things to want, and offering only the second sends somebody to regedit
+  for the first.
+
+  The list of what a program owns is **rebuilt from the machine before any single removal, and the
+  path has to be on it.** That check is the security boundary rather than a nicety: removal takes
+  an app id *and* a path, and without the pairing it would be a way to recycle any folder on the
+  machine, or export and delete any registry key, by naming a program alongside it. Windows' own
+  directories are refused by that check like anything else the program does not own, before the
+  protected-path list is consulted at all.
+
+  The uninstaller is never offered. Deleting it strands a program that is still installed with no
+  supported way to remove it, which is worse than the position somebody opened the panel to get
+  out of.
+
+  An icon earns its place in the list because the leftover scan cannot reach it: a stale entry
+  often points at a file under the publisher's folder rather than the program's — Riot keeps a
+  game's icon in `ProgramData\Riot Games\Metadata\<game>` — and the scan matches on the program's
+  name and refuses substrings, for good reasons. It is a real leftover that nothing else here
+  would offer to clear up.
+- **A Cleanup tab: space taken by files that rebuild themselves.** Shader caches, scratch
+  directories, launcher caches, crash reports — 22 named locations, each with its size, how many
+  files, and a sentence saying what you lose. On the machine it was built on that is **9.3 GB**,
+  of which 4.5 GB is a single folder: the NVIDIA driver's compiled shaders, which is also the
+  first thing to clear when a game stutters after a driver update.
+
+  **A fixed list of named places, never a search for folders that look like caches.** That
+  distinction is the whole safety argument and it is not theoretical: on this machine
+  `Steam\steamapps\downloading` held **172 GB** — a paused game update, in a folder whose name and
+  contents look exactly like disposable staging. A cleaner matching on shape rather than on
+  knowledge would have taken it. What is refused is written down with its reason, next to what is
+  offered: the Steam download and workshop folders, Downloads, Prefetch, `Windows.old`, the page
+  and hibernation files, browser profiles, and the Recycle Bin.
+
+  These are **deleted rather than recycled**, which is the one place in this program that does
+  that, and the list itself earns it: everything on it regenerates, so there is nothing to undo —
+  and recycling would free no space until the bin was emptied, which is where the undo for
+  uninstalls lives. The rule to hold when adding a location is the same one: if it does not
+  regenerate, it does not belong on the list.
+
+  The sweep never removes the folder itself, never follows a junction or symbolic link out of it
+  (the directory walk is hand-written because the framework's recursive enumeration follows
+  them), and skips files in use rather than failing. Scratch directories take only files
+  untouched for a day — 5,540 of 17,678 held back here, which the row says next to the size, so a
+  total that looks too small has its explanation beside it. Shader caches have no age rule on
+  purpose: making somebody wait a day defeats the reason they came.
+
+  Four machine-wide locations are measured either way and skipped with a reason when the app is
+  not elevated, because "you would get this back elevated" is worth knowing and "blocked" alone
+  invites elevating for nothing. See [docs/cleanup.md](docs/cleanup.md).
+- **Where administrator rights are needed, it is said before the click, not after.** One rule,
+  applied across every tab that has the problem: *when the program knows in advance that
+  something cannot be done, the control stays and says what it needs.*
+
+  Five places were getting this wrong, in three different ways. The Cleanup tab **removed** the
+  Clean button from its four machine-wide rows, which teaches somebody that this program cannot
+  clean Windows' own temp folder rather than that their copy is not elevated. The Tweaks and
+  Profiles tabs offered Apply, sent it, and printed whatever the engine said when it refused — a
+  sentence written for somebody at a command line, after a round trip. The Startup tab let the
+  switch move, watched HKLM refuse the write, re-read the entry and put the switch back, which
+  is the visual language of a broken control rather than of a permission somebody could go and
+  get. The Apps tab's Details panel offered Remove on HKLM keys and Forget on machine-wide
+  entries, and answered with reg.exe saying access was denied without saying whose.
+
+  Now every one of them carries a **Needs administrator** badge from the moment it is drawn, the
+  button stays where it was, and pressing it says what would make it work. The advice differs by
+  what would actually fix it: a cleanup target is emptied by this process, so the answer is to
+  start it as administrator; a machine-wide tweak or startup entry has a standing way to be
+  changed without an elevated window, which is the background service — one approval, once.
+
+  The Cleanup page also states what an elevated launch would additionally reach ("2 GB more is
+  within reach…"), which is what those four measurements were always for, and a profile card
+  says how many of its tweaks would be skipped before Apply is pressed rather than by marching
+  through forty rows marking most of them skipped afterwards.
+
+  Nostos still never asks for those rights itself: the manifest stays `asInvoker`, and every
+  sentence here ends by saying what to start differently.
+
+### Changed
+- **Opening the Apps tab no longer freezes the window.** It blocked for **487ms** the first time,
+  on the shipped build, and nothing was being read — the list had been in memory since startup.
+  The tab was being built: an `ItemsControl` in a `ScrollViewer` creates every row it is given,
+  and a hundred programs with an icon, five pieces of text, two chips, two buttons and a folded
+  details panel each is several thousand controls laid out in one pass on the UI thread. A
+  `ListBox` builds the dozen rows that fit and the rest as they scroll into view. **487ms became
+  25ms**, and nothing about the list looks different.
+
+  The other lists were already virtualised or small enough not to matter, and the measurements
+  are in [docs/architecture.md](docs/architecture.md): Cleanup 3ms, Profiles 7ms, History 1ms.
+- **The window starts faster and stops freezing while it loads.** Measured on the shipped
+  ahead-of-time build with a trace through every phase and a heartbeat on the UI thread: the
+  window still appears in 256ms, every tab is filled in **529ms instead of 661ms**, a first
+  launch reaches the catalog in **603ms instead of 1,687ms**, and the UI thread is now blocked
+  for **0ms after the window appears, where it used to be 323ms**.
+
+  Five causes, all the same mistake in different places: work that did not need the UI thread was
+  on it, and work that did not need doing was being done.
+
+  Bootstrapping — creating folders, hashing and rewriting profile files, asking the SCM about the
+  service — ran inline on the UI thread of a window already on screen. Icons did too: a hundred
+  programs and fifteen startup entries, each a registry search and a shell call, 173ms of a
+  window that could not repaint. The catalog, startup and apps reads waited for each other
+  despite sharing nothing. The first-run checklist's 1.2-second pause was awaited *before*
+  loading began rather than alongside it. And fifty of the eighty-nine tweaks were read a second
+  time under selections identical to the ones the bulk read had already used — fifty extra calls
+  per refresh, which on an installed copy is fifty round trips over the pipe, four times a
+  minute, forever.
+
+  A background refresh that finds nothing new is also silent now. Assigning a row's status
+  invalidated every property on it, so the five-second re-read relaid out all eighty-nine rows to
+  redraw exactly what was there.
+
+  The one deliberate wait left is the Cleanup tab, which measures when you open it because it
+  walks seventeen thousand files, and says so while it does. See
+  [docs/architecture.md](docs/architecture.md).
+- **The window's text is bigger, from one named scale.** Everything was set from six different
+  literal sizes between 10 and 15px, and the smallest of them carried the most: the annotation
+  under each row saying what a tweak writes, where a cache lives, what clearing it costs. Those
+  lines are most of what this program is, and they were set at the smallest size available.
+
+  Every size now comes from nine tokens in `Palette.axaml` — `FontLabel` through `FontDisplay`
+  — and no view sets a number, which is the rule the corner radii already followed. The whole
+  scale moved up two to four points rather than only the bottom of it, so the hierarchy that was
+  there is unchanged: what was quieter than the body text still is. Fixed dimensions holding text
+  moved with it — column widths, both dialogs, the window's own minimum size — because text
+  that grows inside a box that does not is text that gets clipped rather than read.
+
+  Two things this turned up on the way: the Cleanup tab's heading was set in a class that does
+  not exist, so it had been drawing at body size while every other tab's heading was a title; and
+  the History tab's opening paragraph ran the full width of the window, which at this size is a
+  line about two hundred characters long.
+- **The buttons on the Apps tab look like buttons.** Details and Remove were borderless, which is
+  right for something that only needs to be findable once and wrong for the two controls a row
+  exists to offer. Details is now an ordinary surface button and every removal is tinted, so the
+  destructive one of a pair is the one that looks it. Per-item buttons use a new compact size,
+  because a full-size button at the end of a line of text outweighs the line it acts on.
+
+### Fixed
+- **A per-item removal said nothing at all, whether it worked or not.** Pressing Remove beside a
+  registry entry deleted the key, exported its backup, and left the window exactly as it was: the
+  code reloaded the tab, and the tab's reload rebuilds tweaks, history and profiles but not the
+  installed list. A success and a failure were indistinguishable on screen — both were nothing —
+  so the only way to find out which had happened was to open regedit.
+
+  Both outcomes are now stated on the row. A failure marks it failed and shows the reason; a
+  removed registration marks the row the way a finished uninstall is marked, says the entry is
+  gone and that the `.reg` backup can put it back, and closes the panel rather than going on
+  listing an entry that is no longer there.
+
+- **A row could not show a status at all, which is how the above stayed invisible.** The status
+  line's visibility binds to `HasStatus`, and the state setter announced that the text had changed
+  without announcing that there was now a text to show. Every finished removal computed the right
+  sentence, passed its tests, and never drew it. The properties a state change affects are now a
+  list the setter iterates and a test asserts against, because `PropertyChanged` is marshalled to
+  a UI thread that no test runs — so an omission there is invisible to the entire suite, which is
+  exactly what happened.
+- **An uninstall command with no path in it was reported as a missing uninstaller.**
+  `MsiExec.exe /X{…}` is the commonest uninstall string on any machine and Windows resolves it
+  against the search path; checking the bare name resolves it against the working directory
+  instead. Fifteen rows on the machine this was built on were affected, each one wrong, in the
+  exact place somebody has come to find out whether a row can be trusted.
+- **Every Store app lost its icon unless Nostos was run elevated, and elevation is exactly what
+  this program does not do.** Listing `C:\Program Files\WindowsApps` requires administrator
+  rights — a plain user gets `UnauthorizedAccessException` from the directory enumeration —
+  while *reading inside* a package whose name you already know is allowed, and always was. The
+  search looked for a package's split resource siblings by listing that root, so for anybody not
+  elevated the very first call threw and all 28 packaged apps on this machine went to monograms
+  at once.
+
+  Sibling package names are no longer discovered; they are **constructed**. A split resource
+  package shares its parent's identity, version and publisher hash and differs only in the scale
+  — `Microsoft.WindowsCalculator_11.2502.2.0_x64__8wekyb3d8bbwe` implies
+  `Microsoft.WindowsCalculator_11.2502.2.0_neutral_split.scale-100_8wekyb3d8bbwe` — and Windows
+  defines the set of scales, so every candidate can be written down and checked with
+  `Directory.Exists`, which a plain user is allowed to do. Nothing in the icon search enumerates
+  that folder any more. Measured unelevated afterwards: 26 of 28 packaged apps find their logo,
+  the same as when elevated.
+
+  The package's recorded location is used as the starting point rather than
+  `%ProgramFiles%\WindowsApps` being assumed, so an app installed to another drive — which lives
+  under that drive's own `WindowsApps` — is now found too.
+
+  Worth recording how this survived: it was reviewed, covered by a test that reads the real
+  machine, and photographed several times, and every one of those ran elevated. A test that
+  builds its own package folders in an ordinary directory now covers it, because it exercises
+  the search with no privileged path involved at all.
+- **Programs that plainly have a logo were being drawn without one, Epic Games Launcher among
+  them.** The search knew three places to look and an MSI keeps its artwork in a fourth: as a
+  property inside the package rather than as a file, cached at install time under
+  `%WINDIR%\Installer\{ProductCode}\` and filed in the installer's own product database. Epic has
+  no `DisplayIcon`, no `InstallLocation` and nothing on disk carrying its name, so every step of
+  the old search came back empty on a program whose icon Programs and Features shows without
+  difficulty.
+
+  Two details made it more than a registry read. Products are filed under a **packed** product
+  code -- the GUID with its first three fields reversed and the rest byte-swapped -- and getting
+  that transform wrong yields a key that simply does not exist, which is indistinguishable from a
+  product having no icon; the tests hold it against three real pairs read off a machine. And the
+  cached files are often extensionless (`ProductICO`, `ARPIco`), which the shell identifies files
+  by, so they are read straight out of the file's resources instead.
+
+  Also added: a program's own uninstaller as a source, since it is usually branded even when
+  nothing else is, excluding any that lives inside the Windows directory -- msiexec, rundll32,
+  cmd and powershell in one rule. And a nominated icon is now checked against the disk, because
+  the shell answers for a file that is not there: it hands back the blank-page icon for the
+  extension, which is worse than nothing since it is not null and so ended the search on a row
+  that had a real icon waiting two steps further down.
+
+  That takes the programs found with their own artwork from **89 of 105 to 94** on the machine it
+  was built on. The remaining eleven -- seven Visual C++ runtimes, a couple of SDK components --
+  ship no artwork anywhere: no nominated icon, no cached one, no install directory, no Start menu
+  shortcut. They are now drawn the way Programs and Features draws them, with the icon Windows
+  uses for an installer package, so no row is blank.
+- **The sweep no longer trusts an uninstaller's exit code, and this was very nearly shipped.** A
+  Steam game's uninstaller is `steam.exe steam://uninstall/960090`: that process hands the request
+  to the Steam already running and exits in about a second with code zero, long before Steam has
+  drawn the dialog asking whether you meant it. A sweep conditioned on the exit code would have
+  moved 118 GB of Elden Ring to the Recycle Bin while the user was still deciding — and would have
+  done the same after they pressed Cancel. Epic and several other launchers hand off the same way.
+
+  The exit code is not the evidence; the machine is. After the uninstaller returns, Nostos
+  re-enumerates, and if the program is still registered it is still installed: nothing is swept,
+  and the row says to finish in the launcher and come back.
+
+  Found by dry-running the scan across all 106 programs on a real machine and reading what it
+  proposed, which is also how two other bad proposals turned up: Store packages putting their own
+  directory under `Program Files\WindowsApps` forward as a leftover, and the Store package called
+  "DirectX" putting forward `HKLM\SOFTWARE\Microsoft\DirectX`, which is Windows' own key. The scan
+  now runs only over Win32 installers, and `WindowsApps` is refused outright.
+- One program's missing artwork can no longer empty the whole list. Decoding a package's PNG
+  needs Avalonia's render interface, which does not exist in a headless test run; the exception
+  escaped the row's constructor, emptied the collection and left the tab blank. Found by test.
+  An icon is decoration and the list is the feature, so a failure there now falls through to the
+  monogram.
+- The installed-programs list is filled on the UI thread. Filling a bound `ObservableCollection`
+  from the thread pool crashed the window with "Collection was modified; enumeration operation may
+  not execute", thrown from inside Avalonia's own item generator as it walked the list being
+  rebuilt underneath it. The three-hundred-key registry walk still happens off-thread; only the
+  collection and the icon bitmaps come back.
+
 ## 0.2.0 - 2026-08-31
 
 ### Added

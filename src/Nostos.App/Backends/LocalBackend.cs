@@ -1,3 +1,5 @@
+using Nostos.Win32.Apps;
+using Nostos.Win32.Cleanup;
 using Nostos.Core.Localization;
 using Nostos.Core;
 using Nostos.Core.Abstractions;
@@ -236,6 +238,130 @@ public sealed class LocalBackend : ILocalBackend
         await StartupJournal.RecordAsync(_journal, item.Id, item.Name, enabled, ct).ConfigureAwait(false);
 
         return new StartupSetResult(id, true, enabled ? "enabled" : "disabled");
+    }
+
+    /// <summary>
+    /// Uninstalls a program in this process, and records what happened.
+    ///
+    /// In-process even for a machine-wide program, and deliberately so: an uninstaller that
+    /// needs administrator rights raises its own UAC prompt, exactly as it would from Programs
+    /// and Features. Routing it through the LocalSystem service instead would run somebody
+    /// else's setup.exe as SYSTEM with no desktop to draw on, which is both less safe and less
+    /// likely to work.
+    ///
+    /// The id is resolved against the live machine rather than trusted, so a caller cannot use
+    /// this to run an arbitrary command: an id that is not currently an installed program is
+    /// refused before anything starts.
+    /// </summary>
+    /// <summary>Measures every cleanup target, off the calling thread.</summary>
+    public Task<IReadOnlyList<CleanupFinding>> ScanCleanupAsync(CancellationToken ct = default)
+        => Task.Run(() => Cleanup.Scan(Cleanup.IsElevated), ct);
+
+    /// <summary>
+    /// Empties one target.
+    ///
+    /// The id is resolved against the catalogue rather than trusted, exactly as an app id is
+    /// resolved against the machine before a removal: an id that names nothing is refused, and a
+    /// caller can therefore never point this at a folder of its choosing.
+    /// </summary>
+    public Task<CleanupResult> CleanAsync(
+        string targetId,
+        Func<string, Task>? onProgress = null,
+        CancellationToken ct = default)
+    {
+        if (CleanupTargets.All.FirstOrDefault(t =>
+                string.Equals(t.Id, targetId, StringComparison.OrdinalIgnoreCase)) is not { } target)
+        {
+            return Task.FromResult(new CleanupResult(targetId, 0, 0, 0, ["no such cleanup target"]));
+        }
+
+        return Task.Run(
+            () => Cleanup.Clean(
+                target,
+                Cleanup.IsElevated,
+                onProgress is null ? null : path => onProgress(path).GetAwaiter().GetResult(),
+                ct),
+            ct);
+    }
+
+    /// <summary>
+    /// Removes one item belonging to a program.
+    ///
+    /// Two checks, not one: the id has to resolve to something currently listed, and the path has
+    /// to be one of the things that program owns. Nothing is journalled unless the removal took
+    /// the row out of the list, which only removing the registration itself can do.
+    /// </summary>
+    public async Task<RemovalReport> RemoveItemAsync(
+        string appId,
+        string path,
+        Func<RemovalProgress, Task>? onProgress = null,
+        CancellationToken ct = default)
+    {
+        if (InstalledApps.Find(appId) is not { } app)
+            return new RemovalReport(appId, appId, false, false, 0, 0, 0, [], ["no such program is listed"]);
+
+        var report = await AppRemoval.RemoveItemAsync(app, path, onProgress, ct).ConfigureAwait(false);
+
+        if (!AppRemoval.StillInstalled(app))
+        {
+            await RemovalJournal
+                .RecordAsync(_journal, app.Id, app.Name, report.FoldersRecycled, report.KeysRemoved, ct)
+                .ConfigureAwait(false);
+        }
+
+        return report;
+    }
+
+    /// <summary>
+    /// Removes a registration that outlived its program.
+    ///
+    /// Resolved against the live machine like every other removal, so an id that is not
+    /// currently registered is refused before anything is touched.
+    /// </summary>
+    public async Task<RemovalReport> ForgetAppAsync(
+        string appId,
+        Func<RemovalProgress, Task>? onProgress = null,
+        CancellationToken ct = default)
+    {
+        if (InstalledApps.Find(appId) is not { } app)
+            return new RemovalReport(appId, appId, false, false, 0, 0, 0, [], ["no such program is listed"]);
+
+        var report = await AppRemoval.ForgetAsync(app, onProgress, ct).ConfigureAwait(false);
+
+        // Recorded on the same terms as a removal: only when the row actually went. A journal
+        // line saying an entry was removed while it is still in the list would be a lie about
+        // the machine, which is the one thing this log must not contain.
+        if (!AppRemoval.StillInstalled(app))
+        {
+            await RemovalJournal
+                .RecordAsync(_journal, app.Id, app.Name, report.FoldersRecycled, report.KeysRemoved, ct)
+                .ConfigureAwait(false);
+        }
+
+        return report;
+    }
+
+    public async Task<RemovalReport> RemoveAppAsync(
+        string appId,
+        Func<RemovalProgress, Task>? onProgress = null,
+        CancellationToken ct = default)
+    {
+        if (InstalledApps.Find(appId) is not { } app)
+            return new RemovalReport(appId, appId, false, false, 0, 0, 0, [], ["no such program is installed"]);
+
+        var report = await AppRemoval.RemoveAsync(app, sweep: true, onProgress, ct).ConfigureAwait(false);
+
+        // Recorded only when the program actually went. The history is an account of what
+        // happened to the machine, not of what was attempted, and a cancelled uninstall that
+        // wrote a line saying otherwise would be the one kind of lie this log must not contain.
+        if (!AppRemoval.StillInstalled(app))
+        {
+            await RemovalJournal
+                .RecordAsync(_journal, app.Id, app.Name, report.FoldersRecycled, report.KeysRemoved, ct)
+                .ConfigureAwait(false);
+        }
+
+        return report;
     }
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;

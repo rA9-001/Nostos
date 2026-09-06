@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Nostos.App.ViewModels"
         xmlns:views="using:Nostos.App.Views"
@@ -10,8 +10,8 @@
         x:DataType="vm:MainWindowViewModel"
         Title="Nostos"
         WindowState="Maximized"
-        Width="1180" Height="780"
-        MinWidth="960" MinHeight="640"
+        Width="1260" Height="840"
+        MinWidth="1024" MinHeight="690"
         FontFamily="Segoe UI Variable Text, Segoe UI"
         Foreground="{DynamicResource TextPrimary}"
         Background="{DynamicResource WindowBackground}"
@@ -72,10 +72,10 @@
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="7"
                     VerticalAlignment="Center">
           <Border Classes="chip">
-            <TextBlock Classes="muted" FontSize="11" Text="{Binding ConnectionText}" />
+            <TextBlock Classes="muted" FontSize="{DynamicResource FontDetail}" Text="{Binding ConnectionText}" />
           </Border>
           <Border Classes="chip">
-            <TextBlock Classes="muted" FontSize="11" Text="{Binding OutstandingText}" />
+            <TextBlock Classes="muted" FontSize="{DynamicResource FontDetail}" Text="{Binding OutstandingText}" />
           </Border>
         </StackPanel>
 
@@ -128,10 +128,10 @@
           </Border>
 
           <StackPanel Spacing="3">
-            <TextBlock Text="{Binding ActivityTitle}" FontWeight="SemiBold" FontSize="14"
+            <TextBlock Text="{Binding ActivityTitle}" FontWeight="SemiBold" FontSize="{DynamicResource FontLead}"
                        TextTrimming="CharacterEllipsis"
                        Foreground="{Binding StatusIsError, Converter={x:Static views:BoolBrushes.ErrorNormal}}" />
-            <TextBlock Text="{Binding ActivityDetail}" Classes="muted" FontSize="12"
+            <TextBlock Text="{Binding ActivityDetail}" Classes="muted" FontSize="{DynamicResource FontSecondary}"
                        TextTrimming="CharacterEllipsis" />
 
             <!-- Always present at a fixed height, so its arrival never resizes anything. It
@@ -218,7 +218,7 @@
                                are three or four lines of prose, and a line of prose 1,800
                                pixels wide is one the eye loses its place in on the way back
                                to the left. -->
-                          <StackPanel Spacing="7" MaxWidth="900" HorizontalAlignment="Left">
+                          <StackPanel Spacing="7" MaxWidth="980" HorizontalAlignment="Left">
                             <StackPanel Orientation="Horizontal" Spacing="10">
                               <Path Width="9" Height="9" Stretch="Uniform"
                                     VerticalAlignment="Center"
@@ -245,7 +245,15 @@
                               </Border>
                             </StackPanel>
                             <TextBlock Text="{Binding Description}" TextWrapping="Wrap"
-                                       Classes="muted" LineHeight="19" />
+                                       Classes="muted" LineHeight="22" />
+
+                            <!-- Before Apply is pressed rather than as forty rows marked
+                                 skipped afterwards. A profile is a batch, and a batch that
+                                 will mostly be refused is worth saying out loud. -->
+                            <TextBlock Text="{Binding AdminNote}" TextWrapping="Wrap"
+                                       FontSize="{DynamicResource FontDetail}" LineHeight="20"
+                                       Foreground="{DynamicResource Warning}"
+                                       IsVisible="{Binding HasAdminNote}" />
                           </StackPanel>
                         </Button>
 
@@ -271,7 +279,7 @@
                         <ProgressBar Height="3" Minimum="0" Maximum="1"
                                      Value="{Binding ProgressFraction}"
                                      IsIndeterminate="{Binding !HasCountedProgress}" />
-                        <TextBlock Classes="faint" FontSize="11"
+                        <TextBlock Classes="faint" FontSize="{DynamicResource FontDetail}"
                                    Text="{Binding ProgressText}"
                                    IsVisible="{Binding HasCountedProgress}" />
                       </StackPanel>
@@ -294,7 +302,7 @@
                                   <Grid ColumnDefinitions="*,Auto" Margin="14,0,0,6">
                                     <TextBlock Grid.Column="0" Classes="section"
                                                Text="{Binding Name}" />
-                                    <TextBlock Grid.Column="1" Classes="faint" FontSize="10"
+                                    <TextBlock Grid.Column="1" Classes="faint" FontSize="{DynamicResource FontLabel}"
                                                VerticalAlignment="Center"
                                                Text="{Binding CountText}" />
                                   </Grid>
@@ -326,7 +334,7 @@
                                                reader to believe it. -->
                                           <Panel Grid.Column="1" Width="26"
                                                  VerticalAlignment="Center">
-                                            <TextBlock FontSize="12"
+                                            <TextBlock FontSize="{DynamicResource FontSecondary}"
                                                        HorizontalAlignment="Center"
                                                        VerticalAlignment="Center"
                                                        IsVisible="{Binding HasGlyph}"
@@ -380,6 +388,16 @@
           <views:UpdatesView Classes="page" />
         </TabItem>
 
+        <!-- After the Windows pages, because this one is about the programs you chose to put
+             on the machine rather than about what Windows does on its own. -->
+        <TabItem Header="{loc:Tr tab.apps}">
+          <views:AppsView Classes="page" />
+        </TabItem>
+
+        <TabItem Header="{loc:Tr tab.cleanup}">
+          <views:CleanupView Classes="page" />
+        </TabItem>
+
         <TabItem Header="{loc:Tr tab.history}">
           <views:HistoryView Classes="page" />
         </TabItem>
@@ -392,11 +410,11 @@
          Everything the user would otherwise have had to do by hand happens behind this
          panel: folders, default profiles, service install, connection.                     -->
     <Border Classes="scrim" IsVisible="{Binding IsSettingUp}">
-      <Border Classes="dialog" Padding="30" Width="460"
+      <Border Classes="dialog" Padding="30" Width="508"
               HorizontalAlignment="Center" VerticalAlignment="Center">
         <StackPanel Spacing="18">
           <StackPanel Spacing="5">
-            <TextBlock Text="{loc:Tr setup.title}" FontSize="20" FontWeight="Bold" />
+            <TextBlock Text="{loc:Tr setup.title}" FontSize="{DynamicResource FontDisplay}" FontWeight="Bold" />
             <TextBlock Classes="muted" TextWrapping="Wrap"
                        Text="{loc:Tr setup.detail}" />
           </StackPanel>
@@ -404,8 +422,8 @@
           <ItemsControl ItemsSource="{Binding SetupSteps}">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="startup:StartupStep">
-                <Grid ColumnDefinitions="26,*" Margin="0,5">
-                  <TextBlock Grid.Column="0" Text="{Binding Glyph}" FontSize="14"
+                <Grid ColumnDefinitions="30,*" Margin="0,5">
+                  <TextBlock Grid.Column="0" Text="{Binding Glyph}" FontSize="{DynamicResource FontLead}"
                              VerticalAlignment="Center"
                              Foreground="{Binding Status, Converter={x:Static views:StepBrushes.ForStatus}}" />
                   <StackPanel Grid.Column="1" Spacing="2">
@@ -428,7 +446,7 @@
          An overlay rather than a fourth tab. Everything in the tab strip is about the
          machine; these two things are about the program, and one of them deletes it.       -->
     <Border Classes="scrim" IsVisible="{Binding ShowSettings}">
-      <Border Classes="dialog" Width="700" MaxHeight="760" Margin="0,26"
+      <Border Classes="dialog" Width="752" MaxHeight="800" Margin="0,26"
               HorizontalAlignment="Center" VerticalAlignment="Center"
               ClipToBounds="True">
         <DockPanel>
@@ -441,10 +459,10 @@
                     Width="17" Height="17" Fill="{DynamicResource AccentBright}"
                     HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Border>
-            <TextBlock Grid.Column="1" Text="{loc:Tr settings.title}" FontSize="18" FontWeight="Bold"
+            <TextBlock Grid.Column="1" Text="{loc:Tr settings.title}" FontSize="{DynamicResource FontDialog}" FontWeight="Bold"
                        VerticalAlignment="Center" />
-            <Button Grid.Column="2" Classes="icon ghost" Content="✕"
-                    FontSize="14" Command="{Binding CloseSettingsCommand}" />
+            <Button Grid.Column="2" Classes="icon ghost" Content="âœ•"
+                    FontSize="{DynamicResource FontLead}" Command="{Binding CloseSettingsCommand}" />
           </Grid>
 
           <Border DockPanel.Dock="Top" Height="1" Background="{DynamicResource Stroke}" />
@@ -477,7 +495,7 @@
                   Width="9" Height="9" Fill="#FFFFFF"
                   HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>
-          <TextBlock Text="Nostos" FontSize="13" FontWeight="Bold"
+          <TextBlock Text="Nostos" FontSize="{DynamicResource FontBody}" FontWeight="Bold"
                      Foreground="{DynamicResource WordmarkFill}"
                      VerticalAlignment="Center" />
         </StackPanel>

@@ -34,7 +34,7 @@
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="FontWeight" Value="Normal" />
-      <Setter Property="FontSize" Value="13" />
+      <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
 
       <!-- The base Button theme shrinks on press, which is right for a 90px button and wrong for
            one the width of the window: the whole list appears to flinch. -->
@@ -94,7 +94,7 @@
     <DockPanel>
 
       <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="14,2,14,16">
-        <StackPanel Grid.Column="0" Spacing="4" MaxWidth="820" HorizontalAlignment="Left">
+        <StackPanel Grid.Column="0" Spacing="4" MaxWidth="900" HorizontalAlignment="Left">
           <StackPanel Orientation="Horizontal" Spacing="10">
             <TextBlock Classes="title" VerticalAlignment="Center"
                        Text="{loc:Tr startup.heading}" />
@@ -103,7 +103,7 @@
                          Foreground="{DynamicResource Muted}" />
             </Border>
           </StackPanel>
-          <TextBlock Classes="muted" TextWrapping="Wrap" LineHeight="19"
+          <TextBlock Classes="muted" TextWrapping="Wrap" LineHeight="22"
                      Text="{loc:Tr startup.blurb}" />
 
           <!-- Says outright what the rows do. The affordance should carry this on its own and
@@ -153,7 +153,7 @@
                        starts with my PC" in one movement, which is the question the tab exists
                        for; everything else on the row is detail you only want once you have
                        found the program you were looking for. -->
-                  <Border Grid.Column="0" Width="3" Height="30" CornerRadius="2"
+                  <Border Grid.Column="0" Width="3" Height="34" CornerRadius="2"
                           VerticalAlignment="Center"
                           IsVisible="{Binding IsEnabled}"
                           Background="{DynamicResource RiskSafe}" />
@@ -177,7 +177,7 @@
                     <!-- The path under the name, because a Run value's name is chosen by whoever
                          wrote the installer: "RtkAudUService" and "Update.exe" mean nothing on
                          their own, and where a thing came from is what identifies it. -->
-                    <TextBlock Classes="faint mono" FontSize="11"
+                    <TextBlock Classes="faint mono" FontSize="{DynamicResource FontDetail}"
                                TextTrimming="CharacterEllipsis"
                                Text="{Binding Path}" />
                   </StackPanel>
@@ -191,7 +191,15 @@
                       <TextBlock Classes="chiptext" Text="{Binding ScopeText}"
                                  Foreground="{DynamicResource Muted}" />
                     </Border>
-                    <TextBlock Classes="faint" FontSize="10" HorizontalAlignment="Right"
+
+                    <!-- The switch stays, and says what would let it move. -->
+                    <Border Classes="chip" HorizontalAlignment="Right"
+                            Background="{DynamicResource WarningTint}"
+                            IsVisible="{Binding NeedsAdmin}">
+                      <TextBlock Classes="chiptext" Text="{loc:Tr admin.badge}"
+                                 Foreground="{DynamicResource Warning}" />
+                    </Border>
+                    <TextBlock Classes="faint" FontSize="{DynamicResource FontLabel}" HorizontalAlignment="Right"
                                Text="{Binding Location}" />
                   </StackPanel>
 

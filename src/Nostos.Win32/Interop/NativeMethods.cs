@@ -175,6 +175,14 @@ internal static partial class NativeMethods
         internal IntPtr hbmColor;
     }
 
+    // Pulls the icon straight out of a file's resources, which SHGetFileInfo will not do when the
+    // file has no extension for the shell to recognise it by. Windows Installer's cached product
+    // icons are exactly that: several are named "ProductICO" or "ARPIco", with no extension at
+    // all, and the shell answers for those with a blank-page icon rather than nothing.
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    internal static extern int ExtractIconExW(
+        string file, int index, IntPtr[]? large, IntPtr[]? small, int count);
+
     [LibraryImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool GetIconInfo(IntPtr icon, out IconInfo info);

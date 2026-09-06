@@ -36,7 +36,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource StrokeSoft}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource CornerControl}" />
-    <Setter Property="Padding" Value="11,9" />
+    <Setter Property="Padding" Value="12,10" />
   </Style>
 
   <!-- ======================================================================== rows ==
@@ -54,7 +54,7 @@
     <Setter Property="BorderBrush" Value="Transparent" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource CornerCard}" />
-    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="Padding" Value="13,11" />
     <Setter Property="Transitions">
       <Transitions>
         <BrushTransition Property="Background" Duration="0:0:0.16" Easing="CubicEaseOut" />
@@ -156,29 +156,30 @@
 
   <Style Selector="TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
-    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
   </Style>
 
   <Style Selector="TextBlock.title">
-    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontSize" Value="{DynamicResource FontTitle}" />
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
   <Style Selector="TextBlock.muted">
     <Setter Property="Foreground" Value="{DynamicResource Muted}" />
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="{DynamicResource FontSecondary}" />
   </Style>
 
   <Style Selector="TextBlock.faint">
     <Setter Property="Foreground" Value="{DynamicResource TextFaint}" />
-    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontSize" Value="{DynamicResource FontDetail}" />
   </Style>
 
-  <!-- The small capitals that label a group of things. Tracked out, because capitals set at
-       11px with normal spacing read as a solid block rather than as words. -->
+  <!-- The small capitals that label a group of things. Tracked out, because capitals set this
+       small with normal spacing read as a solid block rather than as words. Size comes from the
+       scale in Palette.axaml, so it is tracked whatever that scale is set to. -->
   <Style Selector="TextBlock.section">
     <Setter Property="Foreground" Value="{DynamicResource TextFaint}" />
-    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontSize" Value="{DynamicResource FontLabel}" />
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="LetterSpacing" Value="1.2" />
   </Style>
@@ -186,7 +187,7 @@
   <!-- Anything quoted verbatim from the machine: registry values, ids, paths. -->
   <Style Selector="TextBlock.mono">
     <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, monospace" />
-    <Setter Property="FontSize" Value="11" />
+    <Setter Property="FontSize" Value="{DynamicResource FontDetail}" />
     <Setter Property="Foreground" Value="{DynamicResource Muted}" />
   </Style>
 
@@ -198,12 +199,12 @@
 
   <Style Selector="Border.chip">
     <Setter Property="CornerRadius" Value="{DynamicResource CornerPill}" />
-    <Setter Property="Padding" Value="9,3" />
+    <Setter Property="Padding" Value="10,4" />
     <Setter Property="Background" Value="{DynamicResource SurfaceHover}" />
   </Style>
 
   <Style Selector="TextBlock.chiptext">
-    <Setter Property="FontSize" Value="10" />
+    <Setter Property="FontSize" Value="{DynamicResource FontLabel}" />
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="LetterSpacing" Value="0.4" />
     <Setter Property="HorizontalAlignment" Value="Center" />
@@ -223,8 +224,8 @@
     <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
     <Setter Property="SelectionBrush" Value="{DynamicResource AccentTint}" />
     <Setter Property="CaretBrush" Value="{DynamicResource AccentBright}" />
-    <Setter Property="Padding" Value="11,8" />
-    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Padding" Value="12,9" />
+    <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
     <Setter Property="MinHeight" Value="0" />
   </Style>
 
@@ -241,7 +242,7 @@
     <Setter Property="BorderBrush" Value="{DynamicResource Stroke}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource CornerControl}" />
-    <Setter Property="Padding" Value="11,8" />
+    <Setter Property="Padding" Value="12,9" />
     <Setter Property="Transitions">
       <Transitions>
         <BrushTransition Property="BorderBrush" Duration="0:0:0.16" Easing="CubicEaseOut" />
@@ -258,8 +259,8 @@
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="{DynamicResource CornerControl}" />
     <Setter Property="Foreground" Value="{DynamicResource TextPrimary}" />
-    <Setter Property="Padding" Value="12,8" />
-    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Padding" Value="12,9" />
+    <Setter Property="FontSize" Value="{DynamicResource FontBody}" />
   </Style>
 
   <Style Selector="ProgressBar">
@@ -295,8 +296,8 @@
        Avalonia has no ring progress control and a straight indeterminate bar reads as "the
        whole window is busy", which is the wrong message for one row out of eighty four. -->
   <Style Selector="Ellipse.spinner">
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Height" Value="16" />
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
     <Setter Property="StrokeThickness" Value="2" />
     <Setter Property="StrokeDashArray" Value="3.2,2.2" />
     <Setter Property="StrokeLineCap" Value="Round" />

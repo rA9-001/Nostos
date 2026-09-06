@@ -1,3 +1,5 @@
+using Nostos.Win32.Apps;
+using Nostos.Win32.Cleanup;
 using Nostos.Core.Localization;
 using Nostos.Core.Engine;
 using Nostos.Ipc;
@@ -94,6 +96,48 @@ public sealed class ServiceBackend : IOptimizerBackend
 
     public async Task<IReadOnlyList<ProfileSummary>> GetProfilesAsync(CancellationToken ct = default)
         => await _client.ProfilesAsync(ct).ConfigureAwait(false);
+
+    /// <summary>
+    /// Not over the pipe. Removing a program means running somebody else's uninstaller, and the
+    /// one process that must never do that is the LocalSystem service.
+    ///
+    /// In practice this is not reached: the app wraps this backend in <see cref="SplitBackend"/>,
+    /// which sends removals to the local half. It refuses rather than silently doing nothing, so
+    /// a future caller finds out here rather than from a row that never changes.
+    /// </summary>
+    public Task<RemovalReport> RemoveAppAsync(
+        string appId, Func<RemovalProgress, Task>? onProgress = null, CancellationToken ct = default)
+        => Task.FromResult(new RemovalReport(
+            appId, appId, false, false, 0, 0, 0, [],
+            ["the service does not run uninstallers; this has to be done by the app"]));
+
+    /// <summary>Not over the pipe either, for the same reason: the app owns removals.</summary>
+    public Task<RemovalReport> ForgetAppAsync(
+        string appId, Func<RemovalProgress, Task>? onProgress = null, CancellationToken ct = default)
+        => Task.FromResult(new RemovalReport(
+            appId, appId, false, false, 0, 0, 0, [],
+            ["the service does not remove registrations; this has to be done by the app"]));
+
+    /// <summary>Nor this one.</summary>
+    public Task<RemovalReport> RemoveItemAsync(
+        string appId, string path, Func<RemovalProgress, Task>? onProgress = null,
+        CancellationToken ct = default)
+        => Task.FromResult(new RemovalReport(
+            appId, appId, false, false, 0, 0, 0, [],
+            ["the service does not remove app files or keys; this has to be done by the app"]));
+
+    /// <summary>
+    /// Also not over the pipe. Every cleanup target is either inside a user's own profile --
+    /// which a LocalSystem service is the wrong process to be walking -- or needs an elevated
+    /// launch of the app, so there is nothing here the service could do that the app cannot.
+    /// </summary>
+    public Task<IReadOnlyList<CleanupFinding>> ScanCleanupAsync(CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<CleanupFinding>>([]);
+
+    public Task<CleanupResult> CleanAsync(
+        string targetId, Func<string, Task>? onProgress = null, CancellationToken ct = default)
+        => Task.FromResult(new CleanupResult(
+            targetId, 0, 0, 0, ["the service does not empty caches; this has to be done by the app"]));
 
     /// <summary>
     /// The service applies the whole profile in one call, so there is nothing to report as it

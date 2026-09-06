@@ -23,7 +23,7 @@
         <StackPanel Orientation="Horizontal" Spacing="12">
           <TextBlock Classes="muted" Text="{loc:Tr settings.language.label}"
                      VerticalAlignment="Center" />
-          <ComboBox Width="260"
+          <ComboBox Width="292"
                     ItemsSource="{Binding Languages}"
                     SelectedItem="{Binding SelectedLanguage, Mode=TwoWay}">
             <ComboBox.ItemTemplate>
@@ -53,7 +53,7 @@
         <StackPanel Orientation="Horizontal" Spacing="12"
                     IsEnabled="{Binding CadenceEnabled}">
           <TextBlock Classes="muted" Text="{loc:Tr settings.howoften}" VerticalAlignment="Center" />
-          <ComboBox Width="260"
+          <ComboBox Width="292"
                     ItemsSource="{Binding Cadences}"
                     SelectedItem="{Binding SelectedCadence, Mode=TwoWay}">
             <ComboBox.ItemTemplate>

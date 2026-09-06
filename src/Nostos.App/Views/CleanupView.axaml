@@ -1,0 +1,132 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nostos.App.ViewModels"
+             xmlns:loc="using:Nostos.App.Localization"
+             x:DataType="vm:MainWindowViewModel"
+             x:CompileBindings="True"
+             x:Class="Nostos.App.Views.CleanupView">
+
+  <UserControl.Styles>
+    <Style Selector="Border.cleanrow">
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="{DynamicResource SurfaceFlat}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource Stroke}" />
+      <Setter Property="BorderThickness" Value="1" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="panel" Padding="10,14,10,10">
+    <DockPanel LastChildFill="True">
+
+      <!-- ================================================================= header -->
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="14,0,14,10">
+        <StackPanel Grid.Column="0" Spacing="4" MaxWidth="960" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Classes="title" VerticalAlignment="Center" Text="{loc:Tr clean.heading}" />
+            <Border Classes="chip" VerticalAlignment="Center">
+              <TextBlock Classes="chiptext" Text="{Binding CleanupSummary}" />
+            </Border>
+          </StackPanel>
+
+          <TextBlock Classes="faint" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap" LineHeight="19"
+                     Text="{loc:Tr clean.blurb}" />
+
+          <!-- The four machine-wide places are measured whether or not they can be emptied,
+               and this is where that measurement is worth something: "2 GB more if you start
+               this as administrator" is a thing somebody can act on. -->
+          <TextBlock FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap" LineHeight="19"
+                     Foreground="{DynamicResource Warning}"
+                     IsVisible="{Binding HasCleanupAdminNote}"
+                     Text="{Binding CleanupAdminNote}" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8"
+                    VerticalAlignment="Top" Margin="20,0,0,0">
+          <Button Content="{loc:Tr clean.scan}"
+                  IsEnabled="{Binding !IsScanningCleanup}"
+                  Command="{Binding ScanCleanupCommand}" />
+          <Button Classes="danger" Content="{loc:Tr clean.cleanall}"
+                  IsEnabled="{Binding CanCleanAnything}"
+                  Command="{Binding CleanAllCommand}" />
+        </StackPanel>
+      </Grid>
+
+      <!-- ================================================================= footer -->
+      <Border DockPanel.Dock="Bottom" Classes="inset" Margin="14,10,14,4">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="muted" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap" LineHeight="19"
+                     Text="{loc:Tr clean.note.deleted}" />
+          <TextBlock Classes="faint" FontSize="{DynamicResource FontLabel}" TextWrapping="Wrap" LineHeight="18"
+                     Text="{Binding CleanupNever}" />
+        </StackPanel>
+      </Border>
+
+      <TextBlock DockPanel.Dock="Top" Classes="muted" FontSize="{DynamicResource FontDetail}" Margin="14,0,14,8"
+                 Text="{loc:Tr clean.scanning}" IsVisible="{Binding IsScanningCleanup}" />
+
+      <ScrollViewer>
+        <ItemsControl ItemsSource="{Binding Cleanup}" Margin="14,0,14,4">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:CleanupItemViewModel">
+
+              <Border Classes="cleanrow" Margin="0,0,0,6" Opacity="{Binding RowOpacity}"
+                      IsVisible="{Binding HasAnything}">
+                <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="14">
+
+                  <StackPanel Grid.Column="0" Spacing="3">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                      <Border Classes="chip" VerticalAlignment="Center">
+                        <TextBlock Classes="chiptext" Text="{Binding GroupName}"
+                                   Foreground="{DynamicResource Muted}" />
+                      </Border>
+
+                      <!-- Said before the button is pressed, not after it fails. -->
+                      <Border Classes="chip" VerticalAlignment="Center"
+                              IsVisible="{Binding NeedsAdmin}"
+                              Background="{DynamicResource WarningTint}">
+                        <TextBlock Classes="chiptext" Text="{loc:Tr admin.badge}"
+                                   Foreground="{DynamicResource Warning}" />
+                      </Border>
+                    </StackPanel>
+
+                    <!-- What it costs to lose. Every row has one, because a size and a button
+                         with no stated cost is asking somebody to gamble with their machine. -->
+                    <TextBlock Classes="faint" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap" LineHeight="19"
+                               Text="{Binding Cost}" />
+
+                    <SelectableTextBlock Classes="faint" FontSize="{DynamicResource FontLabel}"
+                                         FontFamily="Consolas,Cascadia Mono,monospace"
+                                         Text="{Binding Path}" />
+
+                    <TextBlock Classes="muted" FontSize="{DynamicResource FontDetail}" Margin="0,2,0,0"
+                               IsVisible="{Binding HasStatus}" Text="{Binding StatusText}" />
+                  </StackPanel>
+
+                  <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center"
+                              HorizontalAlignment="Right" MinWidth="138">
+                    <TextBlock Text="{Binding SizeText}" FontWeight="SemiBold"
+                               HorizontalAlignment="Right" />
+                    <TextBlock Classes="faint" FontSize="{DynamicResource FontLabel}" HorizontalAlignment="Right"
+                               Text="{Binding CountText}" />
+                  </StackPanel>
+
+                  <Panel Grid.Column="2" MinWidth="98" VerticalAlignment="Center">
+                    <Button Classes="danger" HorizontalAlignment="Right"
+                            IsVisible="{Binding ShowsCleanButton}"
+                            Content="{loc:Tr clean.clean}"
+                            Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).CleanItemCommand}"
+                            CommandParameter="{Binding}" />
+                    <Ellipse Classes="spinner" IsVisible="{Binding IsWorking}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Panel>
+                </Grid>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </DockPanel>
+  </Border>
+</UserControl>

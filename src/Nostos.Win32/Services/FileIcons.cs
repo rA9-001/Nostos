@@ -44,6 +44,58 @@ public static class FileIcons
                              | NativeMethods.ShgfiUseFileAttributes);
     }
 
+    /// <summary>
+    /// The icon inside a file that is known to carry one -- an .ico, an .exe or a .dll -- read
+    /// without consulting the file's extension.
+    ///
+    /// <see cref="TryRead"/> cannot do this. It asks the shell, and the shell answers from the
+    /// extension: a file with none gets the blank-page icon, which is worse than nothing because
+    /// it is not null and so ends the search. Windows Installer's cached product icons are
+    /// routinely extensionless -- "ProductICO", "ARPIco" -- so the one place a redistributable's
+    /// artwork actually lives is the one place the shell will not look.
+    /// </summary>
+    public static IconPixels? TryReadResource(string? path)
+    {
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+            return null;
+
+        var large = new IntPtr[1];
+
+        try
+        {
+            if (NativeMethods.ExtractIconExW(path, 0, large, null, 1) <= 0 || large[0] == IntPtr.Zero)
+                return TryRead(path);
+
+            try
+            {
+                return FromIcon(large[0]) ?? TryRead(path);
+            }
+            finally
+            {
+                NativeMethods.DestroyIcon(large[0]);
+            }
+        }
+        catch (Exception e) when (e is InvalidOperationException or OutOfMemoryException
+                                      or IOException or UnauthorizedAccessException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The icon Windows draws for a kind of file, from the extension alone.
+    ///
+    /// Nothing is opened and no such file need exist: SHGFI_USEFILEATTRIBUTES tells the shell to
+    /// answer from the name, which is exactly what is wanted here. It is how a program that
+    /// ships no artwork of its own can still be drawn as what it is.
+    /// </summary>
+    public static IconPixels? TryReadFileType(string extension)
+        => string.IsNullOrWhiteSpace(extension)
+            ? null
+            : Read("package" + extension,
+                NativeMethods.ShgfiIcon | NativeMethods.ShgfiLargeIcon
+                | NativeMethods.ShgfiUseFileAttributes);
+
     private static IconPixels? Read(string path, uint flags)
     {
         var info = new NativeMethods.ShFileInfo();

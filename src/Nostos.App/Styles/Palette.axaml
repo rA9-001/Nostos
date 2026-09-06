@@ -146,6 +146,30 @@
        it is up and a half visible window invites the reader to try. -->
   <SolidColorBrush x:Key="Scrim">#E60A0C13</SolidColorBrush>
 
+  <!-- ==================================================================== type ==
+
+       One scale, named by what a thing is rather than by how big it is, for the same reason
+       the corner radii below are: a size picked per element is a size that drifts, and this
+       window had drifted to six different literals between 10 and 15px.
+
+       Every value here went up by two to four points from where it started. The first version
+       was designed at a comfortable reading distance on a large display and was genuinely hard
+       to read anywhere else — the annotations under a row, at 10 and 11px, were the worst of
+       it, and those are the lines carrying the explanations this program is mostly made of.
+
+       The steps between them are what carries the hierarchy, so they all move together: what
+       was quieter than the body text still is.                                               -->
+
+  <x:Double x:Key="FontLabel">12</x:Double>      <!-- chips, small-caps section labels -->
+  <x:Double x:Key="FontDetail">13</x:Double>     <!-- paths, ids, counts, annotations -->
+  <x:Double x:Key="FontSecondary">14</x:Double>  <!-- the muted line under something -->
+  <x:Double x:Key="FontBody">15</x:Double>       <!-- prose, buttons, inputs, tabs -->
+  <x:Double x:Key="FontLead">16</x:Double>       <!-- a row's own name -->
+  <x:Double x:Key="FontTitle">17</x:Double>      <!-- a card's title -->
+  <x:Double x:Key="FontHeading">19</x:Double>    <!-- the detail panel's heading -->
+  <x:Double x:Key="FontDialog">21</x:Double>     <!-- a dialog's title -->
+  <x:Double x:Key="FontDisplay">24</x:Double>    <!-- the first-run panel -->
+
   <!-- ======================================================================== shape ==
 
        Four radii, applied consistently: panels, cards, controls, pills. The whole scheme is

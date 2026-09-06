@@ -2,6 +2,8 @@ using Nostos.App.Backends;
 using Nostos.Core.Abstractions;
 using Nostos.Core.Engine;
 using Nostos.Ipc;
+using Nostos.Win32.Apps;
+using Nostos.Win32.Cleanup;
 
 namespace Nostos.App.Tests;
 
@@ -31,12 +33,13 @@ public class FakeBackend : IOptimizerBackend
         string title = "Title",
         string summary = "Summary",
         IReadOnlyList<TweakChoice>? choices = null,
-        IReadOnlyList<string>? tags = null)
+        IReadOnlyList<string>? tags = null,
+        bool requiresElevation = true)
         => new(
             new TweakSummary(
                 id, title, summary, category,
                 TweakScope.Machine, TweakLifetime.Persistent, risk, evidence,
-                RequiresReboot: false, RequiresElevation: true, choices ?? [],
+                RequiresReboot: false, RequiresElevation: requiresElevation, choices ?? [],
                 TakesTargetProcess: null, Tags: tags),
             applied, managed, $"{id} state", applicable,
             applicable ? null : "not applicable here");
@@ -170,6 +173,96 @@ public class FakeBackend : IOptimizerBackend
 
         return results;
     }
+
+    /// <summary>Removal reports to hand back, keyed by app id.</summary>
+    public Dictionary<string, RemovalReport> RemovalResults { get; } = [];
+
+    /// <summary>Every app removal asked for, so a test can assert which row was acted on.</summary>
+    public List<string> AppsRemoved { get; } = [];
+
+    /// <summary>The stages to report, so a test can watch a row move through them.</summary>
+    public List<RemovalStage> RemovalStages { get; } =
+        [RemovalStage.Uninstalling, RemovalStage.Scanning, RemovalStage.Sweeping, RemovalStage.Finished];
+
+    public async Task<RemovalReport> RemoveAppAsync(
+        string appId, Func<RemovalProgress, Task>? onProgress = null, CancellationToken ct = default)
+    {
+        AppsRemoved.Add(appId);
+
+        foreach (var stage in RemovalStages)
+        {
+            if (onProgress is not null)
+                await onProgress(new RemovalProgress(stage, appId));
+        }
+
+        return RemovalResults.TryGetValue(appId, out var report)
+            ? report
+            : new RemovalReport(appId, appId, true, false, 0, 0, 0, [], []);
+    }
+
+    /// <summary>Ids the window asked to forget, kept apart from the ones it asked to remove.</summary>
+    public List<string> AppsForgotten { get; } = [];
+
+    public async Task<RemovalReport> ForgetAppAsync(
+        string appId, Func<RemovalProgress, Task>? onProgress = null, CancellationToken ct = default)
+    {
+        AppsForgotten.Add(appId);
+
+        foreach (var stage in RemovalStages.Where(s => s != RemovalStage.Uninstalling))
+        {
+            if (onProgress is not null)
+                await onProgress(new RemovalProgress(stage, appId));
+        }
+
+        return RemovalResults.TryGetValue(appId, out var report)
+            ? report
+            : new RemovalReport(appId, appId, false, false, 0, 1, 0, [], []);
+    }
+
+    /// <summary>Each (id, path) the window asked to remove on its own.</summary>
+    public List<(string Id, string Path)> ItemsRemoved { get; } = [];
+
+    /// <summary>What to answer for a given path, so a test can make one item fail.</summary>
+    public Dictionary<string, RemovalReport> ItemResults { get; } = new(StringComparer.OrdinalIgnoreCase);
+
+    public async Task<RemovalReport> RemoveItemAsync(
+        string appId, string path, Func<RemovalProgress, Task>? onProgress = null,
+        CancellationToken ct = default)
+    {
+        ItemsRemoved.Add((appId, path));
+
+        if (onProgress is not null)
+        {
+            await onProgress(new RemovalProgress(RemovalStage.Sweeping, path));
+            await onProgress(new RemovalProgress(RemovalStage.Finished, appId));
+        }
+
+        return ItemResults.TryGetValue(path, out var report)
+            ? report
+            : new RemovalReport(appId, appId, false, false, 1, 0, 0, [], []);
+    }
+
+    /// <summary>What the scan should answer. Empty unless a test sets it.</summary>
+    public List<CleanupFinding> CleanupFindings { get; } = [];
+
+    /// <summary>Target ids the window asked to empty, in order.</summary>
+    public List<string> Cleaned { get; } = [];
+
+    public Task<IReadOnlyList<CleanupFinding>> ScanCleanupAsync(CancellationToken ct = default)
+        => Task.FromResult<IReadOnlyList<CleanupFinding>>(CleanupFindings);
+
+    public Task<CleanupResult> CleanAsync(
+        string targetId, Func<string, Task>? onProgress = null, CancellationToken ct = default)
+    {
+        Cleaned.Add(targetId);
+
+        return Task.FromResult(CleanupResults.TryGetValue(targetId, out var result)
+            ? result
+            : new CleanupResult(targetId, 1024 * 1024, 3, 0, []));
+    }
+
+    /// <summary>What to answer for a given target, so a test can make one fail.</summary>
+    public Dictionary<string, CleanupResult> CleanupResults { get; } = new(StringComparer.OrdinalIgnoreCase);
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }

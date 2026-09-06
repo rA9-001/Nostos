@@ -11,6 +11,7 @@ public sealed class TweakItemViewModel : ObservableObject
 {
     private TweakStatusSummary _status;
     private bool _isBusy;
+    private bool _machineScopeAvailable = true;
     private string? _superHeader;
     private string? _superDescription;
     private string? _groupHeader;
@@ -50,13 +51,53 @@ public sealed class TweakItemViewModel : ObservableObject
         get => _status;
         set
         {
+            // A read that found the same machine changes nothing on the row, and saying so
+            // costs less than proving it. The catalog is re-read every five seconds for as long
+            // as the window is open, and each assignment used to invalidate every property of
+            // every one of eighty-nine rows -- a full re-layout of the list, four times a
+            // minute, to redraw exactly what was already there. What the machine actually
+            // reports changes rarely, and only then is it worth the work.
+            var changed = !SameState(_status, value);
             _status = value;
-            // Everything on this row is derived from the status record, so one refresh
+
+            // Everything on this row is derived from the status record, so one real change
             // invalidates the lot. Choices are deliberately not rebuilt here -- they hold the
             // user's selection, which a background refresh has no business resetting.
-            Raise(null);
+            if (changed)
+                Raise(null);
         }
     }
+
+    /// <summary>
+    /// Whether two reads say the same thing about the machine.
+    ///
+    /// Only the answers are compared, not the catalog entry they are attached to: the title,
+    /// risk and choices are static and arrive identical on every read, while the lists inside
+    /// them are rebuilt each time and so are never equal by reference. Comparing the record
+    /// wholesale would therefore always say "different" and this would do nothing.
+    /// </summary>
+    public static bool SameState(TweakStatusSummary left, TweakStatusSummary right)
+        => left.IsApplied == right.IsApplied
+           && left.IsManagedByUs == right.IsManagedByUs
+           && left.IsApplicable == right.IsApplicable
+           && string.Equals(left.StateDescription, right.StateDescription, StringComparison.Ordinal)
+           && string.Equals(left.NotApplicableReason, right.NotApplicableReason, StringComparison.Ordinal);
+
+    /// <summary>
+    /// True when this row's settings are the ones the catalog would have used anyway.
+    ///
+    /// The bulk read resolves every choice to its default, so a row still on its defaults has
+    /// already been read correctly and re-reading it asks the same question twice. Fifty of the
+    /// eighty-nine tweaks carry choices, which made fifty extra reads on every refresh -- fifty
+    /// round trips over the pipe on an installed copy, every five seconds, to be told what the
+    /// first answer already said.
+    /// </summary>
+    public bool UsesDefaultChoices => Choices.All(choice =>
+        string.Equals(
+            choice.Selected.Id,
+            _status.Tweak.Choices.FirstOrDefault(c =>
+                string.Equals(c.Id, choice.Id, StringComparison.OrdinalIgnoreCase))?.DefaultOption,
+            StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Re-reads every string on this row.
@@ -99,6 +140,42 @@ public sealed class TweakItemViewModel : ObservableObject
     /// </summary>
     public bool NeedsTarget => _status.Tweak.NeedsTarget;
     public bool RequiresReboot => _status.Tweak.RequiresReboot;
+
+    /// <summary>
+    /// Whether this copy has a way to make machine-wide changes: elevated, or with the service.
+    ///
+    /// Set by the window rather than worked out here, for the reason every other cross-cutting
+    /// fact on this row is: an installed copy reads its catalog over a pipe from a service, and
+    /// the row is built from what came across it. Whether that pipe leads anywhere privileged
+    /// is a property of the connection, which only the window knows.
+    ///
+    /// <para>Defaults to true so a row that nobody tells reads as ordinary. The failure this
+    /// avoids is a fresh row briefly claiming to need administrator rights it may well have.</para>
+    /// </summary>
+    public bool MachineScopeAvailable
+    {
+        get => _machineScopeAvailable;
+        set
+        {
+            if (SetField(ref _machineScopeAvailable, value))
+            {
+                Raise(nameof(NeedsAdmin));
+                Raise(nameof(AdminNote));
+            }
+        }
+    }
+
+    /// <summary>
+    /// True when applying this would be refused, and that is knowable before anybody presses.
+    ///
+    /// The engine has always refused these -- "requires elevation; run the service or start the
+    /// CLI as administrator" -- but only after the button was pressed, in a sentence written for
+    /// a command line. The row knows the same thing at the moment it is drawn.
+    /// </summary>
+    public bool NeedsAdmin => _status.Tweak.RequiresElevation && !_machineScopeAvailable;
+
+    /// <summary>What to do about it. Empty when there is nothing to do about.</summary>
+    public string AdminNote => NeedsAdmin ? AdminNeeded.ExplainMachineWide : "";
 
     public bool IsApplied => _status.IsApplied;
     public bool IsManaged => _status.IsManagedByUs;
@@ -255,6 +332,18 @@ public sealed class TweakItemViewModel : ObservableObject
     }
 
     public bool IsInteractive => !_isBusy && IsApplicable;
+
+    /// <summary>
+    /// Everything that changes when the connection's privileges change.
+    ///
+    /// A list for the same reason the Apps and Cleanup rows keep one: PropertyChanged is
+    /// marshalled to a UI thread no test runs, so an omission here is invisible to the suite.
+    /// </summary>
+    public static readonly string[] PrivilegeDependent =
+    [
+        nameof(NeedsAdmin),
+        nameof(AdminNote),
+    ];
 
     /// <summary>Docs page for this tweak, relative to the repository root.</summary>
     public string DocsPath => $"docs/tweaks/{Id}.md";

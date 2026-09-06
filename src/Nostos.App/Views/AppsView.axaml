@@ -1,0 +1,333 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nostos.App.ViewModels"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             xmlns:loc="using:Nostos.App.Localization"
+             x:Class="Nostos.App.Views.AppsView"
+             x:DataType="vm:MainWindowViewModel">
+
+  <!-- Everything installed on this PC.
+
+       Windows has no single honest list of this: Settings shows Store packages and per-user
+       installs, Programs and Features shows machine-wide Win32 and hides Store packages, and
+       neither shows what scoop or Chocolatey put there. This merges all of them.
+
+       Removing runs the program's own uninstaller and then sweeps up what it left behind.
+       Nothing is deleted: folders go to the Recycle Bin, registry keys are exported to a .reg
+       file before they are removed. That is what makes an automatic sweep defensible — finding
+       leftovers is name matching, name matching is guesswork, and guesswork is only acceptable
+       when being wrong is survivable. -->
+
+  <UserControl.Styles>
+    <Style Selector="Border.approw">
+      <Setter Property="Background" Value="{DynamicResource SurfaceFlat}" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="{DynamicResource CornerCard}" />
+      <Setter Property="Padding" Value="12,9" />
+      <Setter Property="Margin" Value="0,2" />
+    </Style>
+
+    <Style Selector="Border.ownedrow">
+    <Setter Property="Background" Value="{DynamicResource SurfaceFlat}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource Stroke}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+
+  <Style Selector="Border.approw:pointerover">
+      <Setter Property="Background" Value="#1E2537" />
+      <Setter Property="BorderBrush" Value="{DynamicResource StrokeStrong}" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Classes="panel" Padding="10,14,10,10">
+    <DockPanel>
+
+      <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="14,2,14,14">
+        <StackPanel Grid.Column="0" Spacing="4" MaxWidth="960" HorizontalAlignment="Left">
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Classes="title" VerticalAlignment="Center" Text="{loc:Tr apps.heading}" />
+            <Border Classes="chip" VerticalAlignment="Center">
+              <TextBlock Classes="chiptext" Text="{Binding AppsSummary}"
+                         Foreground="{DynamicResource Muted}" />
+            </Border>
+          </StackPanel>
+          <TextBlock Classes="muted" TextWrapping="Wrap" LineHeight="22"
+                     Text="{Binding AppsBlurb}" />
+          <TextBlock Classes="faint" TextWrapping="Wrap" Margin="0,2,0,0" LineHeight="20"
+                     Text="{loc:Tr apps.hint}" />
+        </StackPanel>
+
+        <Button Grid.Column="1" Classes="ghost" VerticalAlignment="Top" Margin="20,0,0,0"
+                Command="{Binding RefreshAppsCommand}" Content="{loc:Tr apps.refresh}" />
+      </Grid>
+
+      <Border DockPanel.Dock="Top" Classes="field" Margin="14,0,14,12">
+        <Grid ColumnDefinitions="Auto,*">
+          <Path Grid.Column="0" Data="{DynamicResource SearchIcon}" Stretch="Uniform"
+                Width="14" Height="14" Fill="{DynamicResource TextFaint}"
+                VerticalAlignment="Center" Margin="0,0,10,0" />
+          <TextBox Grid.Column="1" Classes="bare" PlaceholderText="{loc:Tr apps.search}"
+                   Text="{Binding AppSearch}" VerticalAlignment="Center" />
+        </Grid>
+      </Border>
+
+      <!-- Said outright at the bottom, because a list claiming to be everything has to name
+           what it cannot see. A game unzipped into D:\Games registers nothing. -->
+      <Border DockPanel.Dock="Bottom" Classes="inset" Margin="14,10,14,4">
+        <StackPanel Spacing="4">
+          <TextBlock Classes="faint" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap" LineHeight="20"
+                     Text="{Binding AppsBackupPath}" />
+          <TextBlock Classes="faint" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap" LineHeight="20"
+                     Text="{loc:Tr apps.note.portable}" />
+        </StackPanel>
+      </Border>
+
+      <TextBlock DockPanel.Dock="Top" Classes="muted" Margin="14,20,14,0"
+                 HorizontalAlignment="Center" Text="{loc:Tr apps.empty}"
+                 IsVisible="{Binding !Apps.Count}" />
+
+      <!-- A ListBox rather than an ItemsControl in a ScrollViewer, for one reason: it
+           virtualises and the other does not.
+
+           An ItemsControl builds every row it is given, whether or not any of them can be seen.
+           A hundred programs, each with an icon, five pieces of text, two chips, two buttons and
+           a details panel waiting behind them, is several thousand controls measured and laid
+           out in a single pass — and that pass runs on the UI thread, at the moment the tab is
+           first shown. Measured here: 824ms of a window that could not repaint, every time
+           somebody opened this tab for the first time.
+
+           A ListBox builds the dozen rows that fit on screen and the rest as they scroll into
+           view. The row still draws its own surface, so nothing about the list looks different;
+           what changes is that the work is proportional to what is visible rather than to what
+           is installed. -->
+      <ListBox ItemsSource="{Binding Apps}" Margin="4,0,4,4"
+               Background="Transparent" BorderThickness="0" Padding="0">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:AppItemViewModel">
+
+              <Border Classes="approw" Opacity="{Binding RowOpacity}">
+                <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto" RowDefinitions="Auto,Auto"
+                      ColumnSpacing="14">
+
+                  <!-- The fastest way to recognise a program, and the reason this reads better
+                       than a column of registry key names. A fixed box whether or not there is
+                       an icon, so the names stay in one column. -->
+                  <Panel Grid.Column="0" Width="30" Height="30" VerticalAlignment="Center">
+                    <Image Source="{Binding Icon}" Width="26" Height="26"
+                           IsVisible="{Binding HasIcon}"
+                           RenderOptions.BitmapInterpolationMode="HighQuality" />
+
+                    <!-- Every row gets something. A list where a third of the rows are blank
+                         squares reads as broken, and "has no artwork" is not a category anybody
+                         cares about. The colour comes from the name, so the same program is the
+                         same colour every time and can be found by shape as well as by reading. -->
+                    <Border Width="28" Height="28" CornerRadius="7"
+                            IsVisible="{Binding !HasIcon}"
+                            Background="{Binding MonogramBrushKey,
+                                                 Converter={StaticResource BrushFromKey},
+                                                 ConverterParameter=Tint}">
+                      <TextBlock Text="{Binding Monogram}" FontSize="{DynamicResource FontDetail}" FontWeight="SemiBold"
+                                 HorizontalAlignment="Center" VerticalAlignment="Center"
+                                 Foreground="{Binding MonogramBrushKey,
+                                                      Converter={StaticResource BrushFromKey}}" />
+                    </Border>
+                  </Panel>
+
+                  <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" />
+                    <TextBlock Classes="faint" FontSize="{DynamicResource FontDetail}" TextTrimming="CharacterEllipsis"
+                               Text="{Binding Subtitle}" />
+
+                    <!-- What is happening to this row, or what happened. Kept after the work
+                         finishes: the sentence saying what was swept up is the answer the
+                         reader wanted, and a row that tidied itself away would take it. -->
+                    <TextBlock Classes="muted" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap"
+                               Margin="0,2,0,0" LineHeight="19"
+                               IsVisible="{Binding HasStatus}"
+                               Text="{Binding StatusText}" />
+                  </StackPanel>
+
+                  <TextBlock Grid.Column="2" Classes="faint" FontSize="{DynamicResource FontDetail}"
+                             VerticalAlignment="Center" HorizontalAlignment="Right"
+                             MinWidth="74" TextAlignment="Right"
+                             Text="{Binding SizeText}" />
+
+                  <StackPanel Grid.Column="3" Spacing="3" VerticalAlignment="Center"
+                              HorizontalAlignment="Right">
+                    <Border Classes="chip" HorizontalAlignment="Right">
+                      <TextBlock Classes="chiptext" Text="{Binding SourceText}"
+                                 Foreground="{DynamicResource Muted}" />
+                    </Border>
+
+                    <!-- Says up front whether Remove will be unattended. An installer that opens
+                         a wizard over the window is a worse surprise than a row that warned. -->
+                    <TextBlock Classes="faint" FontSize="{DynamicResource FontLabel}" HorizontalAlignment="Right"
+                               Text="{loc:Tr apps.silent}" IsVisible="{Binding IsSilent}" />
+                    <TextBlock Classes="faint" FontSize="{DynamicResource FontLabel}" HorizontalAlignment="Right"
+                               Text="{loc:Tr apps.asks}" IsVisible="{Binding !IsSilent}" />
+                  </StackPanel>
+
+                  <Panel Grid.Column="4" MinWidth="196" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Spacing="4" HorizontalAlignment="Right"
+                                IsVisible="{Binding IsInteractive}">
+
+                      <!-- Answers "why is this even here", which is the question a list of a
+                           hundred rows will eventually be asked about one of them. -->
+                      <Button Content="{Binding DetailsLabel}"
+                              Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ToggleDetailsCommand}"
+                              CommandParameter="{Binding}" />
+
+                      <Button Classes="danger" Content="{loc:Tr apps.remove}"
+                              Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveAppCommand}"
+                              CommandParameter="{Binding}" />
+                    </StackPanel>
+
+                    <Ellipse Classes="spinner" IsVisible="{Binding IsWorking}"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" />
+                  </Panel>
+
+                <!-- ============================================ why this row is here
+
+                     Open on demand under the row it explains, rather than in a dialog. The
+                     question is "why is THIS listed", and an answer that covers the row it is
+                     about makes the reader hold both halves in their head at once. -->
+                <Border Grid.Row="1" Grid.ColumnSpan="5" Classes="inset"
+                        Margin="44,10,0,4" Padding="14,12"
+                        IsVisible="{Binding IsOpen}">
+                  <StackPanel Spacing="10">
+
+                    <TextBlock Classes="muted" FontSize="{DynamicResource FontDetail}"
+                               Text="{loc:Tr apps.details.reading}"
+                               IsVisible="{Binding IsLoadingDetails}" />
+
+                    <StackPanel Spacing="10" IsVisible="{Binding HasInspection}">
+
+                      <!-- The sentence that answers the question, then the evidence it is
+                           drawn from, so the claim can be checked rather than believed. -->
+                      <StackPanel Spacing="5">
+                        <TextBlock Classes="faint" FontSize="{DynamicResource FontLabel}" FontWeight="SemiBold"
+                                   Text="{loc:Tr apps.details.why}" />
+                        <TextBlock FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap" LineHeight="20"
+                                   Text="{Binding WhyText}" />
+                      </StackPanel>
+
+                      <ItemsControl ItemsSource="{Binding Evidence}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:EvidenceRow">
+                            <Grid ColumnDefinitions="176,*,Auto" Margin="0,0,0,3" ColumnSpacing="10">
+                              <TextBlock Grid.Column="0" Classes="faint" FontSize="{DynamicResource FontDetail}"
+                                         Text="{Binding Label}" />
+
+                              <!-- Selectable because the useful thing to do with a registry key
+                                   you do not believe is to paste it into regedit and look. -->
+                              <SelectableTextBlock Grid.Column="1" FontSize="{DynamicResource FontDetail}"
+                                                   FontFamily="Consolas,Cascadia Mono,monospace"
+                                                   TextWrapping="Wrap"
+                                                   Text="{Binding Path}" />
+
+                              <TextBlock Grid.Column="2" FontSize="{DynamicResource FontLabel}" VerticalAlignment="Top"
+                                         Text="{Binding Note}"
+                                         Foreground="{DynamicResource Muted}"
+                                         IsVisible="{Binding Present}" />
+                              <TextBlock Grid.Column="2" FontSize="{DynamicResource FontLabel}" VerticalAlignment="Top"
+                                         Text="{Binding Note}"
+                                         Foreground="{DynamicResource Warning}"
+                                         IsVisible="{Binding !Present}" />
+                            </Grid>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+
+                      <!-- ============================ what this entry owns, item by item
+
+                           One list rather than a folders list and a keys list: what somebody is
+                           deciding is which of these to keep, and splitting them by storage
+                           medium sorts them by the one property that does not bear on it. -->
+                      <StackPanel Spacing="5">
+                        <TextBlock Classes="faint" FontSize="{DynamicResource FontLabel}" FontWeight="SemiBold"
+                                   Text="{loc:Tr apps.details.owns}" />
+                        <TextBlock FontSize="{DynamicResource FontDetail}" Text="{Binding LeftoverSummary}" />
+                        <TextBlock Classes="faint" FontSize="{DynamicResource FontLabel}"
+                                   Text="{loc:Tr apps.details.pickone}"
+                                   IsVisible="{Binding HasLeftovers}" />
+                      </StackPanel>
+
+                      <ItemsControl ItemsSource="{Binding Leftovers}" IsVisible="{Binding HasLeftovers}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="vm:LeftoverRow">
+                            <Border Classes="ownedrow" Margin="0,0,0,4" Padding="9,6"
+                                    CornerRadius="6">
+                              <Grid ColumnDefinitions="140,*,Auto,Auto" ColumnSpacing="10">
+                                <TextBlock Grid.Column="0" Classes="faint" FontSize="{DynamicResource FontDetail}"
+                                           VerticalAlignment="Center" Text="{Binding KindText}" />
+
+                                <StackPanel Grid.Column="1" Spacing="1" VerticalAlignment="Center">
+                                  <SelectableTextBlock FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap"
+                                                       FontFamily="Consolas,Cascadia Mono,monospace"
+                                                       Text="{Binding Path}" />
+
+                                  <!-- An HKLM key or a folder under Program Files. The button
+                                       stays; what it needs is said next to it. -->
+                                  <TextBlock FontSize="{DynamicResource FontLabel}" Text="{loc:Tr admin.badge}"
+                                             Foreground="{DynamicResource Warning}"
+                                             IsVisible="{Binding NeedsAdmin}" />
+
+                                  <!-- The line that deserves to be read before it scrolls past.
+                                       Everything goes to the Recycle Bin either way, so this is
+                                       not a safety mechanism; it is a warning worth reading. -->
+                                  <TextBlock FontSize="{DynamicResource FontLabel}" Text="{Binding UserDataNote}"
+                                             Foreground="{DynamicResource Warning}"
+                                             IsVisible="{Binding HoldsUserData}" />
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="2" Classes="faint" FontSize="{DynamicResource FontDetail}"
+                                           VerticalAlignment="Center" Text="{Binding SizeText}" />
+
+                                <Button Grid.Column="3" Classes="danger compact"
+                                        VerticalAlignment="Center"
+                                        Content="{loc:Tr apps.details.removeone}"
+                                        Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveItemCommand}"
+                                        CommandParameter="{Binding}" />
+                              </Grid>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+
+                      <!-- ==================================================== the way out -->
+                      <TextBlock Classes="muted" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap" LineHeight="20"
+                                 Text="{loc:Tr apps.details.stillinstalled}"
+                                 IsVisible="{Binding ShowsUninstallerAdvice}" />
+
+                      <TextBlock Classes="muted" FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap" LineHeight="20"
+                                 Text="{loc:Tr apps.details.cannotforget}"
+                                 IsVisible="{Binding !CanForget}" />
+
+                      <StackPanel Spacing="6" IsVisible="{Binding CanForget}">
+                        <TextBlock FontSize="{DynamicResource FontDetail}" TextWrapping="Wrap" LineHeight="20"
+                                   Foreground="{DynamicResource Warning}"
+                                   IsVisible="{Binding ForgetNeedsAdmin}"
+                                   Text="{Binding AdminNote}" />
+
+                        <Button Classes="danger" HorizontalAlignment="Left"
+                                IsEnabled="{Binding IsInteractive}"
+                                Content="{loc:Tr apps.details.forget}"
+                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).ForgetAppCommand}"
+                                CommandParameter="{Binding}" />
+
+                        <TextBlock Classes="faint" FontSize="{DynamicResource FontLabel}" TextWrapping="Wrap" LineHeight="18"
+                                   Text="{loc:Tr apps.details.forgetnote}" />
+                      </StackPanel>
+                    </StackPanel>
+                  </StackPanel>
+                </Border>
+                </Grid>
+              </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+  </Border>
+</UserControl>

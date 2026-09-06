@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Nostos.App.Localization;
 using Nostos.Core.Localization;
 using Nostos.Ipc;
 using Nostos.Win32.Services;
@@ -15,13 +16,31 @@ public sealed class StartupItemViewModel : ObservableObject
     private readonly Func<StartupItemViewModel, bool, Task> _toggle;
     private StartupEntry _entry;
     private bool _isBusy;
+    private bool _machineScopeAvailable = true;
 
     public StartupItemViewModel(StartupEntry entry, Func<StartupItemViewModel, bool, Task> toggle)
+        : this(entry, toggle, ReadIcon(entry.ExecutablePath))
+    {
+    }
+
+    /// <summary>
+    /// Builds a row from an icon that has already been read.
+    ///
+    /// Same split as the Apps tab, for the same reason: pulling an icon resource out of an
+    /// executable is a shell call, fifteen of them measured 92ms of a frozen window, and none
+    /// of that needs the UI thread. What does need it is the bitmap, which is made through the
+    /// render interface and is a memory copy once the pixels are in hand.
+    /// </summary>
+    public StartupItemViewModel(
+        StartupEntry entry, Func<StartupItemViewModel, bool, Task> toggle, IconPixels? icon)
     {
         _entry = entry;
         _toggle = toggle;
-        Icon = LoadIcon(entry.ExecutablePath);
+        Icon = Draw(icon);
     }
+
+    /// <summary>Reads a program's icon. Safe on any thread; nothing here touches Avalonia.</summary>
+    public static IconPixels? ReadIcon(string? path) => FileIcons.TryRead(path);
 
     public string Id => _entry.Id;
 
@@ -45,6 +64,38 @@ public sealed class StartupItemViewModel : ObservableObject
     public bool IsEnabled => _entry.IsEnabled;
 
     public bool IsMachineWide => _entry.IsMachineWide;
+
+    /// <summary>
+    /// Whether this copy can write machine-wide state, set by the window.
+    ///
+    /// The window knows because it built the connection: a machine-wide entry is switched
+    /// through the background service, and whether there is one is a fact about the connection
+    /// rather than about the entry.
+    /// </summary>
+    public bool MachineScopeAvailable
+    {
+        get => _machineScopeAvailable;
+        set
+        {
+            if (SetField(ref _machineScopeAvailable, value))
+            {
+                Raise(nameof(NeedsAdmin));
+                Raise(nameof(AdminNote));
+            }
+        }
+    }
+
+    /// <summary>
+    /// True when this switch cannot move, and that was knowable before it was clicked.
+    ///
+    /// The row used to find out the hard way: the write went out, HKLM refused it, and the code
+    /// below re-read the entry and put the switch back where it started. What that looks like is
+    /// a switch that flicks and springs back, which is the visual language of a broken control
+    /// rather than of a permission somebody could go and get.
+    /// </summary>
+    public bool NeedsAdmin => _entry.IsMachineWide && !_machineScopeAvailable;
+
+    public string AdminNote => NeedsAdmin ? AdminNeeded.ExplainMachineWide : "";
 
     /// <summary>
     /// Dims a row that will not run.
@@ -147,11 +198,11 @@ public sealed class StartupItemViewModel : ObservableObject
     /// BGRA with straight alpha, which is what is declared here -- getting the alpha format
     /// wrong produces icons with dark haloes that look like bad anti-aliasing rather than a bug.
     /// </summary>
-    private static Bitmap? LoadIcon(string? path)
+    private static Bitmap? Draw(IconPixels? pixels)
     {
         try
         {
-            if (FileIcons.TryRead(path) is not { } icon)
+            if (pixels is not { } icon)
                 return null;
 
             var bitmap = new WriteableBitmap(
