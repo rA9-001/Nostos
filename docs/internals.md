@@ -1,0 +1,364 @@
+# Nostos internals
+
+The reference material the README used to carry inline. The deeper design notes live
+alongside this file in `docs/`.
+
+## Getting started
+
+**[Download the latest release](https://github.com/rA9-001/Nostos/releases/latest)**, then run
+`Nostos.exe`. That is the whole setup.
+
+| Download | What it is |
+| --- | --- |
+| `Nostos.exe` | The whole application in one 28 MB file. Nothing to install, nothing to unpack. Start here. |
+| `Nostos-x.y.z-win-x64.zip` | The folder build: app, `nos` CLI, and the background service that lets machine-wide tweaks apply without a prompt each time. |
+
+There is no installer and nothing appears in Programs and Features. The one thing that does get
+installed is the background service, and the app registers that itself on first launch.
+
+Windows will warn you on first run, because the build is not code-signed yet — see
+[docs/distribution.md](docs/distribution.md) for why, and
+[SECURITY.md](SECURITY.md) for what the program does and does not do. Every release publishes
+SHA-256 hashes and a build attestation, so you can check what you downloaded:
+
+```
+gh attestation verify Nostos.exe --repo rA9-001/Nostos
+```
+
+On first launch the app:
+
+1. creates its data folder,
+2. installs any of the three default profiles you do not already have,
+3. installs and starts the background service — **one administrator prompt, once, ever**,
+4. connects and loads the catalog.
+
+If you decline the prompt, it carries on in direct mode and never asks again; an **Enable**
+button in the banner is there whenever you change your mind. Nothing else is required, and
+there is nothing to configure before it works.
+
+The setup looks like nothing happened, which is the point. To check, run `nos service status`.
+
+Everything the app writes outside its own folder lives in one place,
+`%ProgramData%\Nostos`.
+
+To get rid of it, open **Settings** — the gear in the top right — and choose **Remove Nostos
+from this PC**. It undoes every change it made, deletes the service and the data folder, and
+then tells you the one folder you still have to delete. See
+[docs/uninstall.md](docs/uninstall.md), including how to do it by hand if the app will not
+start.
+
+### Giving it to someone else
+
+Send them the [release page](https://github.com/rA9-001/Nostos/releases/latest) and tell them to
+take `Nostos.exe`. One file, nothing to explain, and they get updates from then on.
+
+If you are handing over a build you made yourself: send the whole folder or the `.zip` the
+publish script produces. What does *not* work is picking `Nostos.exe` out of `dist\` and sending
+only that — in a folder build, that file is a 160 KB launcher and the application is the
+assemblies beside it.
+
+Either way the build is self-contained, so the recipient needs nothing installed. They will get
+a SmartScreen warning on first launch because it is unsigned; see
+[docs/distribution.md](docs/distribution.md) for why, and for what is being done about it.
+
+### Portable, in one file
+
+There is a build that is a **single 27 MB `Nostos.exe`** and nothing else. No runtime
+to install, no folder of DLLs, no service, no registry entry. Copy it to a USB stick and run it.
+
+```
+.\scripts\publish.ps1 -SingleFile -Output portable
+```
+
+It is compiled ahead of time, so it starts in under a second. On first run it creates a `data`
+folder beside itself holding the journal, the profiles, the logs, and the three C++ rendering
+libraries that cannot be linked into a managed executable — about 18 MB, unpacked once and
+reused after that. Delete the folder and the app rebuilds it; delete both and nothing of the
+app remains.
+
+Portable mode is deliberately limited, and the app says so in a banner:
+
+- **No background service**, so no drift reconciliation.
+- **Machine-wide tweaks need an elevated launch**, because there is no privileged helper.
+- **It will not use an installed service even if one is running on the machine.** That would
+  work, but the service journals to `%ProgramData%`, so half the record of what this copy
+  changed would live somewhere the folder does not carry with it.
+
+Any ordinary folder build can also be made portable by putting an empty `portable.txt` next to
+the executable, or passing `--portable`.
+
+### Updating
+
+The app checks GitHub on launch and shows a banner when there is a newer release. One click
+downloads and installs it; nothing is fetched until you click.
+
+**Settings** (the gear, top right) controls that: whether to check at all, and whether to check
+every launch, once a day or once a week. There is also a **Check now** button, which is the one
+place a failed check is reported rather than ignored — everywhere else, being offline is not
+news. From the CLI:
+
+```
+nos update              # check only
+nos update --install    # download, verify and install
+```
+
+**Every update is verified before it is installed.** Each release publishes a `SHA256SUMS.txt`
+and an ECDSA P-256 signature over it, and the public key is compiled into the application. The
+signature must verify and the download's hash must match, or nothing is written — see
+[SECURITY.md](SECURITY.md#updates). This matters more than it usually would: part of what gets
+installed runs as LocalSystem.
+
+Updating the single-file build needs no prompt. Updating a folder build needs one, because the
+service has to be stopped to replace it.
+
+### Building
+
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download).
+
+```
+git clone https://github.com/rA9-001/Nostos
+cd Nostos
+dotnet build
+.\scripts\publish.ps1 -Portable -Output dev
+```
+
+That last line writes **`dev\Nostos.exe`** — an ordinary executable you double-click.
+It takes a few seconds, and it is the one to run while working on something.
+
+```
+.\scripts\publish.ps1 -Portable -Output dev     # refresh it after a change
+dev\Nostos.exe                         # run it
+```
+
+The `-Portable` marker is the part that matters. If this machine has the service installed, an
+app that can reach it asks the *service* for the tweak list and shows whatever catalog the
+service was built with — so a change you just made appears not to have taken, with no hint that
+anything is wrong. That applies to `dotnet run --project src/Nostos.App` too. Portable
+mode ignores the service, and keeps the journal in `dev\data` instead of mixing test applies
+into the real record.
+
+`scripts\dev.ps1` does the same thing straight from `bin\` without publishing, and can run the
+CLI:
+
+```
+.\scripts\dev.ps1 -Cli list --all               # check the catalog without opening the window
+.\scripts\dev.ps1 -Elevated                     # machine-scope tweaks can actually apply
+```
+
+Only the service path itself — drift reconciliation, and machine-scope changes without an
+elevated shell — needs a real publish over the install. See
+[CONTRIBUTING.md](CONTRIBUTING.md#testing-the-service-path).
+
+To produce a distributable folder with all three executables together:
+
+```
+.\scripts\publish.ps1 -Zip                       # dist\ + dist.zip, about 128 MB / 51 MB
+.\scripts\publish.ps1 -SingleFile               # one 27 MB exe, app only, portable
+.\scripts\publish.ps1 -FrameworkDependent        # about 53 MB, needs the .NET 10 runtime
+.\scripts\publish.ps1 -Portable -Output usb      # writes portable.txt into the output
+```
+
+`-SingleFile` compiles ahead of time and needs the MSVC linker — install Visual Studio's
+"Desktop development with C++" workload. It takes a few minutes; the other modes take seconds.
+
+If PowerShell refuses to run the script, Windows is at its default execution policy:
+`powershell -ExecutionPolicy Bypass -File .\scripts\publish.ps1 -Zip`.
+
+All three executables share one set of runtime assemblies, so publishing them into a single
+folder costs barely more than publishing one. The script refuses to publish over an installed
+service that is currently running from the output folder, which would otherwise fail halfway
+and leave a mixed-version folder behind.
+
+Self-contained is the default because a runtime download is a second thing for the recipient to
+install and a second thing to get wrong. The script publishes with `-r win-x64`; without a
+runtime identifier, publish pulls in Avalonia's native assets for every platform and the output
+balloons past half a gigabyte.
+
+### The CLI
+
+`nos.exe` does everything the window does, and a few things it does not.
+
+```
+nos list                        # the catalog, grouped by what it improves
+nos categories                  # the categories, by group, and what each one claims
+nos list --category ping        # only the tweaks that claim to help your ping
+nos list --all                  # everything, including the stuff that probably does nothing
+nos status                      # what is set on this machine right now
+nos apply mmcss.system-responsiveness --dry-run
+nos revert --all                # undo everything this tool has ever done here
+nos journal                     # the full change log
+nos doctor                      # environment report, for bug reports
+```
+
+Tweaks that offer a choice:
+
+```
+nos show mmcss.system-responsiveness              # the options, and what each one costs
+nos apply mmcss.system-responsiveness --set reserve=balanced
+nos apply gpu.tdr-delay --set delay=windows-default
+```
+
+Against a running process, when you want it:
+
+```
+nos apply process.game-tuning --process cs2 --set priority=high --set qos=high
+nos revert process.game-tuning --process cs2
+```
+
+Add `--service` to route a command through the service, which avoids needing an elevated shell
+for machine-scope tweaks. See [docs/service.md](docs/service.md).
+
+## How a tweak works
+
+Every tweak — registry, power scheme, live process, whatever comes later — implements the same
+five operations:
+
+| | |
+| --- | --- |
+| `ReadAsync` | What is the machine set to right now? |
+| `CaptureAsync` | Record the prior value so revert can restore *exactly* it |
+| `ApplyAsync` | Make the change |
+| `RevertAsync` | Put back the captured value |
+| `VerifyAsync` | Did it actually stick? |
+
+If a tweak cannot implement `CaptureAsync` honestly, it does not go in the catalog.
+
+Apply always runs in this order, and the order *is* the safety property:
+
+```
+check applicability -> read state -> capture prior value -> journal the intent
+                                                                   |
+                                                       (durable before destructive)
+                                                                   |
+                                                    mutate -> verify -> journal the result
+```
+
+Everything after the journal write is recoverable. If `ApplyAsync` throws, the engine
+immediately reverts using the snapshot it already has; if *that* fails too, it says so plainly
+rather than pretending the machine is clean.
+
+## Adding a tweak
+
+Most tweaks are data, not code. Add an object to
+[`src/Nostos.Tweaks/Catalog/registry.json`](src/Nostos.Tweaks/Catalog/registry.json):
+
+```json
+{
+  "id": "category.what-it-does",
+  "title": "Human readable",
+  "summary": "One sentence on what changes and what it costs.",
+  "category": "fps",
+  "scope": "Machine",
+  "risk": "Safe",
+  "evidence": "Plausible",
+  "values": [
+    { "hive": "HKLM", "key": "SOFTWARE\\...", "name": "ValueName", "kind": "DWord", "value": "10" }
+  ]
+}
+```
+
+…and a page at `docs/tweaks/<id>.md` explaining the mechanism and justifying the evidence
+rating. **CI fails without the docs page.** That is the whole point.
+
+Four optional fields say when a tweak does not apply, and all four are checked before it is ever
+offered rather than after it fails:
+
+| Field | Meaning |
+|---|---|
+| `"minBuild": 22000` | The setting does not exist on older builds. |
+| `"desktopOnly": true` | It is a straight regression on a machine with a battery. |
+| `"proOnly": true` | It is a Windows Update for Business policy, which Home ignores. |
+| `"overriddenBy": { … }` | A Group Policy owns the value and Windows refuses every write to it. |
+
+`proOnly` exists because those policies are the one class of registry value where **every
+observable sign says the change worked and nothing happened**: the key is writable on Home, the
+value stays where it was put, a read-back returns it, and Verify reports no drift — the update
+client on Home simply never reads it. A tweak that quietly does nothing while showing a tick is
+worse than one that fails, because a failure says so.
+
+`category` is one of ten fixed values — `performance`, `input-lag`, `ping`, `stability`,
+`interruptions`, `telemetry`, `startup`, `unused`, `services`, `storage` — and it is a claim, not
+a filing cabinet. It says what the tweak does *for the
+player*, not which part of Windows it writes to, which is why two HKCU values can end up in
+different categories and a registry key and a power scheme can end up in the same one. An
+unrecognised category fails the build, and a docs page that never mentions its own category
+fails CI. `nos categories` prints what each one promises.
+
+A Windows service is an entry in
+[`services.json`](src/Nostos.Tweaks/Catalog/services.json), and a per-adapter network setting
+one in [`adapters.json`](src/Nostos.Tweaks/Catalog/adapters.json), in the same folder:
+
+```json
+{
+  "id": "services.example",
+  "service": "ExampleSvc",
+  "title": "Stop the example service starting at boot",
+  "summary": "What it does, and what stops working without it.",
+  "category": "unused",
+  "evidence": "Plausible",
+  "tags": ["service"]
+}
+```
+
+Only four tweaks in the whole catalog are code: the ones that duplicate a power scheme, retune
+a running process, set a permanent per-executable priority, or write to whichever interface
+currently carries the default route. Anything
+that needs to call an API, or whose revert is not "put the old value back", becomes a class in
+`src/Nostos.Tweaks/Native/` — and that friction is deliberate.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Layout
+
+```
+src/Nostos.Core/     Engine, journal, profiles, safety, settings, the control-pipe contract.
+                     No Windows dependency, fully unit-tested.
+src/Nostos.Win32/    Registry, power schemes, process control, P/Invoke.
+src/Nostos.Tweaks/   The catalog: three JSON files, plus the four tweaks that need code.
+src/Nostos.Service/  LocalSystem service: ACL'd pipe, reconciler.
+src/Nostos.Cli/      `nos`.
+src/Nostos.App/      Avalonia desktop app. Bootstraps itself on launch; talks to the service or the engine.
+tools/                        Maintainer tooling. Release signing. Never shipped.
+tests/                        1,043 tests, including catalog integrity rules enforced in CI.
+docs/tweaks/                  One page per tweak. Required.
+profiles/                     The three shipped profiles: Basic, Intermediate, Expert.
+```
+
+`Core` deliberately has no Windows dependency and no NuGet packages, so the logic that decides
+what happens to your machine is testable on any runner and readable without a Windows SDK.
+
+Avalonia, used by the app, is the **only** third-party dependency in the product. Everything
+that runs privileged — the engine, the service, the interop — has none, so the code that can
+change your machine is short enough to read in full.
+
+## Roadmap
+
+- [x] Tweak engine with capture/apply/revert/verify and a crash-safe journal
+- [x] System Restore integration before risky changes
+- [x] Declarative registry catalog + native tweaks
+- [x] CLI
+- [x] `Nostos.Service` — LocalSystem service, SID-ACL'd named-pipe API, drift
+      reconciliation
+- [x] Desktop app (Avalonia), talking to the service so there is exactly one UAC prompt per install
+- [x] Single-file portable build, compiled ahead of time
+- [x] Latency benchmark with a bootstrap comparison (`nos bench`)
+- [x] Signed releases and an in-app updater that verifies them
+- [ ] Frametime capture via ETW, without injecting into anything — see docs/architecture.md
+- [x] Per-tweak options with an explanation of each choice, in the app and the CLI
+- [ ] Impersonate the console session so the service can apply user-scoped (HKCU) tweaks
+- [ ] Instance-keyed journal entries, so one tweak can be outstanding more than once
+- [ ] A target-process picker in the app, for process-scoped tweaks
+- [ ] ETW frametime capture, so `Plausible` entries can be promoted to `Measured` with data
+- [ ] Service control tweaks, NIC properties, per-executable fullscreen-optimization flags
+- [ ] Signed releases via [SignPath Foundation](https://signpath.org/) — see
+      [docs/distribution.md](docs/distribution.md)
+
+## A word on expectations
+
+Some of what circulates as gaming optimization is real, some is measurable but tiny, and some is
+pure folklore that has been copied between forum posts for fifteen years. This project's job is
+to tell you which is which, apply what you choose, and be able to undo all of it.
+
+If a page here says a tweak probably does nothing and you have frametime data showing
+otherwise, open a PR. Ratings are meant to move.
+
